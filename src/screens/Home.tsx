@@ -3,8 +3,7 @@ import { Box, Text, useInput, useApp } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
-import { colors, columns, formatInstalls, Cursor, Rating, InstallCount, VerifiedBadge, HelpFooter, Accordion, accordionTotalItems } from "../cli_app_theme.js";
-import type { AccordionSection } from "../cli_app_theme.js";
+import { colors, columns, formatInstalls, Cursor, Rating, InstallCount, VerifiedBadge, HelpFooter, ScrollList } from "../cli_app_theme.js";
 
 interface StoreData {
   featured: string[];
@@ -25,6 +24,15 @@ const MENU_ITEMS = [
   { label: "Settings", value: "settings", description: "Preferences" },
   { label: "Exit", value: "exit", description: "Quit bottel" },
 ];
+
+// Each row in the flat scrollable list
+type RowType =
+  | { kind: "section-title"; title: string }
+  | { kind: "separator" }
+  | { kind: "menu"; index: number }
+  | { kind: "featured"; index: number; agent: Agent }
+  | { kind: "trending"; index: number; agent: Agent }
+  | { kind: "category"; index: number; name: string; icon: string; count: number };
 
 export function Home() {
   const { state, dispatch, navigate } = useStore();
@@ -47,117 +55,59 @@ export function Home() {
 
   const categories = storeData.categories;
 
-  const sections: AccordionSection[] = useMemo(() => [
-    {
-      key: "menu",
-      title: "Navigation",
-      itemCount: MENU_ITEMS.length,
-      render: (activeIndex: number) => (
-        <>
-          {MENU_ITEMS.map((item, i) => (
-            <Box key={`menu-${item.value}`}>
-              <Cursor active={i === activeIndex} />
-              <Box width={18}>
-                <Text color={i === activeIndex ? colors.primary : undefined} bold={i === activeIndex}>
-                  {item.label}
-                </Text>
-              </Box>
-              <Text dimColor={i !== activeIndex} color={i === activeIndex ? colors.primary : undefined}>
-                {item.description}
-              </Text>
-            </Box>
-          ))}
-        </>
-      ),
-    },
-    {
-      key: "featured",
-      title: "Featured",
-      itemCount: featuredAgents.length,
-      render: (activeIndex: number) => (
-        <>
-          {featuredAgents.map((agent, i) => (
-            <Box key={`featured-${agent.id}`}>
-              <Cursor active={i === activeIndex} />
-              <Box width={columns.name}>
-                <Text color={i === activeIndex ? colors.primary : undefined} bold={i === activeIndex}>
-                  {agent.name}
-                </Text>
-              </Box>
-              <Rating value={agent.rating} />
-              <InstallCount count={agent.installs} />
-              <VerifiedBadge verified={agent.verified} />
-            </Box>
-          ))}
-        </>
-      ),
-    },
-    {
-      key: "trending",
-      title: "Trending",
-      itemCount: trendingAgents.length,
-      render: (activeIndex: number) => (
-        <>
-          {trendingAgents.map((agent, i) => (
-            <Box key={`trending-${agent.id}`}>
-              <Cursor active={i === activeIndex} />
-              <Box width={columns.rank}><Text dimColor>{i + 1}.</Text></Box>
-              <Box width={columns.name}>
-                <Text color={i === activeIndex ? colors.primary : undefined} bold={i === activeIndex}>
-                  {agent.name}
-                </Text>
-              </Box>
-              <Rating value={agent.rating} />
-              <InstallCount count={agent.installs} />
-              <VerifiedBadge verified={agent.verified} />
-            </Box>
-          ))}
-        </>
-      ),
-    },
-    {
-      key: "categories",
-      title: "Categories",
-      itemCount: categories.length,
-      render: (activeIndex: number) => (
-        <>
-          {categories.map((cat, i) => (
-            <Box key={`category-${cat.name}`}>
-              <Cursor active={i === activeIndex} />
-              <Text color={i === activeIndex ? colors.primary : undefined} bold={i === activeIndex}>
-                {cat.icon} {cat.name}
-              </Text>
-              <Text dimColor> ({cat.agents.length})</Text>
-            </Box>
-          ))}
-        </>
-      ),
-    },
-  ], [featuredAgents, trendingAgents, categories]);
+  // Build flat list of all rows (some navigable, some decorative)
+  const { rows, navigableIndices } = useMemo(() => {
+    const rows: RowType[] = [];
+    const navigableIndices: number[] = [];
 
-  const totalItems = accordionTotalItems(sections);
-
-  // Decode selected index to find which section is active for Enter handling
-  const decoded = useMemo(() => {
-    let remaining = selectedIndex;
-    for (let i = 0; i < sections.length; i++) {
-      if (remaining < sections[i]!.itemCount) {
-        return { sectionIndex: i, itemIndex: remaining };
-      }
-      remaining -= sections[i]!.itemCount;
+    // Menu section
+    rows.push({ kind: "section-title", title: "Navigation" });
+    for (let i = 0; i < MENU_ITEMS.length; i++) {
+      navigableIndices.push(rows.length);
+      rows.push({ kind: "menu", index: i });
     }
-    return { sectionIndex: 0, itemIndex: 0 };
-  }, [selectedIndex, sections]);
+
+    rows.push({ kind: "separator" });
+
+    // Featured
+    rows.push({ kind: "section-title", title: "Featured" });
+    for (let i = 0; i < featuredAgents.length; i++) {
+      navigableIndices.push(rows.length);
+      rows.push({ kind: "featured", index: i, agent: featuredAgents[i]! });
+    }
+
+    rows.push({ kind: "separator" });
+
+    // Trending
+    rows.push({ kind: "section-title", title: "Trending" });
+    for (let i = 0; i < trendingAgents.length; i++) {
+      navigableIndices.push(rows.length);
+      rows.push({ kind: "trending", index: i, agent: trendingAgents[i]! });
+    }
+
+    rows.push({ kind: "separator" });
+
+    // Categories
+    rows.push({ kind: "section-title", title: "Categories" });
+    for (let i = 0; i < categories.length; i++) {
+      navigableIndices.push(rows.length);
+      rows.push({ kind: "category", index: i, name: categories[i]!.name, icon: categories[i]!.icon, count: categories[i]!.agents.length });
+    }
+
+    return { rows, navigableIndices };
+  }, [featuredAgents, trendingAgents, categories]);
+
+  const focusedRowIndex = navigableIndices[selectedIndex] ?? 0;
 
   useInput((input, key) => {
     if (input === "q") { exit(); return; }
     if (input === "/") { navigate({ name: "search" }); return; }
 
     if (key.return) {
-      const { sectionIndex, itemIndex } = decoded;
-      const sec = sections[sectionIndex]!;
-      if (sec.key === "menu") {
-        const item = MENU_ITEMS[itemIndex]!;
+      const row = rows[focusedRowIndex];
+      if (!row) return;
+      if (row.kind === "menu") {
+        const item = MENU_ITEMS[row.index]!;
         switch (item.value) {
           case "home": break;
           case "browse": navigate({ name: "browse" }); break;
@@ -166,13 +116,11 @@ export function Home() {
           case "settings": navigate({ name: "settings" }); break;
           case "exit": exit(); break;
         }
-      } else if (sec.key === "featured") {
-        const agent = featuredAgents[itemIndex];
-        if (agent) navigate({ name: "agent-detail", agentId: agent.id });
-      } else if (sec.key === "trending") {
-        const agent = trendingAgents[itemIndex];
-        if (agent) navigate({ name: "agent-detail", agentId: agent.id });
-      } else if (sec.key === "categories") {
+      } else if (row.kind === "featured") {
+        navigate({ name: "agent-detail", agentId: row.agent.id });
+      } else if (row.kind === "trending") {
+        navigate({ name: "agent-detail", agentId: row.agent.id });
+      } else if (row.kind === "category") {
         navigate({ name: "browse" });
       }
       return;
@@ -182,14 +130,91 @@ export function Home() {
       dispatch({ type: "UPDATE_HOME", state: { selectedIndex: Math.max(0, selectedIndex - 1) } });
     }
     if (key.downArrow) {
-      dispatch({ type: "UPDATE_HOME", state: { selectedIndex: Math.min(totalItems - 1, selectedIndex + 1) } });
+      dispatch({ type: "UPDATE_HOME", state: { selectedIndex: Math.min(navigableIndices.length - 1, selectedIndex + 1) } });
     }
   });
 
+  // Render each row
+  const renderedItems = rows.map((row, i) => {
+    const isActive = i === focusedRowIndex;
+
+    if (row.kind === "section-title") {
+      return (
+        <Box key={`title-${row.title}`} marginTop={i > 0 ? 0 : 0}>
+          <Text bold color={colors.secondary}>{row.title}</Text>
+        </Box>
+      );
+    }
+
+    if (row.kind === "separator") {
+      return (
+        <Box key={`sep-${i}`}>
+          <Text dimColor>{"\u2500".repeat(50)}</Text>
+        </Box>
+      );
+    }
+
+    if (row.kind === "menu") {
+      const item = MENU_ITEMS[row.index]!;
+      return (
+        <Box key={`menu-${item.value}`}>
+          <Cursor active={isActive} />
+          <Box width={18}>
+            <Text color={isActive ? colors.primary : undefined} bold={isActive}>{item.label}</Text>
+          </Box>
+          <Text dimColor={!isActive} color={isActive ? colors.primary : undefined}>{item.description}</Text>
+        </Box>
+      );
+    }
+
+    if (row.kind === "featured") {
+      return (
+        <Box key={`featured-${row.agent.id}`}>
+          <Cursor active={isActive} />
+          <Box width={columns.name}>
+            <Text color={isActive ? colors.primary : undefined} bold={isActive}>{row.agent.name}</Text>
+          </Box>
+          <Rating value={row.agent.rating} />
+          <InstallCount count={row.agent.installs} />
+          <VerifiedBadge verified={row.agent.verified} />
+        </Box>
+      );
+    }
+
+    if (row.kind === "trending") {
+      return (
+        <Box key={`trending-${row.agent.id}`}>
+          <Cursor active={isActive} />
+          <Box width={columns.rank}><Text dimColor>{row.index + 1}.</Text></Box>
+          <Box width={columns.name}>
+            <Text color={isActive ? colors.primary : undefined} bold={isActive}>{row.agent.name}</Text>
+          </Box>
+          <Rating value={row.agent.rating} />
+          <InstallCount count={row.agent.installs} />
+          <VerifiedBadge verified={row.agent.verified} />
+        </Box>
+      );
+    }
+
+    if (row.kind === "category") {
+      return (
+        <Box key={`category-${row.name}`}>
+          <Cursor active={isActive} />
+          <Text color={isActive ? colors.primary : undefined} bold={isActive}>{row.icon} {row.name}</Text>
+          <Text dimColor> ({row.count})</Text>
+        </Box>
+      );
+    }
+
+    return null;
+  });
+
   return (
-    <Box flexDirection="column" paddingX={1}>
-      <Accordion sections={sections} selectedIndex={selectedIndex} />
-      <HelpFooter text="↑↓ nav · Enter select · / search · q quit" />
-    </Box>
+    <ScrollList
+      items={renderedItems}
+      focusedIndex={focusedRowIndex}
+      reservedLines={3}
+      footer={<HelpFooter text="↑↓ scroll · Enter select · / search · q quit" />}
+    />
   );
 }

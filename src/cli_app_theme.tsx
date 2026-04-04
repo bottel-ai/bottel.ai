@@ -1,5 +1,5 @@
-import React from "react";
-import { Box, Text } from "ink";
+import React, { useState, useEffect } from "react";
+import { Box, Text, useStdout } from "ink";
 
 // ─── Colors ─────────────────────────────────────────────────────
 
@@ -199,3 +199,74 @@ export function Accordion({ sections, selectedIndex }: AccordionProps) {
 export function accordionTotalItems(sections: AccordionSection[]): number {
   return sections.reduce((sum, s) => sum + s.itemCount, 0);
 }
+
+// ─── Scroll List ────────────────────────────────────────────────
+// Renders a list of items with virtual scrolling.
+// Only shows items that fit in the terminal, scrolling to keep
+// the focused item visible — like a browser page.
+
+export function useTerminalHeight(): number {
+  const { stdout } = useStdout();
+  const [height, setHeight] = useState(stdout?.rows ?? 24);
+
+  useEffect(() => {
+    if (!stdout) return;
+    const onResize = () => setHeight(stdout.rows);
+    stdout.on("resize", onResize);
+    return () => { stdout.off("resize", onResize); };
+  }, [stdout]);
+
+  return height;
+}
+
+interface ScrollListProps {
+  items: React.ReactNode[];
+  focusedIndex: number;
+  reservedLines?: number; // lines used by header/footer outside the list
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
+}
+
+export function ScrollList({ items, focusedIndex, reservedLines = 4, header, footer }: ScrollListProps) {
+  const termHeight = useTerminalHeight();
+  const maxVisible = Math.max(3, termHeight - reservedLines);
+
+  // Calculate viewport offset to keep focused item visible
+  const [scrollOffset, setScrollOffset] = useState(0);
+
+  useEffect(() => {
+    let newOffset = scrollOffset;
+    // If focused is below viewport, scroll down
+    if (focusedIndex >= newOffset + maxVisible) {
+      newOffset = focusedIndex - maxVisible + 1;
+    }
+    // If focused is above viewport, scroll up
+    if (focusedIndex < newOffset) {
+      newOffset = focusedIndex;
+    }
+    // Clamp
+    newOffset = Math.max(0, Math.min(newOffset, Math.max(0, items.length - maxVisible)));
+    if (newOffset !== scrollOffset) {
+      setScrollOffset(newOffset);
+    }
+  }, [focusedIndex, maxVisible, items.length]);
+
+  const visibleItems = items.slice(scrollOffset, scrollOffset + maxVisible);
+  const showScrollUp = scrollOffset > 0;
+  const showScrollDown = scrollOffset + maxVisible < items.length;
+
+  return (
+    <Box flexDirection="column">
+      {header}
+      {showScrollUp && (
+        <Text dimColor>  ▲ {scrollOffset} more above</Text>
+      )}
+      {visibleItems}
+      {showScrollDown && (
+        <Text dimColor>  ▼ {items.length - scrollOffset - maxVisible} more below</Text>
+      )}
+      {footer}
+    </Box>
+  );
+}
+
