@@ -18,12 +18,12 @@ const storeData: StoreData = JSON.parse(
 );
 
 const MENU_ITEMS = [
-  { icon: "\u{1F3E0}", label: "Home", value: "home", description: "Store front" },
-  { icon: "\u{1F4C2}", label: "Browse", value: "browse", description: "Browse by category" },
-  { icon: "\u{1F50D}", label: "Search", value: "search", description: "Find apps" },
-  { icon: "\u{1F4E6}", label: "Installed", value: "installed", description: "Your apps" },
-  { icon: "\u{2699}", label: "Settings", value: "settings", description: "Preferences" },
-  { icon: "\u{1F6AA}", label: "Exit", value: "exit", description: "Quit bottel" },
+  { label: "Home", value: "home", description: "Store front" },
+  { label: "Browse", value: "browse", description: "Browse by category" },
+  { label: "Search", value: "search", description: "Find apps" },
+  { label: "Installed", value: "installed", description: "Your apps" },
+  { label: "Settings", value: "settings", description: "Preferences" },
+  { label: "Exit", value: "exit", description: "Quit bottel" },
 ];
 
 // Each navigable item in the flat list
@@ -156,8 +156,7 @@ export function Home() {
                 <Text color={isActive ? colors.primary : undefined} bold={isActive}>
                   {isActive ? "> " : "  "}
                 </Text>
-                <Text>{item.icon} </Text>
-                <Box width={16}>
+                <Box width={18}>
                   <Text color={isActive ? colors.primary : undefined} bold={isActive}>
                     {item.label}
                   </Text>
