@@ -22,9 +22,6 @@ function Router() {
   const isHome = state.screen.name === "home";
   const isSearch = state.screen.name === "search";
 
-  // Track which selected index we last scrolled for, to detect changes
-  const lastScrolledIndex = useRef(-1);
-
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
   useEffect(() => {
     if (!stdout) return;
@@ -40,7 +37,6 @@ function Router() {
   // Scroll to top when screen changes
   useEffect(() => {
     scrollRef.current?.scrollToTop();
-    lastScrolledIndex.current = -1;
   }, [state.screen.name]);
 
   // Disable mouse tracking on search screen
@@ -49,46 +45,7 @@ function Router() {
     stdout.write(isSearch ? DISABLE_MOUSE : ENABLE_MOUSE);
   }, [isSearch, stdout]);
 
-  // Get current selected index for the active screen
-  function getSelectedIndex(): number {
-    if (isHome) return state.home.selectedIndex;
-    if (state.screen.name === "installed") return state.installedScreen.selectedIndex;
-    if (state.screen.name === "settings") return state.settings.selectedIndex;
-    if (state.screen.name === "browse") return state.browse.categoryIndex;
-    return 0;
-  }
-
-  // When selected index changes, scroll viewport ONLY if cursor is off-screen
-  const currentIndex = getSelectedIndex();
-  useEffect(() => {
-    if (!scrollRef.current) return;
-    if (currentIndex === lastScrolledIndex.current) return;
-
-    const direction = currentIndex > lastScrolledIndex.current ? "down" : "up";
-    lastScrolledIndex.current = currentIndex;
-
-    const offset = scrollRef.current.getScrollOffset();
-    const viewportH = scrollRef.current.getViewportHeight();
-    const bottom = scrollRef.current.getBottomOffset();
-
-    if (direction === "down") {
-      // Only scroll if we might be near the bottom of viewport
-      // Scroll just 1 line to nudge the viewport
-      const nearBottom = offset + viewportH;
-      if (nearBottom < scrollRef.current.getContentHeight()) {
-        // Check if we should scroll by seeing if content is clipped
-        const newOffset = Math.min(bottom, offset + 1);
-        scrollRef.current.scrollTo(newOffset);
-      }
-    } else {
-      // Scroll up: nudge viewport up 1 line if we're not at top
-      if (offset > 0) {
-        scrollRef.current.scrollTo(Math.max(0, offset - 1));
-      }
-    }
-  }, [currentIndex]);
-
-  // Mouse wheel — move cursor only (viewport follows via effect above)
+  // Mouse wheel — scroll viewport only (no cursor movement)
   useEffect(() => {
     if (!stdin || isSearch) return;
     const onData = (data: Buffer) => {
@@ -96,49 +53,33 @@ function Router() {
       const matches = str.matchAll(/\x1b\[<(\d+);\d+;\d+[Mm]/g);
       for (const match of matches) {
         const button = parseInt(match[1]!, 10);
-        const isUp = (button & 0x43) === 0x40;
-        const isDown = (button & 0x43) === 0x41;
-        if (!isUp && !isDown) continue;
-
-        // Move cursor only — viewport follows automatically
-        if (isHome) {
-          dispatch({ type: "UPDATE_HOME", state: {
-            selectedIndex: isDown
-              ? Math.min(state.home.selectedIndex + 1, 999)
-              : Math.max(state.home.selectedIndex - 1, 0),
-          }});
-        } else if (state.screen.name === "installed") {
-          dispatch({ type: "UPDATE_INSTALLED", state: {
-            selectedIndex: isDown
-              ? state.installedScreen.selectedIndex + 1
-              : Math.max(state.installedScreen.selectedIndex - 1, 0),
-          }});
-        } else if (state.screen.name === "settings") {
-          dispatch({ type: "UPDATE_SETTINGS", state: {
-            selectedIndex: isDown
-              ? state.settings.selectedIndex + 1
-              : Math.max(state.settings.selectedIndex - 1, 0),
-          }});
+        if (!scrollRef.current) continue;
+        const offset = scrollRef.current.getScrollOffset();
+        const bottom = scrollRef.current.getBottomOffset();
+        if ((button & 0x43) === 0x40) {
+          // Wheel up
+          scrollRef.current.scrollTo(Math.max(0, offset - 3));
+        } else if ((button & 0x43) === 0x41) {
+          // Wheel down
+          scrollRef.current.scrollTo(Math.min(bottom, offset + 3));
         }
       }
     };
     stdin.on("data", onData);
     return () => { stdin.off("data", onData); };
-  }, [stdin, isSearch, isHome, state, dispatch]);
+  }, [stdin, isSearch]);
 
-  // PageUp/PageDown — scroll viewport directly (for fast jumping)
+  // PageUp/PageDown — scroll viewport
   useInput((_input, key) => {
     if (!scrollRef.current) return;
-    if (key.pageDown) {
-      const offset = scrollRef.current.getScrollOffset();
-      const bottom = scrollRef.current.getBottomOffset();
-      scrollRef.current.scrollTo(Math.min(bottom, offset + 10));
-    }
-    if (key.pageUp) {
-      const offset = scrollRef.current.getScrollOffset();
-      scrollRef.current.scrollTo(Math.max(0, offset - 10));
-    }
+    const offset = scrollRef.current.getScrollOffset();
+    const bottom = scrollRef.current.getBottomOffset();
+    if (key.pageDown) scrollRef.current.scrollTo(Math.min(bottom, offset + 10));
+    if (key.pageUp) scrollRef.current.scrollTo(Math.max(0, offset - 10));
   });
+
+  // NO auto-scroll on arrow keys — viewport stays still
+  // Cursor movement is handled by each screen's own useInput
 
   return (
     <Box flexDirection="column">
