@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Box, useInput, useStdout } from "ink";
+import { Box, useInput, useStdout, useStdin } from "ink";
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import Logo from "./components/Logo.js";
 import StatusBar from "./components/StatusBar.js";
@@ -14,6 +14,7 @@ import { Settings } from "./screens/Settings.js";
 function Router() {
   const { state } = useStore();
   const { stdout } = useStdout();
+  const { stdin } = useStdin();
   const scrollRef = useRef<ScrollViewRef>(null);
   const isHome = state.screen.name === "home";
 
@@ -34,7 +35,30 @@ function Router() {
     scrollRef.current?.scrollToTop();
   }, [state.screen.name]);
 
-  // PageUp/PageDown/mouse wheel to scroll
+  // Parse mouse wheel events from stdin (SGR mouse tracking)
+  useEffect(() => {
+    if (!stdin) return;
+    const onData = (data: Buffer) => {
+      const str = data.toString();
+      // SGR mouse format: \x1b[<button;col;rowM
+      // button 64 = wheel up, 65 = wheel down
+      const matches = str.matchAll(/\x1b\[<(\d+);\d+;\d+[Mm]/g);
+      for (const match of matches) {
+        const button = parseInt(match[1]!, 10);
+        if ((button & 0x43) === 0x40) {
+          // Wheel up
+          scrollRef.current?.scrollBy(-3);
+        } else if ((button & 0x43) === 0x41) {
+          // Wheel down
+          scrollRef.current?.scrollBy(3);
+        }
+      }
+    };
+    stdin.on("data", onData);
+    return () => { stdin.off("data", onData); };
+  }, [stdin]);
+
+  // PageUp/PageDown to scroll
   useInput((_input, key) => {
     if (key.pageDown) scrollRef.current?.scrollBy(5);
     if (key.pageUp) scrollRef.current?.scrollBy(-5);
