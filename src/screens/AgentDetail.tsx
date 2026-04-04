@@ -4,7 +4,8 @@ import Spinner from "ink-spinner";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
-import { colors, formatStars, formatNumber, boxStyle, Breadcrumb, Separator, HelpFooter } from "../cli_app_theme.js";
+import { colors, formatStars, formatNumber, boxStyle } from "../cli_app_theme.js";
+import { Breadcrumb, Separator, HelpFooter } from "../cli_app_components.js";
 
 
 interface StoreData {

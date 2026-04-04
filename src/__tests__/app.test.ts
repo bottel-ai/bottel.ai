@@ -6,8 +6,7 @@ const base = "src";
 const requiredFiles = [
   "cli.tsx",
   "App.tsx",
-  "components/Logo.tsx",
-  "components/StatusBar.tsx",
+  "cli_app_components.tsx",
   "components/AgentCard.tsx",
   "screens/Home.tsx",
   "screens/Browse.tsx",

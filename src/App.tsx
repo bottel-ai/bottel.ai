@@ -1,8 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Box, useInput, useStdout, useStdin } from "ink";
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
-import Logo from "./components/Logo.js";
-import StatusBar from "./components/StatusBar.js";
+import { Logo, StatusBar } from "./cli_app_components.js";
 import { StoreProvider, useStore } from "./cli_app_state.js";
 import { Home } from "./screens/Home.js";
 import { Browse } from "./screens/Browse.js";

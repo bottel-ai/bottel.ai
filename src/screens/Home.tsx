@@ -3,8 +3,8 @@ import { Box, Text, useInput, useApp, useStdout } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
-import { colors, columns, formatStars, formatInstalls, Cursor, Rating, InstallCount, VerifiedBadge, Separator, HelpFooter } from "../cli_app_theme.js";
-import { CompactLogo } from "../components/Logo.js";
+import { colors, columns, formatStars, formatInstalls } from "../cli_app_theme.js";
+import { Cursor, Rating, InstallCount, VerifiedBadge, Separator, HelpFooter, CompactLogo } from "../cli_app_components.js";
 
 interface StoreData {
   featured: string[];

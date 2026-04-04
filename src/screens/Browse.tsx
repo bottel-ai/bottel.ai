@@ -3,7 +3,8 @@ import { Box, Text, useInput } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
-import { colors, columns, Breadcrumb, Rating, InstallCount, VerifiedBadge, Cursor, HelpFooter } from "../cli_app_theme.js";
+import { colors, columns } from "../cli_app_theme.js";
+import { Breadcrumb, Rating, InstallCount, VerifiedBadge, Cursor, HelpFooter } from "../cli_app_components.js";
 
 
 interface StoreData {
