@@ -11,6 +11,9 @@ import { AgentDetail } from "./screens/AgentDetail.js";
 import { Installed } from "./screens/Installed.js";
 import { Settings } from "./screens/Settings.js";
 
+const ENABLE_MOUSE = "\x1b[?1000h\x1b[?1002h\x1b[?1006h";
+const DISABLE_MOUSE = "\x1b[?1006l\x1b[?1002l\x1b[?1000l";
+
 function clampedScrollBy(ref: React.RefObject<ScrollViewRef | null>, delta: number) {
   if (!ref.current) return;
   const offset = ref.current.getScrollOffset();
@@ -25,6 +28,7 @@ function Router() {
   const { stdin } = useStdin();
   const scrollRef = useRef<ScrollViewRef>(null);
   const isHome = state.screen.name === "home";
+  const isSearch = state.screen.name === "search";
 
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
   useEffect(() => {
@@ -43,16 +47,20 @@ function Router() {
     scrollRef.current?.scrollToTop();
   }, [state.screen.name]);
 
-  // Arrow keys also nudge scroll by 1 line to follow cursor
-  useInput((_input, key) => {
-    if (!scrollRef.current) return;
-    if (key.downArrow) clampedScrollBy(scrollRef, 1);
-    if (key.upArrow) clampedScrollBy(scrollRef, -1);
-  });
-
-  // Parse mouse wheel events from stdin (SGR mouse tracking)
+  // Disable mouse tracking on search screen (prevents escape codes in TextInput)
+  // Re-enable when leaving search
   useEffect(() => {
-    if (!stdin) return;
+    if (!stdout) return;
+    if (isSearch) {
+      stdout.write(DISABLE_MOUSE);
+    } else {
+      stdout.write(ENABLE_MOUSE);
+    }
+  }, [isSearch, stdout]);
+
+  // Parse mouse wheel events from stdin (only when mouse tracking is enabled)
+  useEffect(() => {
+    if (!stdin || isSearch) return;
     const onData = (data: Buffer) => {
       const str = data.toString();
       const matches = str.matchAll(/\x1b\[<(\d+);\d+;\d+[Mm]/g);
@@ -67,9 +75,15 @@ function Router() {
     };
     stdin.on("data", onData);
     return () => { stdin.off("data", onData); };
-  }, [stdin]);
+  }, [stdin, isSearch]);
 
-  // PageUp/PageDown to scroll (clamped)
+  // Arrow keys nudge scroll 1 line
+  useInput((_input, key) => {
+    if (key.downArrow) clampedScrollBy(scrollRef, 1);
+    if (key.upArrow) clampedScrollBy(scrollRef, -1);
+  });
+
+  // PageUp/PageDown
   useInput((_input, key) => {
     if (key.pageDown) clampedScrollBy(scrollRef, 5);
     if (key.pageUp) clampedScrollBy(scrollRef, -5);
@@ -82,7 +96,7 @@ function Router() {
         <StatusBar key="statusbar" />
         {isHome && <Home key="home" />}
         {state.screen.name === "browse" && <Browse key="browse" />}
-        {state.screen.name === "search" && <Search key="search" />}
+        {isSearch && <Search key="search" />}
         {state.screen.name === "agent-detail" && (
           <AgentDetail key={`detail-${state.screen.agentId}`} agentId={state.screen.agentId} />
         )}
