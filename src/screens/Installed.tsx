@@ -46,6 +46,11 @@ export function Installed({ onBack, onViewAgent }: InstalledProps) {
 
   return (
     <Box flexDirection="column" paddingX={1}>
+      {/* Breadcrumb */}
+      <Box marginBottom={1}>
+        <Text dimColor>Home &gt; Installed</Text>
+      </Box>
+
       {/* Header */}
       <Box
         borderStyle="single"
@@ -57,13 +62,12 @@ export function Installed({ onBack, onViewAgent }: InstalledProps) {
         <Text bold color="#48dbfb">
           Installed Apps ({installedAgents.length})
         </Text>
-        <Text dimColor>{"   "}Esc: back | Enter: view details</Text>
       </Box>
 
       {installedAgents.length === 0 ? (
         <Box paddingLeft={2} flexDirection="column" marginTop={1}>
           <Text dimColor>No apps installed yet.</Text>
-          <Text dimColor>Browse the store to find and install apps.</Text>
+          <Text dimColor>Go to Home &gt; Browse to discover apps.</Text>
         </Box>
       ) : (
         <Box flexDirection="column">
@@ -91,6 +95,11 @@ export function Installed({ onBack, onViewAgent }: InstalledProps) {
           })}
         </Box>
       )}
+
+      {/* Help text */}
+      <Box marginTop={1}>
+        <Text dimColor>Esc back · ↑↓ nav · Enter select</Text>
+      </Box>
     </Box>
   );
 }

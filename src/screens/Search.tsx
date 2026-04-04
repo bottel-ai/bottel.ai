@@ -57,8 +57,15 @@ export function Search({ onBack, onViewAgent }: SearchProps) {
   useInput((input, key) => {
     if (key.escape) {
       if (!inputFocused) {
+        // In results → go back to input
         setInputFocused(true);
+      } else if (query.length > 0) {
+        // In input with text → clear the text
+        setQuery("");
+        setSelectedIndex(0);
+        setPage(0);
       } else {
+        // In input with no text → go back
         onBack();
       }
       return;
@@ -138,6 +145,11 @@ export function Search({ onBack, onViewAgent }: SearchProps) {
 
   return (
     <Box flexDirection="column" paddingX={1}>
+      {/* Breadcrumb */}
+      <Box marginBottom={0}>
+        <Text dimColor>Home &gt; Search</Text>
+      </Box>
+
       {/* Header */}
       <Box marginBottom={1}>
         <Text bold color="#48dbfb">
@@ -234,9 +246,7 @@ export function Search({ onBack, onViewAgent }: SearchProps) {
 
       {/* Help text */}
       <Box marginTop={1}>
-        <Text dimColor>
-          {"\u2191\u2193"} navigate {"\u00b7"} Enter select {"\u00b7"} Esc back to search {"\u00b7"} / new search
-        </Text>
+        <Text dimColor>Esc back · ↑↓ nav · Enter select · / search</Text>
       </Box>
     </Box>
   );

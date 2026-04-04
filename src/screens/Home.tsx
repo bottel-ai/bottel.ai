@@ -99,7 +99,13 @@ export function Home({
   const activeSection = current?.section ?? "menu";
   const activeIndexInSection = current?.index ?? 0;
 
+  const totalAgents = storeData.agents.length;
+
   useInput((input, key) => {
+    if (input === "q") {
+      onExit();
+      return;
+    }
     if (input === "/") {
       onSearch();
       return;
@@ -144,6 +150,11 @@ export function Home({
 
   return (
     <Box flexDirection="column" paddingX={1}>
+      {/* Header */}
+      <Box marginBottom={1}>
+        <Text dimColor>{totalAgents} apps available</Text>
+      </Box>
+
       {/* Menu */}
       <Box flexDirection="column" marginBottom={1}>
         <Text bold color={activeSection === "menu" ? "#48dbfb" : undefined}>
@@ -205,6 +216,11 @@ export function Home({
         </Box>
       </Box>
 
+      {/* Separator */}
+      <Box marginBottom={1}>
+        <Text dimColor>{"─".repeat(60)}</Text>
+      </Box>
+
       {/* Trending */}
       <Box marginBottom={1} flexDirection="column">
         <Text bold color={activeSection === "trending" ? "#48dbfb" : undefined}>
@@ -213,7 +229,7 @@ export function Home({
         <Box flexDirection="column" marginTop={1}>
           {trendingAgents.map((agent, i) => {
             const isActive = activeSection === "trending" && i === activeIndexInSection;
-            const cursor = isActive ? "> " : "  ";
+            const cursor = isActive ? "\u276F " : "  ";
             const num = `${i + 1}. `;
             const col1 = `${cursor}${num}`.padEnd(6);
             const col2 = agent.name.padEnd(22);
@@ -232,6 +248,11 @@ export function Home({
         </Box>
       </Box>
 
+      {/* Separator */}
+      <Box marginBottom={1}>
+        <Text dimColor>{"─".repeat(60)}</Text>
+      </Box>
+
       {/* Categories - vertical list */}
       <Box flexDirection="column">
         <Text bold color={activeSection === "categories" ? "#48dbfb" : undefined}>
@@ -243,7 +264,7 @@ export function Home({
             return (
               <Box key={`category-${cat.name}`}>
                 <Text color={isActive ? "#48dbfb" : undefined} bold={isActive}>
-                  {isActive ? "> " : "  "}
+                  {isActive ? "\u276F " : "  "}
                 </Text>
                 <Text color={isActive ? "#48dbfb" : undefined} bold={isActive}>
                   {cat.icon} {cat.name}
@@ -259,7 +280,7 @@ export function Home({
 
       {/* Help */}
       <Box marginTop={1}>
-        <Text dimColor>↑↓ navigate · Enter select · / search</Text>
+        <Text dimColor>Esc back · ↑↓ nav · Enter select · / search</Text>
       </Box>
     </Box>
   );

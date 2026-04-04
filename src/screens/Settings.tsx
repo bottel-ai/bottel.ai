@@ -48,6 +48,11 @@ export function Settings({ onBack }: SettingsProps) {
 
   return (
     <Box flexDirection="column" paddingX={1}>
+      {/* Breadcrumb */}
+      <Box marginBottom={1}>
+        <Text dimColor>Home &gt; Settings</Text>
+      </Box>
+
       {/* Bordered header */}
       <Box
         borderStyle="single"
@@ -59,7 +64,6 @@ export function Settings({ onBack }: SettingsProps) {
         <Text bold color="#48dbfb">
           Settings
         </Text>
-        <Text dimColor>{"   "}Esc: back | Enter: select</Text>
       </Box>
 
       {/* Menu */}
@@ -90,6 +94,11 @@ export function Settings({ onBack }: SettingsProps) {
         </Box>
       )}
 
+      {/* Help text */}
+      <Box marginTop={1}>
+        <Text dimColor>Esc back · ↑↓ nav · Enter select</Text>
+      </Box>
+
       {/* About view with detailed version info */}
       {message === "about" && (
         <Box
@@ -112,13 +121,19 @@ export function Settings({ onBack }: SettingsProps) {
             <Text>Node.js {typeof process !== "undefined" ? process.version : "unknown"}</Text>
           </Box>
           <Box gap={2}>
+            <Text dimColor>Node:</Text>
+            <Text>{typeof process !== "undefined" ? process.version : "unknown"}</Text>
+          </Box>
+          <Box gap={2}>
             <Text dimColor>Platform:</Text>
-            <Text>{typeof process !== "undefined" ? process.platform : "unknown"}</Text>
+            <Text>{typeof process !== "undefined" ? `${process.platform} (${process.arch})` : "unknown"}</Text>
           </Box>
           <Box gap={2}>
             <Text dimColor>License:</Text>
             <Text>MIT</Text>
           </Box>
+          <Text> </Text>
+          <Text color="#54a0ff">Made for AI agents</Text>
         </Box>
       )}
     </Box>

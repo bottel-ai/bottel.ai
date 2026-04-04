@@ -64,14 +64,13 @@ export function Browse({ onBack, onViewAgent }: BrowseProps) {
   useInput((_input, key) => {
     if (key.escape) {
       if (inAgents) {
-        // Go back to category navigation
+        // Navigating agents → go back to category list
         setInAgents(false);
         setAgentIndex(0);
         setAgentPage(0);
-      } else if (expandedCategory !== null) {
-        // Collapse expanded category
         setExpandedCategory(null);
       } else {
+        // In category list → go back to previous screen
         onBack();
       }
       return;
@@ -139,12 +138,18 @@ export function Browse({ onBack, onViewAgent }: BrowseProps) {
 
   return (
     <Box flexDirection="column" paddingX={1}>
+      {/* Breadcrumb */}
+      <Box marginBottom={0}>
+        <Text dimColor>
+          Home &gt; Browse{expandedCategory !== null ? ` > ${categories[expandedCategory].name}` : ""}
+        </Text>
+      </Box>
+
       {/* Header */}
       <Box marginBottom={1}>
         <Text bold color="#48dbfb">
           Browse Categories
         </Text>
-        <Text dimColor>{"   "}Esc: back | Enter: expand/select | {"\u2191\u2193"}: navigate</Text>
       </Box>
 
       {/* Category list with inline agents */}
@@ -226,6 +231,11 @@ export function Browse({ onBack, onViewAgent }: BrowseProps) {
             </Box>
           );
         })}
+      </Box>
+
+      {/* Help text */}
+      <Box marginTop={1}>
+        <Text dimColor>Esc back · ↑↓ nav · Enter select</Text>
       </Box>
     </Box>
   );

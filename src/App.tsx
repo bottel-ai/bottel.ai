@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { Box, useApp } from "ink";
 import Logo from "./components/Logo.js";
 import StatusBar from "./components/StatusBar.js";
@@ -20,9 +20,30 @@ export type Screen =
 export function App() {
   const { exit } = useApp();
   const [screen, setScreen] = useState<Screen>({ name: "home" });
+  const [history, setHistory] = useState<Screen[]>([]);
 
-  const navigate = (s: Screen) => setScreen(s);
-  const goHome = () => setScreen({ name: "home" });
+  const navigate = useCallback((s: Screen) => {
+    setHistory((prev) => [...prev, screen]);
+    setScreen(s);
+  }, [screen]);
+
+  const goBack = useCallback(() => {
+    setHistory((prev) => {
+      if (prev.length === 0) {
+        setScreen({ name: "home" });
+        return [];
+      }
+      const newHistory = [...prev];
+      const last = newHistory.pop()!;
+      setScreen(last);
+      return newHistory;
+    });
+  }, []);
+
+  const goHome = useCallback(() => {
+    setHistory([]);
+    setScreen({ name: "home" });
+  }, []);
 
   const isHome = screen.name === "home";
 
@@ -45,30 +66,30 @@ export function App() {
 
       {screen.name === "browse" && (
         <Browse
-          onBack={goHome}
+          onBack={goBack}
           onViewAgent={(id) => navigate({ name: "agent-detail", agentId: id })}
         />
       )}
 
       {screen.name === "search" && (
         <Search
-          onBack={goHome}
+          onBack={goBack}
           onViewAgent={(id) => navigate({ name: "agent-detail", agentId: id })}
         />
       )}
 
       {screen.name === "agent-detail" && (
-        <AgentDetail agentId={screen.agentId} onBack={goHome} />
+        <AgentDetail agentId={screen.agentId} onBack={goBack} />
       )}
 
       {screen.name === "installed" && (
         <Installed
-          onBack={goHome}
+          onBack={goBack}
           onViewAgent={(id) => navigate({ name: "agent-detail", agentId: id })}
         />
       )}
 
-      {screen.name === "settings" && <Settings onBack={goHome} />}
+      {screen.name === "settings" && <Settings onBack={goBack} />}
     </Box>
   );
 }

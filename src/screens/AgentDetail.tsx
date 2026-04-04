@@ -99,6 +99,11 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
 
   return (
     <Box flexDirection="column" paddingX={1}>
+      {/* Breadcrumb */}
+      <Box marginBottom={1}>
+        <Text dimColor>Home &gt; {agent.category} &gt; {agent.name}</Text>
+      </Box>
+
       {/* Header box - flexes to terminal width */}
       <Box
         flexDirection="column"
@@ -170,7 +175,7 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
       <Box paddingX={2} marginTop={1} gap={2}>
         <Text dimColor>Updated: {agent.updated}</Text>
         <Text dimColor>|</Text>
-        <Text dimColor>Category: {agent.category}</Text>
+        <Text color="#54a0ff" underline>Category: {agent.category}</Text>
       </Box>
 
       {/* Action buttons */}
@@ -196,6 +201,11 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
         >
           [ Back ]
         </Text>
+      </Box>
+
+      {/* Help text */}
+      <Box paddingX={2} marginTop={1}>
+        <Text dimColor>Esc back · ←→ nav · Enter select</Text>
       </Box>
     </Box>
   );
