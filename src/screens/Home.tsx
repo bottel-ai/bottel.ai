@@ -215,18 +215,28 @@ export function Home() {
         <Box flexDirection="column" marginTop={1}>
           {trendingAgents.map((agent, i) => {
             const isActive = activeSection === "trending" && i === activeIndexInSection;
-            const cursor = isActive ? "\u276F " : "  ";
-            const num = `${i + 1}. `;
-            const col1 = `${cursor}${num}`.padEnd(6);
-            const col2 = agent.name.padEnd(22);
-            const col3 = `\u2605${agent.rating.toFixed(1)}`.padEnd(8);
-            const col4 = `${formatInstalls(agent.installs)} installs`.padEnd(16);
             return (
               <Box key={`trending-${agent.id}`}>
-                <Text color={isActive ? "#48dbfb" : undefined}>{col1}</Text>
-                <Text color={isActive ? "#48dbfb" : undefined}>{col2}</Text>
-                <Text color="#feca57">{col3}</Text>
-                <Text dimColor>{col4}</Text>
+                <Box width={4}>
+                  <Text color={isActive ? "#48dbfb" : undefined}>
+                    {isActive ? "\u276F " : "  "}
+                  </Text>
+                </Box>
+                <Box width={4}>
+                  <Text dimColor>{i + 1}.</Text>
+                </Box>
+                <Box width={22}>
+                  <Text color={isActive ? "#48dbfb" : undefined}>{agent.name}</Text>
+                </Box>
+                <Box width={4}>
+                  <Text color="#feca57">{"\u2605"}</Text>
+                </Box>
+                <Box width={4}>
+                  <Text color="#feca57">{agent.rating.toFixed(1)}</Text>
+                </Box>
+                <Box width={16}>
+                  <Text dimColor>{formatInstalls(agent.installs)} installs</Text>
+                </Box>
                 {agent.verified && <Text color="#2ed573">{" \u2713"}</Text>}
               </Box>
             );

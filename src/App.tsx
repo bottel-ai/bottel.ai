@@ -1,8 +1,9 @@
 import React from "react";
-import { Box, useApp } from "ink";
+import { Box } from "ink";
 import Logo from "./components/Logo.js";
 import StatusBar from "./components/StatusBar.js";
 import { StoreProvider, useStore } from "./cli_app_state.js";
+import { ScrollView } from "./cli_app_scroll.js";
 import { Home } from "./screens/Home.js";
 import { Browse } from "./screens/Browse.js";
 import { Search } from "./screens/Search.js";
@@ -15,18 +16,20 @@ function Router() {
   const isHome = state.screen.name === "home";
 
   return (
-    <Box flexDirection="column">
-      {isHome && <Logo />}
-      <StatusBar />
-      {isHome && <Home />}
-      {state.screen.name === "browse" && <Browse />}
-      {state.screen.name === "search" && <Search />}
-      {state.screen.name === "agent-detail" && (
-        <AgentDetail agentId={state.screen.agentId} />
-      )}
-      {state.screen.name === "installed" && <Installed />}
-      {state.screen.name === "settings" && <Settings />}
-    </Box>
+    <ScrollView reservedLines={0}>
+      <Box flexDirection="column">
+        {isHome && <Logo />}
+        <StatusBar />
+        {isHome && <Home />}
+        {state.screen.name === "browse" && <Browse />}
+        {state.screen.name === "search" && <Search />}
+        {state.screen.name === "agent-detail" && (
+          <AgentDetail agentId={state.screen.agentId} />
+        )}
+        {state.screen.name === "installed" && <Installed />}
+        {state.screen.name === "settings" && <Settings />}
+      </Box>
+    </ScrollView>
   );
 }
 
