@@ -192,7 +192,7 @@ export function Home() {
             })}
           </Box>
         ) : (
-          <Box gap={1} marginTop={1}>
+          <Box gap={1} marginTop={1} flexWrap="wrap">
             {featuredAgents.map((agent, i) => {
               const isActive = activeSection === "featured" && i === activeIndexInSection;
               return (
@@ -201,7 +201,7 @@ export function Home() {
                   flexDirection="column"
                   borderStyle="round"
                   borderColor={isActive ? colors.primary : undefined}
-                  width={24}
+                  minWidth={22}
                   paddingX={1}
                 >
                   <Text bold color={isActive ? colors.primary : undefined}>

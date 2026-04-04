@@ -24,7 +24,7 @@ export function FullScreen({ children }: { children: React.ReactNode }) {
 
   // Claude Code's key pattern: height={rows} + flexShrink={0}
   return (
-    <Box flexDirection="column" height={rows} width="100%" flexShrink={0}>
+    <Box flexDirection="column" height={rows} flexShrink={0}>
       {children}
     </Box>
   );
