@@ -22,6 +22,8 @@ function formatNumber(n: number): string {
   return n.toLocaleString("en-US");
 }
 
+const PAGE_SIZE = 5;
+
 interface SearchProps {
   onBack: () => void;
   onViewAgent: (id: string) => void;
@@ -31,6 +33,7 @@ export function Search({ onBack, onViewAgent }: SearchProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [inputFocused, setInputFocused] = useState(true);
+  const [page, setPage] = useState(0);
 
   const allAgents = storeData.agents;
 
@@ -48,7 +51,10 @@ export function Search({ onBack, onViewAgent }: SearchProps) {
     });
   }, [query, allAgents]);
 
-  useInput((_input, key) => {
+  const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
+  const pagedResults = results.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  useInput((input, key) => {
     if (key.escape) {
       if (!inputFocused) {
         setInputFocused(true);
@@ -58,28 +64,76 @@ export function Search({ onBack, onViewAgent }: SearchProps) {
       return;
     }
 
-    if (key.tab) {
-      setInputFocused((f) => !f);
+    if (inputFocused) {
+      // When input is focused and user presses down arrow, switch to results
+      if (key.downArrow && results.length > 0) {
+        setInputFocused(false);
+        setSelectedIndex(0);
+        setPage(0);
+        return;
+      }
+      // Left/right arrows for page navigation while in input
+      if (key.leftArrow && page > 0) {
+        setPage((p) => p - 1);
+        setSelectedIndex(0);
+        return;
+      }
+      if (key.rightArrow && page < totalPages - 1) {
+        setPage((p) => p + 1);
+        setSelectedIndex(0);
+        return;
+      }
       return;
     }
 
-    if (!inputFocused) {
-      if (key.upArrow) {
-        setSelectedIndex((i) => Math.max(0, i - 1));
+    // Results focused
+    if (key.upArrow) {
+      if (selectedIndex === 0) {
+        // At top of results, go back to input
+        setInputFocused(true);
+      } else {
+        setSelectedIndex((i) => i - 1);
       }
-      if (key.downArrow) {
-        setSelectedIndex((i) => Math.min(results.length - 1, i + 1));
+      return;
+    }
+    if (key.downArrow) {
+      setSelectedIndex((i) => Math.min(pagedResults.length - 1, i + 1));
+      return;
+    }
+    if (key.leftArrow) {
+      if (page > 0) {
+        setPage((p) => p - 1);
+        setSelectedIndex(0);
       }
-      if (key.return) {
-        const agent = results[selectedIndex];
-        if (agent) onViewAgent(agent.id);
+      return;
+    }
+    if (key.rightArrow) {
+      if (page < totalPages - 1) {
+        setPage((p) => p + 1);
+        setSelectedIndex(0);
       }
+      return;
+    }
+    if (key.return) {
+      const agent = pagedResults[selectedIndex];
+      if (agent) onViewAgent(agent.id);
+      return;
+    }
+
+    // Any printable character typed while in results: switch back to input
+    if (input && !key.ctrl && !key.meta) {
+      setInputFocused(true);
+      setQuery((q) => q + input);
+      setSelectedIndex(0);
+      setPage(0);
+      return;
     }
   });
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
     setSelectedIndex(0);
+    setPage(0);
   };
 
   return (
@@ -89,7 +143,6 @@ export function Search({ onBack, onViewAgent }: SearchProps) {
         <Text bold color="#48dbfb">
           Search Agents
         </Text>
-        <Text dimColor>{"   "}Esc: back | Tab: toggle focus</Text>
       </Box>
 
       {/* Search input */}
@@ -120,11 +173,11 @@ export function Search({ onBack, onViewAgent }: SearchProps) {
       <Box flexDirection="column">
         {results.length === 0 && query.trim() ? (
           <Box paddingLeft={2} flexDirection="column">
-            <Text dimColor>No results found for "{query}"</Text>
+            <Text dimColor>No results found for &quot;{query}&quot;</Text>
             <Text dimColor>Try a different search term.</Text>
           </Box>
         ) : (
-          results.map((agent, i) => {
+          pagedResults.map((agent, i) => {
             const isActive = !inputFocused && i === selectedIndex;
             return (
               <Box key={agent.id} flexDirection="column" marginBottom={1}>
@@ -155,10 +208,35 @@ export function Search({ onBack, onViewAgent }: SearchProps) {
                 <Box paddingLeft={4}>
                   <Text dimColor>{agent.description}</Text>
                 </Box>
+                {isActive && agent.capabilities.length > 0 && (
+                  <Box paddingLeft={4} gap={1}>
+                    {agent.capabilities.map((cap) => (
+                      <Text key={cap} color="#54a0ff">
+                        [{cap}]
+                      </Text>
+                    ))}
+                  </Box>
+                )}
               </Box>
             );
           })
         )}
+      </Box>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Box marginTop={1}>
+          <Text dimColor>
+            Page {page + 1}/{totalPages}  {"\u2190\u2192"} prev/next
+          </Text>
+        </Box>
+      )}
+
+      {/* Help text */}
+      <Box marginTop={1}>
+        <Text dimColor>
+          {"\u2191\u2193"} navigate {"\u00b7"} Enter select {"\u00b7"} Esc back to search {"\u00b7"} / new search
+        </Text>
       </Box>
     </Box>
   );

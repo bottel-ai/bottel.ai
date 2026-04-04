@@ -131,4 +131,65 @@ describe("Bot can use bottel store", () => {
     expect(json).not.toContain(".jpg");
     expect(json).not.toContain("http://"); // no external URLs in sample data
   });
+
+  // Pagination tests
+  it("store has enough agents to require pagination", () => {
+    expect(storeData.agents.length).toBeGreaterThan(5); // more than one page
+  });
+
+  // Agent detail completeness
+  it("every agent has enough info for install decision", () => {
+    for (const agent of storeData.agents) {
+      // Bot needs all of these to decide whether to install
+      expect(agent.name.length).toBeGreaterThan(0);
+      expect(agent.description.length).toBeGreaterThan(10);
+      expect(agent.longDescription.length).toBeGreaterThan(agent.description.length);
+      expect(agent.version).toMatch(/^\d+\.\d+\.\d+$/); // semver
+      expect(agent.size).toBeDefined();
+      expect(typeof agent.verified).toBe("boolean");
+    }
+  });
+
+  // Search relevance
+  it("search by partial name returns correct results", () => {
+    const queries = ["code", "sql", "secure", "translate"];
+    for (const q of queries) {
+      const results = storeData.agents.filter((a: any) =>
+        a.name.toLowerCase().includes(q) ||
+        a.description.toLowerCase().includes(q) ||
+        a.capabilities.some((c: string) => c.includes(q))
+      );
+      expect(results.length).toBeGreaterThan(0);
+    }
+  });
+
+  // Category navigation
+  it("every category has agents that exist and are navigable", () => {
+    for (const cat of storeData.categories) {
+      expect(cat.agents.length).toBeGreaterThan(0);
+      expect(cat.agents.length).toBeLessThanOrEqual(10); // reasonable for pagination
+      for (const id of cat.agents) {
+        const agent = storeData.agents.find((a: any) => a.id === id);
+        expect(agent).toBeDefined();
+        // Agent may be cross-listed in multiple categories;
+        // its primary category OR the listing category should be valid
+        const validCategories = storeData.categories.map((c: any) => c.name);
+        expect(validCategories).toContain(agent.category);
+      }
+    }
+  });
+
+  // Agent IDs are URL-safe slugs
+  it("all agent IDs are valid slugs", () => {
+    for (const agent of storeData.agents) {
+      expect(agent.id).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+    }
+  });
+
+  // No agent has zero reviews (would look suspicious to a bot)
+  it("all agents have at least some reviews", () => {
+    for (const agent of storeData.agents) {
+      expect(agent.reviews).toBeGreaterThan(0);
+    }
+  });
 });

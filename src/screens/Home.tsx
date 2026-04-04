@@ -24,8 +24,6 @@ function formatInstalls(n: number): string {
   return String(n);
 }
 
-type Section = "menu" | "featured" | "trending" | "categories";
-
 const MENU_ITEMS = [
   { label: "Home", value: "home", description: "Store front" },
   { label: "Browse", value: "browse", description: "Browse by category" },
@@ -45,6 +43,13 @@ interface HomeProps {
   onExit: () => void;
 }
 
+// Each navigable item in the flat list
+type NavItem =
+  | { section: "menu"; index: number }
+  | { section: "featured"; index: number }
+  | { section: "trending"; index: number }
+  | { section: "categories"; index: number };
+
 export function Home({
   onViewAgent,
   onViewCategory,
@@ -54,12 +59,6 @@ export function Home({
   onSettings,
   onExit,
 }: HomeProps) {
-  const [section, setSection] = useState<Section>("menu");
-  const [menuIndex, setMenuIndex] = useState(0);
-  const [featuredIndex, setFeaturedIndex] = useState(0);
-  const [trendingIndex, setTrendingIndex] = useState(0);
-  const [categoryIndex, setCategoryIndex] = useState(0);
-
   const agentMap = useMemo(() => {
     const map = new Map<string, Agent>();
     for (const a of storeData.agents) map.set(a.id, a);
@@ -76,7 +75,29 @@ export function Home({
 
   const categories = storeData.categories;
 
-  const sections: Section[] = ["menu", "featured", "trending", "categories"];
+  // Build flat navigable list
+  const navItems = useMemo((): NavItem[] => {
+    const items: NavItem[] = [];
+    for (let i = 0; i < MENU_ITEMS.length; i++) {
+      items.push({ section: "menu", index: i });
+    }
+    for (let i = 0; i < featuredAgents.length; i++) {
+      items.push({ section: "featured", index: i });
+    }
+    for (let i = 0; i < trendingAgents.length; i++) {
+      items.push({ section: "trending", index: i });
+    }
+    for (let i = 0; i < categories.length; i++) {
+      items.push({ section: "categories", index: i });
+    }
+    return items;
+  }, [featuredAgents.length, trendingAgents.length, categories.length]);
+
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const current = navItems[selectedIndex];
+  const activeSection = current?.section ?? "menu";
+  const activeIndexInSection = current?.index ?? 0;
 
   useInput((input, key) => {
     if (input === "/") {
@@ -84,17 +105,11 @@ export function Home({
       return;
     }
 
-    // Tab to switch sections
-    if (key.tab) {
-      const idx = sections.indexOf(section);
-      setSection(sections[(idx + 1) % sections.length]!);
-      return;
-    }
-
     // Enter
     if (key.return) {
-      if (section === "menu") {
-        const item = MENU_ITEMS[menuIndex]!;
+      if (!current) return;
+      if (current.section === "menu") {
+        const item = MENU_ITEMS[current.index]!;
         switch (item.value) {
           case "home": break;
           case "browse": onBrowse(); break;
@@ -103,33 +118,27 @@ export function Home({
           case "settings": onSettings(); break;
           case "exit": onExit(); break;
         }
-      } else if (section === "featured") {
-        const agent = featuredAgents[featuredIndex];
+      } else if (current.section === "featured") {
+        const agent = featuredAgents[current.index];
         if (agent) onViewAgent(agent.id);
-      } else if (section === "trending") {
-        const agent = trendingAgents[trendingIndex];
+      } else if (current.section === "trending") {
+        const agent = trendingAgents[current.index];
         if (agent) onViewAgent(agent.id);
-      } else if (section === "categories") {
-        const cat = categories[categoryIndex];
+      } else if (current.section === "categories") {
+        const cat = categories[current.index];
         if (cat) onViewCategory(cat.name);
       }
       return;
     }
 
-    // Up / Left
-    if (key.upArrow || key.leftArrow) {
-      if (section === "menu") setMenuIndex((i) => Math.max(0, i - 1));
-      else if (section === "featured") setFeaturedIndex((i) => Math.max(0, i - 1));
-      else if (section === "trending") setTrendingIndex((i) => Math.max(0, i - 1));
-      else if (section === "categories") setCategoryIndex((i) => Math.max(0, i - 1));
+    // Up
+    if (key.upArrow) {
+      setSelectedIndex((i) => Math.max(0, i - 1));
     }
 
-    // Down / Right
-    if (key.downArrow || key.rightArrow) {
-      if (section === "menu") setMenuIndex((i) => Math.min(MENU_ITEMS.length - 1, i + 1));
-      else if (section === "featured") setFeaturedIndex((i) => Math.min(featuredAgents.length - 1, i + 1));
-      else if (section === "trending") setTrendingIndex((i) => Math.min(trendingAgents.length - 1, i + 1));
-      else if (section === "categories") setCategoryIndex((i) => Math.min(categories.length - 1, i + 1));
+    // Down
+    if (key.downArrow) {
+      setSelectedIndex((i) => Math.min(navItems.length - 1, i + 1));
     }
   });
 
@@ -137,14 +146,14 @@ export function Home({
     <Box flexDirection="column" paddingX={1}>
       {/* Menu */}
       <Box flexDirection="column" marginBottom={1}>
-        <Text bold color={section === "menu" ? "#48dbfb" : undefined}>
-          {section === "menu" ? "▶ " : "  "}Menu
+        <Text bold color={activeSection === "menu" ? "#48dbfb" : undefined}>
+          {activeSection === "menu" ? "▶ " : "  "}Menu
         </Text>
         <Box flexDirection="column" marginTop={1} paddingLeft={1}>
           {MENU_ITEMS.map((item, i) => {
-            const isActive = section === "menu" && i === menuIndex;
+            const isActive = activeSection === "menu" && i === activeIndexInSection;
             return (
-              <Box key={item.value}>
+              <Box key={`menu-${item.value}`}>
                 <Text color={isActive ? "#48dbfb" : undefined} bold={isActive}>
                   {isActive ? "> " : "  "}
                 </Text>
@@ -167,15 +176,15 @@ export function Home({
 
       {/* Featured Agents */}
       <Box marginBottom={1} flexDirection="column">
-        <Text bold color={section === "featured" ? "#48dbfb" : undefined}>
-          {section === "featured" ? "▶ " : "  "}Featured Agents
+        <Text bold color={activeSection === "featured" ? "#48dbfb" : undefined}>
+          {activeSection === "featured" ? "▶ " : "  "}Featured Agents
         </Text>
         <Box gap={1} marginTop={1}>
           {featuredAgents.map((agent, i) => {
-            const isActive = section === "featured" && i === featuredIndex;
+            const isActive = activeSection === "featured" && i === activeIndexInSection;
             return (
               <Box
-                key={agent.id}
+                key={`featured-${agent.id}`}
                 flexDirection="column"
                 borderStyle="round"
                 borderColor={isActive ? "#48dbfb" : undefined}
@@ -198,12 +207,12 @@ export function Home({
 
       {/* Trending */}
       <Box marginBottom={1} flexDirection="column">
-        <Text bold color={section === "trending" ? "#48dbfb" : undefined}>
-          {section === "trending" ? "▶ " : "  "}Trending
+        <Text bold color={activeSection === "trending" ? "#48dbfb" : undefined}>
+          {activeSection === "trending" ? "▶ " : "  "}Trending
         </Text>
         <Box flexDirection="column" marginTop={1}>
           {trendingAgents.map((agent, i) => {
-            const isActive = section === "trending" && i === trendingIndex;
+            const isActive = activeSection === "trending" && i === activeIndexInSection;
             const cursor = isActive ? "> " : "  ";
             const num = `${i + 1}. `;
             const col1 = `${cursor}${num}`.padEnd(6);
@@ -211,7 +220,7 @@ export function Home({
             const col3 = `\u2605${agent.rating.toFixed(1)}`.padEnd(8);
             const col4 = `${formatInstalls(agent.installs)} installs`.padEnd(16);
             return (
-              <Box key={agent.id}>
+              <Box key={`trending-${agent.id}`}>
                 <Text color={isActive ? "#48dbfb" : undefined}>{col1}</Text>
                 <Text color={isActive ? "#48dbfb" : undefined}>{col2}</Text>
                 <Text color="#feca57">{col3}</Text>
@@ -223,25 +232,34 @@ export function Home({
         </Box>
       </Box>
 
-      {/* Categories */}
+      {/* Categories - vertical list */}
       <Box flexDirection="column">
-        <Text bold color={section === "categories" ? "#48dbfb" : undefined}>
-          {section === "categories" ? "▶ " : "  "}Categories
+        <Text bold color={activeSection === "categories" ? "#48dbfb" : undefined}>
+          {activeSection === "categories" ? "▶ " : "  "}Categories
         </Text>
-        <Box marginTop={1}>
-          <Text>
-            {categories.map((cat, i) => {
-              const isActive = section === "categories" && i === categoryIndex;
-              const label = `${cat.name} (${cat.agents.length})`;
-              return (i > 0 ? " | " : "") + (isActive ? `[${label}]` : label);
-            }).join("")}
-          </Text>
+        <Box flexDirection="column" marginTop={1} paddingLeft={1}>
+          {categories.map((cat, i) => {
+            const isActive = activeSection === "categories" && i === activeIndexInSection;
+            return (
+              <Box key={`category-${cat.name}`}>
+                <Text color={isActive ? "#48dbfb" : undefined} bold={isActive}>
+                  {isActive ? "> " : "  "}
+                </Text>
+                <Text color={isActive ? "#48dbfb" : undefined} bold={isActive}>
+                  {cat.icon} {cat.name}
+                </Text>
+                <Text dimColor={!isActive} color={isActive ? "#48dbfb" : undefined}>
+                  {" "}({cat.agents.length})
+                </Text>
+              </Box>
+            );
+          })}
         </Box>
       </Box>
 
       {/* Help */}
       <Box marginTop={1}>
-        <Text dimColor>Tab section · ↑↓ nav · Enter select · / search</Text>
+        <Text dimColor>↑↓ navigate · Enter select · / search</Text>
       </Box>
     </Box>
   );

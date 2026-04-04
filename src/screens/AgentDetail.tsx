@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
+import Spinner from "ink-spinner";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 
@@ -21,6 +22,10 @@ function formatNumber(n: number): string {
   return n.toLocaleString("en-US");
 }
 
+const MAX_DESCRIPTION_LINES = 8;
+
+type InstallState = "not-installed" | "installing" | "installed";
+
 interface AgentDetailProps {
   agentId: string;
   onBack: () => void;
@@ -31,8 +36,17 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
     return storeData.agents.find((a) => a.id === agentId);
   }, [agentId]);
 
-  const [installed, setInstalled] = useState(false);
+  const [installState, setInstallState] = useState<InstallState>("not-installed");
   const [selectedButton, setSelectedButton] = useState(0); // 0 = Install/Uninstall, 1 = Back
+
+  // Handle installing timer
+  useEffect(() => {
+    if (installState !== "installing") return;
+    const timer = setTimeout(() => {
+      setInstallState("installed");
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [installState]);
 
   useInput((_input, key) => {
     if (key.escape) {
@@ -47,7 +61,12 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
     }
     if (key.return) {
       if (selectedButton === 0) {
-        setInstalled((prev) => !prev);
+        if (installState === "not-installed") {
+          setInstallState("installing");
+        } else if (installState === "installed") {
+          setInstallState("not-installed");
+        }
+        // ignore press while installing
       } else {
         onBack();
       }
@@ -63,7 +82,20 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
     );
   }
 
-  const installLabel = installed ? "Uninstall" : "Install";
+  // Truncate long description to MAX_DESCRIPTION_LINES
+  const descriptionLines = agent.longDescription.split("\n");
+  const isTruncated = descriptionLines.length > MAX_DESCRIPTION_LINES;
+  const visibleLines = isTruncated
+    ? descriptionLines.slice(0, MAX_DESCRIPTION_LINES)
+    : descriptionLines;
+
+  const installLabel =
+    installState === "installing"
+      ? "Installing..."
+      : installState === "installed"
+        ? "Installed \u2713"
+        : "Install";
+  const uninstallMode = installState === "installed";
 
   return (
     <Box flexDirection="column" paddingX={1}>
@@ -109,11 +141,14 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
         <Text dimColor>{"\u2500".repeat(55)}</Text>
       </Box>
 
-      {/* Long description */}
+      {/* Long description (truncated to MAX_DESCRIPTION_LINES) */}
       <Box paddingX={2} marginTop={1} flexDirection="column">
-        {agent.longDescription.split("\n").map((line, i) => (
-          <Text key={i}>{line}</Text>
+        {visibleLines.map((line, i) => (
+          <Text key={`desc-line-${i}`}>{line}</Text>
         ))}
+        {isTruncated && (
+          <Text dimColor>... (Show more)</Text>
+        )}
       </Box>
 
       {/* Separator */}
@@ -125,7 +160,7 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
       <Box paddingX={2} marginTop={1} gap={1} flexWrap="wrap">
         <Text bold>Capabilities:</Text>
         {agent.capabilities.map((cap) => (
-          <Text key={cap} color="#54a0ff">
+          <Text key={`cap-${cap}`} color="#54a0ff">
             [{cap}]
           </Text>
         ))}
@@ -142,11 +177,18 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
       <Box paddingX={2} marginTop={1} gap={2}>
         <Text
           bold={selectedButton === 0}
-          color={selectedButton === 0 ? (installed ? "red" : "cyan") : undefined}
+          color={selectedButton === 0 ? (uninstallMode ? "red" : "cyan") : undefined}
           dimColor={selectedButton !== 0}
         >
-          [ {installLabel} ]
+          {installState === "installing" ? (
+            <>[ <Spinner type="dots" /> Installing... ]</>
+          ) : (
+            `[ ${installState === "installed" ? "Uninstall" : installLabel} ]`
+          )}
         </Text>
+        {installState === "installed" && selectedButton !== 0 && (
+          <Text color="#2ed573">Installed ✓</Text>
+        )}
         <Text
           bold={selectedButton === 1}
           color={selectedButton === 1 ? "cyan" : undefined}

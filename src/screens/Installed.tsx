@@ -11,6 +11,7 @@ const storeData: StoreData = JSON.parse(
   fs.readFileSync(new URL("../data/store.json", import.meta.url), "utf-8")
 );
 
+// TODO: shared install state — currently hardcoded, should sync with AgentDetail install actions
 const PREINSTALLED = ["code-reviewer", "translator", "data-analyst"];
 
 interface InstalledProps {
