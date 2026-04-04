@@ -55,17 +55,9 @@ export function Search() {
     }
 
     if (inputFocused) {
+      // Only down arrow leaves the input — left/right stay in text field
       if (key.downArrow && results.length > 0) {
         update({ inputFocused: false, selectedIndex: 0 });
-        return;
-      }
-      if (key.leftArrow && currentPage > 0) {
-        update({ page: currentPage - 1, selectedIndex: 0 });
-        return;
-      }
-      if (key.rightArrow && currentPage < totalPages - 1) {
-        update({ page: currentPage + 1, selectedIndex: 0 });
-        return;
       }
       return;
     }
