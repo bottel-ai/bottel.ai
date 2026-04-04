@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { useStore } from "../cli_app_state.js";
+import { colors, boxStyle, Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_theme.js";
 
 const MENU_ITEMS = [
   { label: "About", description: "About bottel.ai" },
@@ -44,21 +45,17 @@ export function Settings() {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Text dimColor>Home &gt; Settings</Text>
+      <Breadcrumb path={["Home", "Settings"]} />
 
-      <Box borderStyle="single" borderColor="#5f27cd" paddingX={2} marginBottom={1}>
-        <Text bold color="#48dbfb">Settings</Text>
-      </Box>
+      <ScreenHeader title="Settings" />
 
       <Box flexDirection="column">
         {MENU_ITEMS.map((item, i) => {
           const isSelected = i === selectedIndex;
           return (
             <Box key={item.label}>
-              <Text color={isSelected ? "#48dbfb" : undefined}>
-                {isSelected ? "\u276f " : "  "}
-              </Text>
-              <Text bold={isSelected} color={isSelected ? "#48dbfb" : undefined}>
+              <Cursor active={isSelected} />
+              <Text bold={isSelected} color={isSelected ? colors.primary : undefined}>
                 {item.label.padEnd(18)}
               </Text>
               <Text dimColor>{item.description}</Text>
@@ -69,24 +66,22 @@ export function Settings() {
 
       {message && message !== "about" && (
         <Box marginTop={1} paddingLeft={2}>
-          <Text color="#2ed573">{message}</Text>
+          <Text color={colors.success}>{message}</Text>
         </Box>
       )}
 
-      <Box marginTop={1}>
-        <Text dimColor>Esc back · ↑↓ nav · Enter select</Text>
-      </Box>
+      <HelpFooter text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select" />
 
       {message === "about" && (
-        <Box marginTop={1} flexDirection="column" borderStyle="single" borderColor="#5f27cd" paddingX={2} paddingY={1}>
-          <Text bold color="#48dbfb">bottel.ai</Text>
+        <Box marginTop={1} flexDirection="column" {...boxStyle.section} paddingX={2} paddingY={1}>
+          <Text bold color={colors.primary}>bottel.ai</Text>
           <Text dimColor>The Bot CLI Internet Portal</Text>
           <Text> </Text>
           <Box gap={2}><Text dimColor>Version:</Text><Text>0.1.0</Text></Box>
           <Box gap={2}><Text dimColor>Runtime:</Text><Text>Node.js {process.version}</Text></Box>
           <Box gap={2}><Text dimColor>Platform:</Text><Text>{process.platform} ({process.arch})</Text></Box>
           <Text> </Text>
-          <Text color="#54a0ff">The Bot CLI Internet Portal — for CLI App Discovery</Text>
+          <Text color={colors.secondary}>The Bot CLI Internet Portal — for CLI App Discovery</Text>
         </Box>
       )}
     </Box>

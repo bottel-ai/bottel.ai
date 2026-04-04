@@ -4,6 +4,7 @@ import TextInput from "ink-text-input";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
+import { colors, columns, Breadcrumb, Rating, InstallCount, VerifiedBadge, Cursor, Separator, HelpFooter } from "../cli_app_theme.js";
 
 interface StoreData {
   agents: Agent[];
@@ -12,16 +13,6 @@ interface StoreData {
 const storeData: StoreData = JSON.parse(
   fs.readFileSync(new URL("../data/store.json", import.meta.url), "utf-8")
 );
-
-function renderStars(rating: number): string {
-  const filled = Math.round(rating);
-  const empty = 5 - filled;
-  return "\u2605".repeat(filled) + "\u2606".repeat(empty);
-}
-
-function formatNumber(n: number): string {
-  return n.toLocaleString("en-US");
-}
 
 const PAGE_SIZE = 5;
 
@@ -120,13 +111,13 @@ export function Search() {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Text dimColor>Home &gt; Search</Text>
+      <Breadcrumb path={["Home", "Search"]} />
       <Box marginBottom={1}>
-        <Text bold color="#48dbfb">Search Agents</Text>
+        <Text bold color={colors.primary}>Search Agents</Text>
       </Box>
 
       <Box marginBottom={1}>
-        <Text color={inputFocused ? "#48dbfb" : undefined}>{"\u276f "}</Text>
+        <Text color={inputFocused ? colors.primary : undefined}>{"\u276f "}</Text>
         <TextInput
           value={query}
           onChange={handleQueryChange}
@@ -143,9 +134,7 @@ export function Search() {
         </Text>
       </Box>
 
-      <Box marginBottom={1}>
-        <Text dimColor>{"\u2500".repeat(60)}</Text>
-      </Box>
+      <Separator />
 
       <Box flexDirection="column">
         {results.length === 0 && query.trim() ? (
@@ -159,33 +148,25 @@ export function Search() {
             return (
               <Box key={agent.id} flexDirection="column" marginBottom={1}>
                 <Box>
-                  <Text color={isActive ? "#48dbfb" : undefined}>
-                    {isActive ? "\u276f " : "  "}
-                  </Text>
-                  <Box width={20}>
-                    <Text bold={isActive} color={isActive ? "#48dbfb" : undefined}>
+                  <Cursor active={isActive} />
+                  <Box width={columns.name}>
+                    <Text bold={isActive} color={isActive ? colors.primary : undefined}>
                       {agent.name}
                     </Text>
                   </Box>
                   <Box width={16}>
                     <Text dimColor>by {agent.author}</Text>
                   </Box>
-                  <Box width={14}>
-                    <Text color="#feca57">
-                      {renderStars(agent.rating)} {agent.rating.toFixed(1)}
-                    </Text>
-                  </Box>
-                  <Box width={16}>
-                    <Text dimColor>{formatNumber(agent.installs)} installs</Text>
-                  </Box>
-                  {agent.verified && <Text color="#2ed573"> {"\u2713"}</Text>}
+                  <Rating value={agent.rating} />
+                  <InstallCount count={agent.installs} />
+                  <VerifiedBadge verified={agent.verified} />
                 </Box>
                 {isActive && (
                   <Box paddingLeft={4} flexDirection="column">
                     <Text dimColor>{agent.description}</Text>
                     <Box gap={1}>
                       {agent.capabilities.map((cap) => (
-                        <Text key={cap} color="#54a0ff">[{cap}]</Text>
+                        <Text key={cap} color={colors.secondary}>[{cap}]</Text>
                       ))}
                     </Box>
                   </Box>
@@ -196,9 +177,7 @@ export function Search() {
         )}
       </Box>
 
-      <Box marginTop={1}>
-        <Text dimColor>Esc back · ↑↓ nav · Enter select{totalPages > 1 ? " · ←→ pages" : ""}</Text>
-      </Box>
+      <HelpFooter text={`Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select${totalPages > 1 ? " \u00b7 \u2190\u2192 pages" : ""}`} />
     </Box>
   );
 }

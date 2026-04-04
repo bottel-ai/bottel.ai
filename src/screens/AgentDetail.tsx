@@ -4,6 +4,7 @@ import Spinner from "ink-spinner";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
+import { colors, formatStars, formatNumber, boxStyle, Breadcrumb, Separator, HelpFooter } from "../cli_app_theme.js";
 
 interface StoreData {
   agents: Agent[];
@@ -12,10 +13,6 @@ interface StoreData {
 const storeData: StoreData = JSON.parse(
   fs.readFileSync(new URL("../data/store.json", import.meta.url), "utf-8")
 );
-
-function renderStars(rating: number): string {
-  return "\u2605".repeat(Math.round(rating));
-}
 
 type InstallStatus = "idle" | "installing";
 
@@ -72,29 +69,29 @@ export function AgentDetail({ agentId }: { agentId: string }) {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Text dimColor>Home &gt; {agent.category} &gt; {agent.name}</Text>
+      <Breadcrumb path={["Home", agent.category, agent.name]} />
 
-      <Box borderStyle="single" borderColor="#5f27cd" paddingX={1} marginY={1}>
+      <Box {...boxStyle.header} paddingX={1} marginY={1}>
         <Box flexGrow={1}>
-          <Text bold color="#48dbfb">{agent.name}</Text>
+          <Text bold color={colors.primary}>{agent.name}</Text>
           <Text dimColor>  v{agent.version}</Text>
         </Box>
-        {agent.verified && <Text color="#2ed573">Verified</Text>}
+        {agent.verified && <Text color={colors.success}>Verified</Text>}
       </Box>
 
       <Text dimColor>by {agent.author}</Text>
       <Text>{""}</Text>
 
       <Box gap={2}>
-        <Text color="#feca57">{renderStars(agent.rating)} {agent.rating.toFixed(1)}</Text>
-        <Text dimColor>({agent.reviews.toLocaleString("en-US")} reviews)</Text>
-        <Text dimColor>{agent.installs.toLocaleString("en-US")} installs</Text>
+        <Text color={colors.warning}>{formatStars(agent.rating)} {agent.rating.toFixed(1)}</Text>
+        <Text dimColor>({formatNumber(agent.reviews)} reviews)</Text>
+        <Text dimColor>{formatNumber(agent.installs)} installs</Text>
         <Text dimColor>{agent.size}</Text>
       </Box>
       <Text>{""}</Text>
       <Text>{agent.description}</Text>
       <Text>{""}</Text>
-      <Text dimColor>{"\u2500".repeat(60)}</Text>
+      <Separator />
       <Text>{""}</Text>
 
       {displayLines.map((line, i) => (
@@ -102,26 +99,26 @@ export function AgentDetail({ agentId }: { agentId: string }) {
       ))}
       {truncated && <Text dimColor>... (more)</Text>}
       <Text>{""}</Text>
-      <Text dimColor>{"\u2500".repeat(60)}</Text>
+      <Separator />
       <Text>{""}</Text>
 
       <Box gap={1}>
         <Text>Capabilities: </Text>
         {agent.capabilities.map((cap) => (
-          <Text key={cap} color="#54a0ff">[{cap}]</Text>
+          <Text key={cap} color={colors.secondary}>[{cap}]</Text>
         ))}
       </Box>
       <Text>{""}</Text>
-      <Text dimColor>Updated: {agent.updated}  |  Category: <Text color="#54a0ff" underline>{agent.category}</Text></Text>
+      <Text dimColor>Updated: {agent.updated}  |  Category: <Text color={colors.secondary} underline>{agent.category}</Text></Text>
       <Text>{""}</Text>
 
       <Box gap={2}>
         {installStatus === "installing" ? (
-          <Text color="#feca57"><Spinner type="dots" /> Installing...</Text>
+          <Text color={colors.warning}><Spinner type="dots" /> Installing...</Text>
         ) : (
           <Text
             bold={buttonIndex === 0}
-            color={buttonIndex === 0 ? (isInstalled ? "red" : "#48dbfb") : undefined}
+            color={buttonIndex === 0 ? (isInstalled ? "red" : colors.primary) : undefined}
             dimColor={buttonIndex !== 0}
           >
             [ {isInstalled ? "Uninstall" : "Install"} ]
@@ -129,19 +126,17 @@ export function AgentDetail({ agentId }: { agentId: string }) {
         )}
         <Text
           bold={buttonIndex === 1}
-          color={buttonIndex === 1 ? "#48dbfb" : undefined}
+          color={buttonIndex === 1 ? colors.primary : undefined}
           dimColor={buttonIndex !== 1}
         >
           [ Back ]
         </Text>
         {isInstalled && installStatus === "idle" && (
-          <Text color="#2ed573">Installed \u2713</Text>
+          <Text color={colors.success}>Installed {"\u2713"}</Text>
         )}
       </Box>
 
-      <Box marginTop={1}>
-        <Text dimColor>Esc back · ←→ nav · Enter select</Text>
-      </Box>
+      <HelpFooter text="Esc back \u00b7 \u2190\u2192 nav \u00b7 Enter select" />
     </Box>
   );
 }

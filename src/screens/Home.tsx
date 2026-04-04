@@ -3,6 +3,7 @@ import { Box, Text, useInput, useApp } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
+import { colors, columns, formatStars, formatInstalls, Cursor, Rating, InstallCount, VerifiedBadge, Separator, HelpFooter } from "../cli_app_theme.js";
 
 interface StoreData {
   featured: string[];
@@ -14,16 +15,6 @@ interface StoreData {
 const storeData: StoreData = JSON.parse(
   fs.readFileSync(new URL("../data/store.json", import.meta.url), "utf-8")
 );
-
-function renderStars(rating: number): string {
-  const filled = Math.round(rating);
-  return "\u2605".repeat(filled);
-}
-
-function formatInstalls(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return String(n);
-}
 
 const MENU_ITEMS = [
   { label: "Home", value: "home", description: "Store front" },
@@ -143,7 +134,7 @@ export function Home() {
 
       {/* Menu */}
       <Box flexDirection="column" marginBottom={1}>
-        <Text bold color={activeSection === "menu" ? "#48dbfb" : undefined}>
+        <Text bold color={activeSection === "menu" ? colors.primary : undefined}>
           {activeSection === "menu" ? "▶ " : "  "}Menu
         </Text>
         <Box flexDirection="column" marginTop={1} paddingLeft={1}>
@@ -151,15 +142,15 @@ export function Home() {
             const isActive = activeSection === "menu" && i === activeIndexInSection;
             return (
               <Box key={`menu-${item.value}`}>
-                <Text color={isActive ? "#48dbfb" : undefined} bold={isActive}>
+                <Text color={isActive ? colors.primary : undefined} bold={isActive}>
                   {isActive ? "> " : "  "}
                 </Text>
                 <Box width={18}>
-                  <Text color={isActive ? "#48dbfb" : undefined} bold={isActive}>
+                  <Text color={isActive ? colors.primary : undefined} bold={isActive}>
                     {item.label}
                   </Text>
                 </Box>
-                <Text dimColor={!isActive} color={isActive ? "#48dbfb" : undefined}>{item.description}</Text>
+                <Text dimColor={!isActive} color={isActive ? colors.primary : undefined}>{item.description}</Text>
               </Box>
             );
           })}
@@ -167,13 +158,11 @@ export function Home() {
       </Box>
 
       {/* Separator */}
-      <Box marginBottom={1}>
-        <Text dimColor>{"─".repeat(60)}</Text>
-      </Box>
+      <Separator />
 
       {/* Featured Agents */}
       <Box marginBottom={1} flexDirection="column">
-        <Text bold color={activeSection === "featured" ? "#48dbfb" : undefined}>
+        <Text bold color={activeSection === "featured" ? colors.primary : undefined}>
           {activeSection === "featured" ? "▶ " : "  "}Featured Agents
         </Text>
         <Box gap={1} marginTop={1}>
@@ -184,15 +173,15 @@ export function Home() {
                 key={`featured-${agent.id}`}
                 flexDirection="column"
                 borderStyle="round"
-                borderColor={isActive ? "#48dbfb" : undefined}
+                borderColor={isActive ? colors.primary : undefined}
                 width={24}
                 paddingX={1}
               >
-                <Text bold color={isActive ? "#48dbfb" : undefined}>
+                <Text bold color={isActive ? colors.primary : undefined}>
                   {agent.name}
                 </Text>
-                <Text color="#feca57">
-                  {renderStars(agent.rating)} {agent.rating.toFixed(1)}
+                <Text color={colors.warning}>
+                  {formatStars(agent.rating)} {agent.rating.toFixed(1)}
                 </Text>
                 <Text dimColor>by {agent.author}</Text>
                 <Text dimColor>{formatInstalls(agent.installs)} installs</Text>
@@ -203,31 +192,24 @@ export function Home() {
       </Box>
 
       {/* Separator */}
-      <Box marginBottom={1}>
-        <Text dimColor>{"─".repeat(60)}</Text>
-      </Box>
+      <Separator />
 
       {/* Trending */}
       <Box marginBottom={1} flexDirection="column">
-        <Text bold color={activeSection === "trending" ? "#48dbfb" : undefined}>
+        <Text bold color={activeSection === "trending" ? colors.primary : undefined}>
           {activeSection === "trending" ? "▶ " : "  "}Trending
         </Text>
         <Box flexDirection="column" marginTop={1}>
           {trendingAgents.map((agent, i) => {
             const isActive = activeSection === "trending" && i === activeIndexInSection;
-            const cursor = isActive ? "\u276F " : "  ";
-            const num = `${i + 1}. `;
-            const col1 = `${cursor}${num}`.padEnd(6);
-            const col2 = agent.name.padEnd(22);
-            const col3 = `\u2605${agent.rating.toFixed(1)}`.padEnd(8);
-            const col4 = `${formatInstalls(agent.installs)} installs`.padEnd(16);
             return (
               <Box key={`trending-${agent.id}`}>
-                <Text color={isActive ? "#48dbfb" : undefined}>{col1}</Text>
-                <Text color={isActive ? "#48dbfb" : undefined}>{col2}</Text>
-                <Text color="#feca57">{col3}</Text>
-                <Text dimColor>{col4}</Text>
-                {agent.verified && <Text color="#2ed573">{" \u2713"}</Text>}
+                <Cursor active={isActive} />
+                <Box width={columns.rank}><Text dimColor>{i + 1}.</Text></Box>
+                <Box width={columns.name}><Text color={isActive ? colors.primary : undefined} bold={isActive}>{agent.name}</Text></Box>
+                <Rating value={agent.rating} />
+                <InstallCount count={agent.installs} />
+                <VerifiedBadge verified={agent.verified} />
               </Box>
             );
           })}
@@ -235,13 +217,11 @@ export function Home() {
       </Box>
 
       {/* Separator */}
-      <Box marginBottom={1}>
-        <Text dimColor>{"─".repeat(60)}</Text>
-      </Box>
+      <Separator />
 
       {/* Categories - vertical list */}
       <Box flexDirection="column">
-        <Text bold color={activeSection === "categories" ? "#48dbfb" : undefined}>
+        <Text bold color={activeSection === "categories" ? colors.primary : undefined}>
           {activeSection === "categories" ? "▶ " : "  "}Categories
         </Text>
         <Box flexDirection="column" marginTop={1} paddingLeft={1}>
@@ -249,13 +229,13 @@ export function Home() {
             const isActive = activeSection === "categories" && i === activeIndexInSection;
             return (
               <Box key={`category-${cat.name}`}>
-                <Text color={isActive ? "#48dbfb" : undefined} bold={isActive}>
+                <Text color={isActive ? colors.primary : undefined} bold={isActive}>
                   {isActive ? "\u276F " : "  "}
                 </Text>
-                <Text color={isActive ? "#48dbfb" : undefined} bold={isActive}>
+                <Text color={isActive ? colors.primary : undefined} bold={isActive}>
                   {cat.icon} {cat.name}
                 </Text>
-                <Text dimColor={!isActive} color={isActive ? "#48dbfb" : undefined}>
+                <Text dimColor={!isActive} color={isActive ? colors.primary : undefined}>
                   {" "}({cat.agents.length})
                 </Text>
               </Box>
@@ -265,9 +245,7 @@ export function Home() {
       </Box>
 
       {/* Help */}
-      <Box marginTop={1}>
-        <Text dimColor>Esc back · ↑↓ nav · Enter select · / search</Text>
-      </Box>
+      <HelpFooter text="Esc back · ↑↓ nav · Enter select · / search · q quit" />
     </Box>
   );
 }

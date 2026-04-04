@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
+import { colors, columns, Breadcrumb, Rating, InstallCount, VerifiedBadge, Cursor, HelpFooter } from "../cli_app_theme.js";
 
 interface StoreData {
   categories: { name: string; icon: string; agents: string[] }[];
@@ -12,14 +13,6 @@ interface StoreData {
 const storeData: StoreData = JSON.parse(
   fs.readFileSync(new URL("../data/store.json", import.meta.url), "utf-8")
 );
-
-function renderStars(rating: number): string {
-  return "\u2605".repeat(Math.round(rating));
-}
-
-function formatNumber(n: number): string {
-  return n.toLocaleString("en-US");
-}
 
 const AGENTS_PAGE_SIZE = 5;
 
@@ -104,15 +97,15 @@ export function Browse() {
     }
   });
 
-  const breadcrumb = expandedCat
-    ? `Home > Browse > ${expandedCat.name}`
-    : "Home > Browse";
+  const breadcrumbPath = expandedCat
+    ? ["Home", "Browse", expandedCat.name]
+    : ["Home", "Browse"];
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Text dimColor>{breadcrumb}</Text>
+      <Breadcrumb path={breadcrumbPath} />
       <Box marginBottom={1}>
-        <Text bold color="#48dbfb">Browse Categories</Text>
+        <Text bold color={colors.primary}>Browse Categories</Text>
       </Box>
 
       <Box flexDirection="column">
@@ -122,10 +115,8 @@ export function Browse() {
           return (
             <Box key={`cat-${cat.name}`} flexDirection="column">
               <Box>
-                <Text color={isActive ? "#48dbfb" : undefined}>
-                  {isActive ? "\u276f " : "  "}
-                </Text>
-                <Text bold={isActive || isExpanded} color={isActive ? "#48dbfb" : undefined}>
+                <Cursor active={isActive} />
+                <Text bold={isActive || isExpanded} color={isActive ? colors.primary : undefined}>
                   {isExpanded ? "\u25BC" : "\u25B6"} {cat.icon} {cat.name}
                 </Text>
                 <Text dimColor> ({cat.agents.length})</Text>
@@ -138,19 +129,15 @@ export function Browse() {
                     return (
                       <Box key={`agent-${agent.id}`} flexDirection="column">
                         <Box>
-                          <Text color={isAgentActive ? "#48dbfb" : undefined}>
-                            {isAgentActive ? "\u276f " : "  "}
-                          </Text>
-                          <Box width={20}>
-                            <Text bold={isAgentActive} color={isAgentActive ? "#48dbfb" : undefined}>
+                          <Cursor active={isAgentActive} />
+                          <Box width={columns.name}>
+                            <Text bold={isAgentActive} color={isAgentActive ? colors.primary : undefined}>
                               {agent.name}
                             </Text>
                           </Box>
-                          <Box width={10}>
-                            <Text color="#feca57">{renderStars(agent.rating)}</Text>
-                          </Box>
-                          <Text dimColor>{formatNumber(agent.installs)} installs</Text>
-                          {agent.verified && <Text color="#2ed573"> {"\u2713"}</Text>}
+                          <Rating value={agent.rating} showNumber={false} />
+                          <InstallCount count={agent.installs} />
+                          <VerifiedBadge verified={agent.verified} />
                         </Box>
                         <Box paddingLeft={4}>
                           <Text dimColor>{agent.description.slice(0, 70)}</Text>
@@ -170,9 +157,7 @@ export function Browse() {
         })}
       </Box>
 
-      <Box marginTop={1}>
-        <Text dimColor>Esc back · ↑↓ nav · Enter expand/select{totalAgentPages > 1 && inAgents ? " · ←→ pages" : ""}</Text>
-      </Box>
+      <HelpFooter text={`Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter expand/select${totalAgentPages > 1 && inAgents ? " \u00b7 \u2190\u2192 pages" : ""}`} />
     </Box>
   );
 }

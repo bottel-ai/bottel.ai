@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
+import { colors, columns, Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_theme.js";
 
 interface StoreData {
   agents: Agent[];
@@ -38,11 +39,9 @@ export function Installed() {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Text dimColor>Home &gt; Installed</Text>
+      <Breadcrumb path={["Home", "Installed"]} />
 
-      <Box borderStyle="single" borderColor="#5f27cd" paddingX={2} marginBottom={1}>
-        <Text bold color="#48dbfb">Installed Apps ({installedAgents.length})</Text>
-      </Box>
+      <ScreenHeader title={`Installed Apps (${installedAgents.length})`} />
 
       {installedAgents.length === 0 ? (
         <Box paddingLeft={2} flexDirection="column" marginTop={1}>
@@ -55,13 +54,11 @@ export function Installed() {
             const isSelected = i === selectedIndex;
             return (
               <Box key={agent.id}>
-                <Text color={isSelected ? "#48dbfb" : undefined}>
-                  {isSelected ? "\u276f " : "  "}
-                </Text>
-                <Box width={22}>
-                  <Text bold={isSelected} color={isSelected ? "#48dbfb" : undefined}>{agent.name}</Text>
+                <Cursor active={isSelected} />
+                <Box width={columns.name}>
+                  <Text bold={isSelected} color={isSelected ? colors.primary : undefined}>{agent.name}</Text>
                 </Box>
-                <Box width={10}>
+                <Box width={columns.rating}>
                   <Text dimColor>v{agent.version}</Text>
                 </Box>
                 <Box width={18}>
@@ -74,9 +71,7 @@ export function Installed() {
         </Box>
       )}
 
-      <Box marginTop={1}>
-        <Text dimColor>Esc back · ↑↓ nav · Enter select</Text>
-      </Box>
+      <HelpFooter text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select" />
     </Box>
   );
 }
