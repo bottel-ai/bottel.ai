@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Box, Text, useStdout } from "ink";
 
 // ─── Virtual Viewport ──────────────────────────────────────────
@@ -30,56 +30,48 @@ export interface ViewportProps {
   rows: React.ReactNode[];
   /** Which row index is currently focused (for auto-scroll) */
   focusedIndex: number;
-  /** Lines reserved for elements outside the viewport (footer, etc.) */
+  /** Lines reserved for scroll indicators */
   reservedLines?: number;
 }
 
 export function Viewport({ rows, focusedIndex, reservedLines = 2 }: ViewportProps) {
   const { rows: termRows } = useTerminalSize();
   const maxVisible = Math.max(3, termRows - reservedLines);
-  const [offset, setOffset] = useState(0);
 
-  // Auto-scroll to keep focused item visible
-  useEffect(() => {
-    let newOffset = offset;
+  // Use a ref to track offset so it's always current (no stale closure)
+  const offsetRef = useRef(0);
 
-    if (focusedIndex < newOffset) {
-      // Focused is above viewport — scroll up
-      newOffset = focusedIndex;
-    } else if (focusedIndex >= newOffset + maxVisible) {
-      // Focused is below viewport — scroll down
-      newOffset = focusedIndex - maxVisible + 1;
-    }
+  // Compute new offset based on focused index
+  let newOffset = offsetRef.current;
 
-    // Clamp
-    const maxOffset = Math.max(0, rows.length - maxVisible);
-    newOffset = Math.max(0, Math.min(newOffset, maxOffset));
+  // If focused is above viewport — scroll up
+  if (focusedIndex < newOffset) {
+    newOffset = focusedIndex;
+  }
+  // If focused is below viewport — scroll down
+  if (focusedIndex >= newOffset + maxVisible) {
+    newOffset = focusedIndex - maxVisible + 1;
+  }
+  // Clamp
+  const maxOffset = Math.max(0, rows.length - maxVisible);
+  newOffset = Math.max(0, Math.min(newOffset, maxOffset));
 
-    if (newOffset !== offset) {
-      setOffset(newOffset);
-    }
-  }, [focusedIndex, maxVisible, rows.length]);
+  // Update ref
+  offsetRef.current = newOffset;
+  const offset = newOffset;
 
   const visibleRows = rows.slice(offset, offset + maxVisible);
   const hasAbove = offset > 0;
   const hasBelow = offset + maxVisible < rows.length;
 
-  // Scrollbar indicator
-  const scrollPercent = rows.length <= maxVisible
-    ? 100
-    : Math.round((offset / Math.max(1, rows.length - maxVisible)) * 100);
-
   return (
     <Box flexDirection="column">
       {hasAbove && (
-        <Text dimColor>  ▲ scroll up ({offset} above)</Text>
+        <Text dimColor>  ▲ {offset} above</Text>
       )}
       {visibleRows}
       {hasBelow && (
-        <Text dimColor>  ▼ scroll down ({rows.length - offset - maxVisible} below)</Text>
-      )}
-      {rows.length > maxVisible && (
-        <Text dimColor>  [{scrollPercent}%]</Text>
+        <Text dimColor>  ▼ {rows.length - offset - maxVisible} below</Text>
       )}
     </Box>
   );
