@@ -69,17 +69,17 @@ function Router() {
     return () => { stdin.off("data", onData); };
   }, [stdin, isSearch]);
 
-  // PageUp/PageDown — scroll viewport
+  // Arrow keys: scroll viewport 1 line when cursor moves
+  // PageUp/PageDown: jump 10 lines
   useInput((_input, key) => {
     if (!scrollRef.current) return;
     const offset = scrollRef.current.getScrollOffset();
     const bottom = scrollRef.current.getBottomOffset();
+    if (key.downArrow && offset < bottom) scrollRef.current.scrollTo(offset + 1);
+    if (key.upArrow && offset > 0) scrollRef.current.scrollTo(offset - 1);
     if (key.pageDown) scrollRef.current.scrollTo(Math.min(bottom, offset + 10));
     if (key.pageUp) scrollRef.current.scrollTo(Math.max(0, offset - 10));
   });
-
-  // NO auto-scroll on arrow keys — viewport stays still
-  // Cursor movement is handled by each screen's own useInput
 
   return (
     <Box flexDirection="column">
