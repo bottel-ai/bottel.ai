@@ -15,10 +15,8 @@ const storeData: StoreData = JSON.parse(
 );
 
 function renderStars(rating: number): string {
-  const full = Math.floor(rating);
-  const half = rating - full >= 0.5 ? 1 : 0;
-  const empty = 5 - full - half;
-  return "\u2605".repeat(full) + (half ? "\u2606" : "") + "\u00b7".repeat(empty);
+  const filled = Math.round(rating);
+  return "\u2605".repeat(filled);
 }
 
 function formatInstalls(n: number): string {
@@ -140,7 +138,7 @@ export function Home({
       {/* Menu */}
       <Box flexDirection="column" marginBottom={1}>
         <Text bold color={section === "menu" ? "#48dbfb" : undefined}>
-          Menu
+          {section === "menu" ? "▶ " : "  "}Menu
         </Text>
         <Box flexDirection="column" marginTop={1} paddingLeft={1}>
           {MENU_ITEMS.map((item, i) => {
@@ -155,17 +153,22 @@ export function Home({
                     {item.label}
                   </Text>
                 </Box>
-                {isActive && <Text dimColor>{item.description}</Text>}
+                <Text dimColor={!isActive} color={isActive ? "#48dbfb" : undefined}>{item.description}</Text>
               </Box>
             );
           })}
         </Box>
       </Box>
 
+      {/* Separator */}
+      <Box marginBottom={1}>
+        <Text dimColor>{"─".repeat(60)}</Text>
+      </Box>
+
       {/* Featured Agents */}
       <Box marginBottom={1} flexDirection="column">
         <Text bold color={section === "featured" ? "#48dbfb" : undefined}>
-          Featured Agents
+          {section === "featured" ? "▶ " : "  "}Featured Agents
         </Text>
         <Box gap={1} marginTop={1}>
           {featuredAgents.map((agent, i) => {
@@ -196,21 +199,24 @@ export function Home({
       {/* Trending */}
       <Box marginBottom={1} flexDirection="column">
         <Text bold color={section === "trending" ? "#48dbfb" : undefined}>
-          Trending
+          {section === "trending" ? "▶ " : "  "}Trending
         </Text>
         <Box flexDirection="column" marginTop={1}>
           {trendingAgents.map((agent, i) => {
             const isActive = section === "trending" && i === trendingIndex;
+            const cursor = isActive ? "> " : "  ";
+            const num = `${i + 1}. `;
+            const col1 = `${cursor}${num}`.padEnd(6);
+            const col2 = agent.name.padEnd(22);
+            const col3 = `\u2605${agent.rating.toFixed(1)}`.padEnd(8);
+            const col4 = `${formatInstalls(agent.installs)} installs`.padEnd(16);
             return (
               <Box key={agent.id}>
-                <Text color={isActive ? "#48dbfb" : undefined}>
-                  {isActive ? "\u276f " : "  "}
-                  {i + 1}. {agent.name}
-                </Text>
-                <Text>{"  "}</Text>
-                <Text color="#feca57">{"\u2605"}{agent.rating.toFixed(1)}</Text>
-                <Text dimColor>{"  "}{formatInstalls(agent.installs)} installs</Text>
-                {agent.verified && <Text color="#2ed573"> \u2713</Text>}
+                <Text color={isActive ? "#48dbfb" : undefined}>{col1}</Text>
+                <Text color={isActive ? "#48dbfb" : undefined}>{col2}</Text>
+                <Text color="#feca57">{col3}</Text>
+                <Text dimColor>{col4}</Text>
+                {agent.verified && <Text color="#2ed573">{" \u2713"}</Text>}
               </Box>
             );
           })}
@@ -220,28 +226,22 @@ export function Home({
       {/* Categories */}
       <Box flexDirection="column">
         <Text bold color={section === "categories" ? "#48dbfb" : undefined}>
-          Categories
+          {section === "categories" ? "▶ " : "  "}Categories
         </Text>
-        <Box marginTop={1} gap={2} flexWrap="wrap">
-          {categories.map((cat, i) => {
-            const isActive = section === "categories" && i === categoryIndex;
-            return (
-              <Text
-                key={cat.name}
-                bold={isActive}
-                color={isActive ? "#48dbfb" : undefined}
-                underline={isActive}
-              >
-                {cat.name} ({cat.agents.length})
-              </Text>
-            );
-          })}
+        <Box marginTop={1}>
+          <Text>
+            {categories.map((cat, i) => {
+              const isActive = section === "categories" && i === categoryIndex;
+              const label = `${cat.name} (${cat.agents.length})`;
+              return (i > 0 ? " | " : "") + (isActive ? `[${label}]` : label);
+            }).join("")}
+          </Text>
         </Box>
       </Box>
 
       {/* Help */}
       <Box marginTop={1}>
-        <Text dimColor>Tab: switch section | ↑↓: navigate | Enter: select | /: search</Text>
+        <Text dimColor>Tab section · ↑↓ nav · Enter select · / search</Text>
       </Box>
     </Box>
   );

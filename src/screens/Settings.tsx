@@ -34,10 +34,10 @@ export function Settings({ onBack }: SettingsProps) {
       const item = MENU_ITEMS[selectedIndex];
       switch (item.label) {
         case "About":
-          setMessage("bottel.ai v0.1.0 -- The App Store for AI Agents");
+          setMessage("about");
           break;
         case "Clear cache":
-          setMessage("Cache cleared");
+          setMessage("Cache cleared successfully.");
           break;
         case "Back":
           onBack();
@@ -48,8 +48,14 @@ export function Settings({ onBack }: SettingsProps) {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      {/* Header */}
-      <Box marginBottom={1}>
+      {/* Bordered header */}
+      <Box
+        borderStyle="single"
+        borderColor="#5f27cd"
+        paddingX={2}
+        width="100%"
+        marginBottom={1}
+      >
         <Text bold color="#48dbfb">
           Settings
         </Text>
@@ -62,7 +68,9 @@ export function Settings({ onBack }: SettingsProps) {
           const isSelected = i === selectedIndex;
           return (
             <Box key={item.label}>
-              <Text>{isSelected ? "> " : "  "}</Text>
+              <Text color={isSelected ? "#48dbfb" : undefined}>
+                {isSelected ? "\u276f " : "  "}
+              </Text>
               <Text
                 bold={isSelected}
                 color={isSelected ? "#48dbfb" : undefined}
@@ -76,9 +84,41 @@ export function Settings({ onBack }: SettingsProps) {
       </Box>
 
       {/* Message display */}
-      {message && (
+      {message && message !== "about" && (
         <Box marginTop={1} paddingLeft={2}>
           <Text color="#2ed573">{message}</Text>
+        </Box>
+      )}
+
+      {/* About view with detailed version info */}
+      {message === "about" && (
+        <Box
+          marginTop={1}
+          flexDirection="column"
+          borderStyle="single"
+          borderColor="#5f27cd"
+          paddingX={2}
+          paddingY={1}
+        >
+          <Text bold color="#48dbfb">bottel.ai</Text>
+          <Text dimColor>The App Store for AI Agents</Text>
+          <Text> </Text>
+          <Box gap={2}>
+            <Text dimColor>Version:</Text>
+            <Text>0.1.0</Text>
+          </Box>
+          <Box gap={2}>
+            <Text dimColor>Runtime:</Text>
+            <Text>Node.js {typeof process !== "undefined" ? process.version : "unknown"}</Text>
+          </Box>
+          <Box gap={2}>
+            <Text dimColor>Platform:</Text>
+            <Text>{typeof process !== "undefined" ? process.platform : "unknown"}</Text>
+          </Box>
+          <Box gap={2}>
+            <Text dimColor>License:</Text>
+            <Text>MIT</Text>
+          </Box>
         </Box>
       )}
     </Box>

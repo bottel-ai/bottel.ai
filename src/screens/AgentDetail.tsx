@@ -12,10 +12,9 @@ const storeData: StoreData = JSON.parse(
 );
 
 function renderStars(rating: number): string {
-  const full = Math.floor(rating);
-  const half = rating - full >= 0.5 ? 1 : 0;
-  const empty = 5 - full - half;
-  return "\u2605".repeat(full) + (half ? "\u2606" : "") + "\u2606".repeat(empty);
+  const filled = Math.round(rating);
+  const empty = 5 - filled;
+  return "\u2605".repeat(filled) + "\u2606".repeat(empty);
 }
 
 function formatNumber(n: number): string {
@@ -64,17 +63,17 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
     );
   }
 
-  const separator = "\u2500".repeat(55);
   const installLabel = installed ? "Uninstall" : "Install";
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      {/* Header box */}
+      {/* Header box - flexes to terminal width */}
       <Box
         flexDirection="column"
         borderStyle="single"
         borderColor="#5f27cd"
         paddingX={2}
+        width="100%"
       >
         <Box justifyContent="space-between">
           <Box>
@@ -83,7 +82,7 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
             </Text>
             <Text dimColor>  v{agent.version}</Text>
           </Box>
-          {agent.verified && <Text color="#2ed573">Verified</Text>}
+          {agent.verified && <Text color="#2ed573">{"\u2713"} Verified</Text>}
         </Box>
         <Text dimColor>by {agent.author}</Text>
       </Box>
@@ -107,7 +106,7 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
 
       {/* Separator */}
       <Box paddingX={2} marginTop={1}>
-        <Text dimColor>{separator}</Text>
+        <Text dimColor>{"\u2500".repeat(55)}</Text>
       </Box>
 
       {/* Long description */}
@@ -119,15 +118,15 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
 
       {/* Separator */}
       <Box paddingX={2} marginTop={1}>
-        <Text dimColor>{separator}</Text>
+        <Text dimColor>{"\u2500".repeat(55)}</Text>
       </Box>
 
-      {/* Capabilities */}
-      <Box paddingX={2} marginTop={1} gap={1}>
+      {/* Capabilities as colored tags */}
+      <Box paddingX={2} marginTop={1} gap={1} flexWrap="wrap">
         <Text bold>Capabilities:</Text>
         {agent.capabilities.map((cap) => (
-          <Text key={cap} color="#5f27cd">
-            {cap}
+          <Text key={cap} color="#54a0ff">
+            [{cap}]
           </Text>
         ))}
       </Box>
@@ -140,26 +139,20 @@ export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
       </Box>
 
       {/* Action buttons */}
-      <Box paddingX={2} marginTop={1} gap={4}>
+      <Box paddingX={2} marginTop={1} gap={2}>
         <Text
           bold={selectedButton === 0}
-          color={
-            selectedButton === 0
-              ? installed
-                ? "red"
-                : "#48dbfb"
-              : undefined
-          }
-          inverse={selectedButton === 0}
+          color={selectedButton === 0 ? (installed ? "red" : "cyan") : undefined}
+          dimColor={selectedButton !== 0}
         >
-          {selectedButton === 0 ? " > " : "   "}{installLabel}
+          [ {installLabel} ]
         </Text>
         <Text
           bold={selectedButton === 1}
-          color={selectedButton === 1 ? "#48dbfb" : undefined}
-          inverse={selectedButton === 1}
+          color={selectedButton === 1 ? "cyan" : undefined}
+          dimColor={selectedButton !== 1}
         >
-          {selectedButton === 1 ? " > " : "   "}Back
+          [ Back ]
         </Text>
       </Box>
     </Box>

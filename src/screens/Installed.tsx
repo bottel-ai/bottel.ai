@@ -46,18 +46,23 @@ export function Installed({ onBack, onViewAgent }: InstalledProps) {
   return (
     <Box flexDirection="column" paddingX={1}>
       {/* Header */}
-      <Box marginBottom={1}>
+      <Box
+        borderStyle="single"
+        borderColor="#5f27cd"
+        paddingX={2}
+        width="100%"
+        marginBottom={1}
+      >
         <Text bold color="#48dbfb">
-          Installed Apps
+          Installed Apps ({installedAgents.length})
         </Text>
         <Text dimColor>{"   "}Esc: back | Enter: view details</Text>
       </Box>
 
       {installedAgents.length === 0 ? (
-        <Box paddingLeft={2}>
-          <Text dimColor>
-            No apps installed. Browse the store to find apps.
-          </Text>
+        <Box paddingLeft={2} flexDirection="column" marginTop={1}>
+          <Text dimColor>No apps installed yet.</Text>
+          <Text dimColor>Browse the store to find and install apps.</Text>
         </Box>
       ) : (
         <Box flexDirection="column">
@@ -66,14 +71,20 @@ export function Installed({ onBack, onViewAgent }: InstalledProps) {
             return (
               <Box key={agent.id} marginBottom={0}>
                 <Text color={isSelected ? "#48dbfb" : undefined}>
-                  {isSelected ? "> " : "  "}
+                  {isSelected ? "\u276f " : "  "}
                 </Text>
-                <Text bold={isSelected} color={isSelected ? "#48dbfb" : undefined}>
-                  {agent.name}
-                </Text>
-                <Text dimColor> v{agent.version}</Text>
-                <Text dimColor> by {agent.author}</Text>
-                <Text dimColor> [{agent.category}]</Text>
+                <Box width={22}>
+                  <Text bold={isSelected} color={isSelected ? "#48dbfb" : undefined}>
+                    {agent.name}
+                  </Text>
+                </Box>
+                <Box width={10}>
+                  <Text dimColor>v{agent.version}</Text>
+                </Box>
+                <Box width={18}>
+                  <Text dimColor>by {agent.author}</Text>
+                </Box>
+                <Text dimColor>[{agent.category}]</Text>
               </Box>
             );
           })}

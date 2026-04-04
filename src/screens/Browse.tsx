@@ -13,17 +13,13 @@ const storeData: StoreData = JSON.parse(
 );
 
 function renderStars(rating: number): string {
-  const full = Math.floor(rating);
-  const half = rating - full >= 0.5 ? 1 : 0;
-  const empty = 5 - full - half;
-  return "\u2605".repeat(full) + (half ? "\u2606" : "") + "\u00b7".repeat(empty);
+  const filled = Math.round(rating);
+  const empty = 5 - filled;
+  return "\u2605".repeat(filled) + "\u2606".repeat(empty);
 }
 
-function formatInstalls(n: number): string {
-  if (n >= 1000) {
-    return `${(n / 1000).toFixed(1)}k`;
-  }
-  return String(n);
+function formatNumber(n: number): string {
+  return n.toLocaleString("en-US");
 }
 
 type Focus = "categories" | "agents";
@@ -82,7 +78,7 @@ export function Browse({ onBack, onViewAgent }: BrowseProps) {
       return;
     }
 
-    if (key.upArrow || key.leftArrow) {
+    if (key.upArrow) {
       if (focus === "categories") {
         setCategoryIndex((i) => {
           const next = Math.max(0, i - 1);
@@ -94,7 +90,7 @@ export function Browse({ onBack, onViewAgent }: BrowseProps) {
       }
     }
 
-    if (key.downArrow || key.rightArrow) {
+    if (key.downArrow) {
       if (focus === "categories") {
         setCategoryIndex((i) => {
           const next = Math.min(categories.length - 1, i + 1);
@@ -117,62 +113,78 @@ export function Browse({ onBack, onViewAgent }: BrowseProps) {
         <Text dimColor>{"   "}Esc: back | Tab: switch focus | Enter: select</Text>
       </Box>
 
-      {/* Categories bar */}
-      <Box gap={2} flexWrap="wrap" marginBottom={1}>
-        {categories.map((cat, i) => {
-          const isActive = i === categoryIndex;
-          return (
-            <Text
-              key={cat.name}
-              bold={isActive}
-              color={isActive ? "#48dbfb" : undefined}
-              inverse={isActive && focus === "categories"}
-            >
-              {cat.icon} {cat.name} ({cat.agents.length})
-            </Text>
-          );
-        })}
-      </Box>
-
-      {/* Divider */}
-      <Box marginBottom={1}>
-        <Text dimColor>{"─".repeat(60)}</Text>
-      </Box>
-
-      {/* Agent list for selected category */}
-      <Box flexDirection="column">
-        <Text bold>
-          {selectedCategory?.icon} {selectedCategory?.name}
-        </Text>
-        <Box flexDirection="column" marginTop={1}>
-          {categoryAgents.map((agent, i) => {
-            const isActive = focus === "agents" && i === agentIndex;
+      <Box flexDirection="row">
+        {/* Category list - vertical with arrow indicators */}
+        <Box flexDirection="column" width={30}>
+          {categories.map((cat, i) => {
+            const isActive = i === categoryIndex;
+            const isFocused = focus === "categories";
             return (
-              <Box key={agent.id} flexDirection="column" marginBottom={1}>
-                <Box>
-                  <Text color={isActive ? "#48dbfb" : undefined}>
-                    {isActive ? "\u276f " : "  "}
-                  </Text>
-                  <Text bold={isActive} color={isActive ? "#48dbfb" : undefined}>
-                    {agent.name}
-                  </Text>
-                  <Text dimColor> by {agent.author} </Text>
-                  <Text color="#feca57">
-                    {renderStars(agent.rating)} {agent.rating.toFixed(1)}
-                  </Text>
-                  <Text dimColor>
-                    {"  "}{formatInstalls(agent.installs)} installs
-                  </Text>
-                  {agent.verified && <Text color="#2ed573"> \u2713</Text>}
-                </Box>
-                {isActive && (
-                  <Box paddingLeft={4}>
-                    <Text dimColor>{agent.description}</Text>
-                  </Box>
-                )}
+              <Box key={cat.name}>
+                <Text color={isActive && isFocused ? "#48dbfb" : undefined}>
+                  {isActive ? "\u276f " : "  "}
+                </Text>
+                <Text
+                  bold={isActive}
+                  color={isActive ? "#48dbfb" : undefined}
+                  inverse={isActive && isFocused}
+                >
+                  {cat.icon} {cat.name}
+                </Text>
+                <Text dimColor> ({cat.agents.length})</Text>
               </Box>
             );
           })}
+        </Box>
+
+        {/* Vertical divider */}
+        <Box flexDirection="column" marginX={1}>
+          <Text dimColor>{"\u2502".repeat(Math.max(categories.length, categoryAgents.length + 1))}</Text>
+        </Box>
+
+        {/* Agent list for selected category */}
+        <Box flexDirection="column" flexGrow={1}>
+          <Text bold>
+            {selectedCategory?.icon} {selectedCategory?.name}
+          </Text>
+          <Box flexDirection="column" marginTop={1}>
+            {categoryAgents.map((agent, i) => {
+              const isActive = focus === "agents" && i === agentIndex;
+              return (
+                <Box key={agent.id} flexDirection="column" marginBottom={1}>
+                  <Box>
+                    <Text color={isActive ? "#48dbfb" : undefined}>
+                      {isActive ? "\u276f " : "  "}
+                    </Text>
+                    <Box width={20}>
+                      <Text bold={isActive} color={isActive ? "#48dbfb" : undefined}>
+                        {agent.name}
+                      </Text>
+                    </Box>
+                    <Box width={16}>
+                      <Text dimColor>by {agent.author}</Text>
+                    </Box>
+                    <Box width={14}>
+                      <Text color="#feca57">
+                        {renderStars(agent.rating)} {agent.rating.toFixed(1)}
+                      </Text>
+                    </Box>
+                    <Box width={14}>
+                      <Text dimColor>
+                        {formatNumber(agent.installs)} installs
+                      </Text>
+                    </Box>
+                    {agent.verified && <Text color="#2ed573"> {"\u2713"}</Text>}
+                  </Box>
+                  {isActive && (
+                    <Box paddingLeft={4}>
+                      <Text dimColor>{agent.description}</Text>
+                    </Box>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
         </Box>
       </Box>
     </Box>
