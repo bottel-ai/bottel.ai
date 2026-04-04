@@ -1,31 +1,44 @@
 /**
- * cli_fullscreen.tsx — Fullscreen constraint for ink apps
+ * cli_fullscreen.tsx — Fullscreen wrapper for ink apps
  *
- * Based on Claude Code's AlternateScreen pattern:
- * Constrains children to terminal height so ink doesn't overflow.
- * Alt screen buffer is managed by cli.tsx (must happen before render).
+ * Alt screen buffer is managed by cli.tsx (before render).
+ * This component just provides terminal size context.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, createContext, useContext } from "react";
 import { Box, useStdout } from "ink";
+
+export interface TerminalSize {
+  rows: number;
+  columns: number;
+}
+
+const TerminalSizeContext = createContext<TerminalSize>({ rows: 24, columns: 80 });
+
+export function useTerminalSize(): TerminalSize {
+  return useContext(TerminalSizeContext);
+}
 
 export function FullScreen({ children }: { children: React.ReactNode }) {
   const { stdout } = useStdout();
-  const [rows, setRows] = useState(stdout?.rows ?? 24);
+  const [size, setSize] = useState<TerminalSize>({
+    rows: stdout?.rows ?? 24,
+    columns: stdout?.columns ?? 80,
+  });
 
   useEffect(() => {
     if (!stdout) return;
-    // Set initial size
-    setRows(stdout.rows);
-    const onResize = () => setRows(stdout.rows);
+    setSize({ rows: stdout.rows, columns: stdout.columns });
+    const onResize = () => setSize({ rows: stdout.rows, columns: stdout.columns });
     stdout.on("resize", onResize);
     return () => { stdout.off("resize", onResize); };
   }, [stdout]);
 
-  // Claude Code's key pattern: height={rows} + flexShrink={0}
   return (
-    <Box flexDirection="column" height={rows} flexShrink={0}>
-      {children}
-    </Box>
+    <TerminalSizeContext.Provider value={size}>
+      <Box flexDirection="column">
+        {children}
+      </Box>
+    </TerminalSizeContext.Provider>
   );
 }

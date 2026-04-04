@@ -22,10 +22,10 @@ describe("Fullscreen component", () => {
     expect(content).toContain("1049l");
   });
 
-  it("constrains height to terminal rows", () => {
+  it("tracks terminal size", () => {
     const content = fs.readFileSync(path.resolve(__dirname, "../cli_fullscreen.tsx"), "utf-8");
-    expect(content).toContain("height");
     expect(content).toContain("rows");
+    expect(content).toContain("columns");
   });
 
   it("cli.tsx handles cleanup on signals", () => {
