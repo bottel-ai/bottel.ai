@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
+import { useStore } from "../bottel_state.js";
 
 const MENU_ITEMS = [
   { label: "About", description: "About bottel.ai" },
@@ -7,17 +8,14 @@ const MENU_ITEMS = [
   { label: "Back", description: "Return to home" },
 ];
 
-interface SettingsProps {
-  onBack: () => void;
-}
-
-export function Settings({ onBack }: SettingsProps) {
+export function Settings() {
+  const { goBack } = useStore();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
 
   useInput((_input, key) => {
     if (key.escape) {
-      onBack();
+      goBack();
       return;
     }
 
@@ -40,7 +38,7 @@ export function Settings({ onBack }: SettingsProps) {
           setMessage("Cache cleared successfully.");
           break;
         case "Back":
-          onBack();
+          goBack();
           break;
       }
     }

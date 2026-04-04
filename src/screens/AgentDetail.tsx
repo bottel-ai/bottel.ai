@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
+import { useStore } from "../bottel_state.js";
 
 interface StoreData {
   agents: Agent[];
@@ -13,198 +14,132 @@ const storeData: StoreData = JSON.parse(
 );
 
 function renderStars(rating: number): string {
-  const filled = Math.round(rating);
-  const empty = 5 - filled;
-  return "\u2605".repeat(filled) + "\u2606".repeat(empty);
+  return "\u2605".repeat(Math.round(rating));
 }
 
-function formatNumber(n: number): string {
-  return n.toLocaleString("en-US");
-}
+type InstallStatus = "idle" | "installing";
 
-const MAX_DESCRIPTION_LINES = 8;
+export function AgentDetail({ agentId }: { agentId: string }) {
+  const { state, dispatch, goBack } = useStore();
+  const [buttonIndex, setButtonIndex] = useState(0);
+  const [installStatus, setInstallStatus] = useState<InstallStatus>("idle");
 
-type InstallState = "not-installed" | "installing" | "installed";
+  const agent = storeData.agents.find((a) => a.id === agentId);
+  const isInstalled = state.installed.has(agentId);
 
-interface AgentDetailProps {
-  agentId: string;
-  onBack: () => void;
-}
-
-export function AgentDetail({ agentId, onBack }: AgentDetailProps) {
-  const agent = useMemo(() => {
-    return storeData.agents.find((a) => a.id === agentId);
-  }, [agentId]);
-
-  const [installState, setInstallState] = useState<InstallState>("not-installed");
-  const [selectedButton, setSelectedButton] = useState(0); // 0 = Install/Uninstall, 1 = Back
-
-  // Handle installing timer
   useEffect(() => {
-    if (installState !== "installing") return;
-    const timer = setTimeout(() => {
-      setInstallState("installed");
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [installState]);
+    if (installStatus === "installing") {
+      const timer = setTimeout(() => {
+        dispatch({ type: "INSTALL_AGENT", agentId });
+        setInstallStatus("idle");
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [installStatus]);
 
   useInput((_input, key) => {
     if (key.escape) {
-      onBack();
+      goBack();
       return;
     }
-    if (key.leftArrow) {
-      setSelectedButton(0);
-    }
-    if (key.rightArrow) {
-      setSelectedButton(1);
-    }
-    if (key.return) {
-      if (selectedButton === 0) {
-        if (installState === "not-installed") {
-          setInstallState("installing");
-        } else if (installState === "installed") {
-          setInstallState("not-installed");
+    if (key.leftArrow) setButtonIndex(0);
+    if (key.rightArrow) setButtonIndex(1);
+    if (key.return && installStatus === "idle") {
+      if (buttonIndex === 0) {
+        if (isInstalled) {
+          dispatch({ type: "UNINSTALL_AGENT", agentId });
+        } else {
+          setInstallStatus("installing");
         }
-        // ignore press while installing
       } else {
-        onBack();
+        goBack();
       }
     }
   });
 
   if (!agent) {
     return (
-      <Box flexDirection="column" paddingX={1}>
+      <Box paddingX={1} flexDirection="column">
         <Text color="red">Agent not found: {agentId}</Text>
-        <Text dimColor>Press Esc to go back</Text>
+        <Text dimColor>Esc to go back</Text>
       </Box>
     );
   }
 
-  // Truncate long description to MAX_DESCRIPTION_LINES
-  const descriptionLines = agent.longDescription.split("\n");
-  const isTruncated = descriptionLines.length > MAX_DESCRIPTION_LINES;
-  const visibleLines = isTruncated
-    ? descriptionLines.slice(0, MAX_DESCRIPTION_LINES)
-    : descriptionLines;
-
-  const installLabel =
-    installState === "installing"
-      ? "Installing..."
-      : installState === "installed"
-        ? "Installed \u2713"
-        : "Install";
-  const uninstallMode = installState === "installed";
+  const descLines = agent.longDescription.split("\n");
+  const truncated = descLines.length > 8;
+  const displayLines = truncated ? descLines.slice(0, 8) : descLines;
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      {/* Breadcrumb */}
-      <Box marginBottom={1}>
-        <Text dimColor>Home &gt; {agent.category} &gt; {agent.name}</Text>
-      </Box>
+      <Text dimColor>Home &gt; {agent.category} &gt; {agent.name}</Text>
 
-      {/* Header box - flexes to terminal width */}
-      <Box
-        flexDirection="column"
-        borderStyle="single"
-        borderColor="#5f27cd"
-        paddingX={2}
-        width="100%"
-      >
-        <Box justifyContent="space-between">
-          <Box>
-            <Text bold color="#48dbfb">
-              {agent.name}
-            </Text>
-            <Text dimColor>  v{agent.version}</Text>
-          </Box>
-          {agent.verified && <Text color="#2ed573">{"\u2713"} Verified</Text>}
+      <Box borderStyle="single" borderColor="#5f27cd" paddingX={1} marginY={1}>
+        <Box flexGrow={1}>
+          <Text bold color="#48dbfb">{agent.name}</Text>
+          <Text dimColor>  v{agent.version}</Text>
         </Box>
-        <Text dimColor>by {agent.author}</Text>
+        {agent.verified && <Text color="#2ed573">Verified</Text>}
       </Box>
 
-      {/* Rating line */}
-      <Box paddingX={2} marginTop={1} gap={2}>
-        <Text color="#feca57">
-          {renderStars(agent.rating)} {agent.rating.toFixed(1)}
-        </Text>
-        <Text dimColor>({formatNumber(agent.reviews)} reviews)</Text>
-        <Text dimColor>|</Text>
-        <Text dimColor>{formatNumber(agent.installs)} installs</Text>
-        <Text dimColor>|</Text>
+      <Text dimColor>by {agent.author}</Text>
+      <Text>{""}</Text>
+
+      <Box gap={2}>
+        <Text color="#feca57">{renderStars(agent.rating)} {agent.rating.toFixed(1)}</Text>
+        <Text dimColor>({agent.reviews.toLocaleString("en-US")} reviews)</Text>
+        <Text dimColor>{agent.installs.toLocaleString("en-US")} installs</Text>
         <Text dimColor>{agent.size}</Text>
       </Box>
+      <Text>{""}</Text>
+      <Text>{agent.description}</Text>
+      <Text>{""}</Text>
+      <Text dimColor>{"\u2500".repeat(60)}</Text>
+      <Text>{""}</Text>
 
-      {/* Short description */}
-      <Box paddingX={2} marginTop={1}>
-        <Text>{agent.description}</Text>
-      </Box>
+      {displayLines.map((line, i) => (
+        <Text key={`desc-${i}`}>{line}</Text>
+      ))}
+      {truncated && <Text dimColor>... (more)</Text>}
+      <Text>{""}</Text>
+      <Text dimColor>{"\u2500".repeat(60)}</Text>
+      <Text>{""}</Text>
 
-      {/* Separator */}
-      <Box paddingX={2} marginTop={1}>
-        <Text dimColor>{"\u2500".repeat(55)}</Text>
-      </Box>
-
-      {/* Long description (truncated to MAX_DESCRIPTION_LINES) */}
-      <Box paddingX={2} marginTop={1} flexDirection="column">
-        {visibleLines.map((line, i) => (
-          <Text key={`desc-line-${i}`}>{line}</Text>
-        ))}
-        {isTruncated && (
-          <Text dimColor>... (Show more)</Text>
-        )}
-      </Box>
-
-      {/* Separator */}
-      <Box paddingX={2} marginTop={1}>
-        <Text dimColor>{"\u2500".repeat(55)}</Text>
-      </Box>
-
-      {/* Capabilities as colored tags */}
-      <Box paddingX={2} marginTop={1} gap={1} flexWrap="wrap">
-        <Text bold>Capabilities:</Text>
+      <Box gap={1}>
+        <Text>Capabilities: </Text>
         {agent.capabilities.map((cap) => (
-          <Text key={`cap-${cap}`} color="#54a0ff">
-            [{cap}]
-          </Text>
+          <Text key={cap} color="#54a0ff">[{cap}]</Text>
         ))}
       </Box>
+      <Text>{""}</Text>
+      <Text dimColor>Updated: {agent.updated}  |  Category: <Text color="#54a0ff" underline>{agent.category}</Text></Text>
+      <Text>{""}</Text>
 
-      {/* Meta line */}
-      <Box paddingX={2} marginTop={1} gap={2}>
-        <Text dimColor>Updated: {agent.updated}</Text>
-        <Text dimColor>|</Text>
-        <Text color="#54a0ff" underline>Category: {agent.category}</Text>
-      </Box>
-
-      {/* Action buttons */}
-      <Box paddingX={2} marginTop={1} gap={2}>
-        <Text
-          bold={selectedButton === 0}
-          color={selectedButton === 0 ? (uninstallMode ? "red" : "cyan") : undefined}
-          dimColor={selectedButton !== 0}
-        >
-          {installState === "installing" ? (
-            <>[ <Spinner type="dots" /> Installing... ]</>
-          ) : (
-            `[ ${installState === "installed" ? "Uninstall" : installLabel} ]`
-          )}
-        </Text>
-        {installState === "installed" && selectedButton !== 0 && (
-          <Text color="#2ed573">Installed ✓</Text>
+      <Box gap={2}>
+        {installStatus === "installing" ? (
+          <Text color="#feca57"><Spinner type="dots" /> Installing...</Text>
+        ) : (
+          <Text
+            bold={buttonIndex === 0}
+            color={buttonIndex === 0 ? (isInstalled ? "red" : "#48dbfb") : undefined}
+            dimColor={buttonIndex !== 0}
+          >
+            [ {isInstalled ? "Uninstall" : "Install"} ]
+          </Text>
         )}
         <Text
-          bold={selectedButton === 1}
-          color={selectedButton === 1 ? "cyan" : undefined}
-          dimColor={selectedButton !== 1}
+          bold={buttonIndex === 1}
+          color={buttonIndex === 1 ? "#48dbfb" : undefined}
+          dimColor={buttonIndex !== 1}
         >
           [ Back ]
         </Text>
+        {isInstalled && installStatus === "idle" && (
+          <Text color="#2ed573">Installed \u2713</Text>
+        )}
       </Box>
 
-      {/* Help text */}
-      <Box paddingX={2} marginTop={1}>
+      <Box marginTop={1}>
         <Text dimColor>Esc back · ←→ nav · Enter select</Text>
       </Box>
     </Box>

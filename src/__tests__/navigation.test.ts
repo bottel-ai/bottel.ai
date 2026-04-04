@@ -136,9 +136,9 @@ describe("Screen file structure", () => {
       expect(fs.existsSync(filePath)).toBe(true);
       const content = fs.readFileSync(filePath, "utf-8");
       expect(content.length).toBeGreaterThan(100);
-      // Every screen should have onBack prop (except Home)
+      // Every screen should have goBack navigation (except Home)
       if (screen !== "Home.tsx") {
-        expect(content).toContain("onBack");
+        expect(content).toContain("goBack");
       }
       // Every screen should use useInput for keyboard handling
       expect(content).toContain("useInput");

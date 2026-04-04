@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
+import { useStore } from "../bottel_state.js";
 
 interface StoreData {
   agents: Agent[];
@@ -24,149 +25,106 @@ function formatNumber(n: number): string {
 
 const PAGE_SIZE = 5;
 
-interface SearchProps {
-  onBack: () => void;
-  onViewAgent: (id: string) => void;
-  savedQuery?: string;
-  savedIndex?: number;
-  onQueryChange?: (query: string) => void;
-  onIndexChange?: (index: number) => void;
-}
-
-export function Search({ onBack, onViewAgent, savedQuery, savedIndex, onQueryChange, onIndexChange }: SearchProps) {
-  const [query, setQuery] = useState(savedQuery || "");
-  const [selectedIndex, setSelectedIndex] = useState(savedIndex ?? 0);
-  const [inputFocused, setInputFocused] = useState(!savedQuery);
-  const [page, setPage] = useState(savedIndex != null ? Math.floor(savedIndex / PAGE_SIZE) : 0);
+export function Search() {
+  const { state, dispatch, navigate, goBack } = useStore();
+  const { query, selectedIndex, page, inputFocused } = state.search;
 
   const allAgents = storeData.agents;
 
   const results = useMemo(() => {
     if (!query.trim()) return allAgents;
     const q = query.toLowerCase();
-    return allAgents.filter((agent) => {
-      return (
-        agent.name.toLowerCase().includes(q) ||
-        agent.description.toLowerCase().includes(q) ||
-        agent.category.toLowerCase().includes(q) ||
-        agent.author.toLowerCase().includes(q) ||
-        agent.capabilities.some((c) => c.toLowerCase().includes(q))
-      );
-    });
+    return allAgents.filter((agent) =>
+      agent.name.toLowerCase().includes(q) ||
+      agent.description.toLowerCase().includes(q) ||
+      agent.category.toLowerCase().includes(q) ||
+      agent.author.toLowerCase().includes(q) ||
+      agent.capabilities.some((c) => c.toLowerCase().includes(q))
+    );
   }, [query, allAgents]);
 
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
-  const pagedResults = results.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const currentPage = Math.min(page, totalPages - 1);
+  const pagedResults = results.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+
+  const update = (s: Partial<typeof state.search>) =>
+    dispatch({ type: "UPDATE_SEARCH", state: s });
 
   useInput((input, key) => {
     if (key.escape) {
       if (!inputFocused) {
-        // In results → go back to input
-        setInputFocused(true);
-      } else if (query.length > 0) {
-        // In input with text → clear the text
-        setQuery("");
-        setSelectedIndex(0);
-        setPage(0);
+        update({ inputFocused: true });
+      } else if (query) {
+        update({ query: "", selectedIndex: 0, page: 0 });
       } else {
-        // In input with no text → go back
-        onBack();
+        goBack();
       }
       return;
     }
 
     if (inputFocused) {
-      // When input is focused and user presses down arrow, switch to results
       if (key.downArrow && results.length > 0) {
-        setInputFocused(false);
-        setSelectedIndex(0);
-        setPage(0);
+        update({ inputFocused: false, selectedIndex: 0 });
         return;
       }
-      // Left/right arrows for page navigation while in input
-      if (key.leftArrow && page > 0) {
-        setPage((p) => p - 1);
-        setSelectedIndex(0);
+      if (key.leftArrow && currentPage > 0) {
+        update({ page: currentPage - 1, selectedIndex: 0 });
         return;
       }
-      if (key.rightArrow && page < totalPages - 1) {
-        setPage((p) => p + 1);
-        setSelectedIndex(0);
+      if (key.rightArrow && currentPage < totalPages - 1) {
+        update({ page: currentPage + 1, selectedIndex: 0 });
         return;
       }
       return;
     }
 
-    // Results focused
+    // In results
     if (key.upArrow) {
-      if (selectedIndex === 0) {
-        // At top of results, go back to input
-        setInputFocused(true);
+      if (selectedIndex <= 0) {
+        update({ inputFocused: true });
       } else {
-        setSelectedIndex((i) => i - 1);
+        update({ selectedIndex: selectedIndex - 1 });
       }
       return;
     }
     if (key.downArrow) {
-      setSelectedIndex((i) => Math.min(pagedResults.length - 1, i + 1));
+      update({ selectedIndex: Math.min(pagedResults.length - 1, selectedIndex + 1) });
       return;
     }
-    if (key.leftArrow) {
-      if (page > 0) {
-        setPage((p) => p - 1);
-        setSelectedIndex(0);
-      }
+    if (key.leftArrow && currentPage > 0) {
+      update({ page: currentPage - 1, selectedIndex: 0 });
       return;
     }
-    if (key.rightArrow) {
-      if (page < totalPages - 1) {
-        setPage((p) => p + 1);
-        setSelectedIndex(0);
-      }
+    if (key.rightArrow && currentPage < totalPages - 1) {
+      update({ page: currentPage + 1, selectedIndex: 0 });
       return;
     }
     if (key.return) {
       const agent = pagedResults[selectedIndex];
       if (agent) {
-        const globalIndex = page * PAGE_SIZE + selectedIndex;
-        onIndexChange?.(globalIndex);
-        onViewAgent(agent.id);
+        navigate({ name: "agent-detail", agentId: agent.id });
       }
       return;
     }
 
-    // Any printable character typed while in results: switch back to input
+    // Typing while in results: switch back to input
     if (input && !key.ctrl && !key.meta) {
-      setInputFocused(true);
-      setQuery((q) => q + input);
-      setSelectedIndex(0);
-      setPage(0);
+      update({ inputFocused: true, query: query + input, selectedIndex: 0, page: 0 });
       return;
     }
   });
 
   const handleQueryChange = (value: string) => {
-    setQuery(value);
-    onQueryChange?.(value);
-    setSelectedIndex(0);
-    setPage(0);
+    update({ query: value, selectedIndex: 0, page: 0 });
   };
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      {/* Breadcrumb */}
-      <Box marginBottom={0}>
-        <Text dimColor>Home &gt; Search</Text>
-      </Box>
-
-      {/* Header */}
+      <Text dimColor>Home &gt; Search</Text>
       <Box marginBottom={1}>
-        <Text bold color="#48dbfb">
-          Search Agents
-        </Text>
+        <Text bold color="#48dbfb">Search Agents</Text>
       </Box>
 
-      {/* Search input */}
       <Box marginBottom={1}>
         <Text color={inputFocused ? "#48dbfb" : undefined}>{"\u276f "}</Text>
         <TextInput
@@ -177,24 +135,22 @@ export function Search({ onBack, onViewAgent, savedQuery, savedIndex, onQueryCha
         />
       </Box>
 
-      {/* Result count */}
       <Box marginBottom={1}>
         <Text dimColor>
           {results.length} result{results.length !== 1 ? "s" : ""}
           {query.trim() ? ` for "${query}"` : ""}
+          {totalPages > 1 ? `  Page ${currentPage + 1}/${totalPages}` : ""}
         </Text>
       </Box>
 
-      {/* Divider */}
       <Box marginBottom={1}>
         <Text dimColor>{"\u2500".repeat(60)}</Text>
       </Box>
 
-      {/* Results */}
       <Box flexDirection="column">
         {results.length === 0 && query.trim() ? (
           <Box paddingLeft={2} flexDirection="column">
-            <Text dimColor>No results found for &quot;{query}&quot;</Text>
+            <Text dimColor>No results found for "{query}"</Text>
             <Text dimColor>Try a different search term.</Text>
           </Box>
         ) : (
@@ -220,22 +176,18 @@ export function Search({ onBack, onViewAgent, savedQuery, savedIndex, onQueryCha
                     </Text>
                   </Box>
                   <Box width={16}>
-                    <Text dimColor>
-                      {formatNumber(agent.installs)} installs
-                    </Text>
+                    <Text dimColor>{formatNumber(agent.installs)} installs</Text>
                   </Box>
                   {agent.verified && <Text color="#2ed573"> {"\u2713"}</Text>}
                 </Box>
-                <Box paddingLeft={4}>
-                  <Text dimColor>{agent.description}</Text>
-                </Box>
-                {isActive && agent.capabilities.length > 0 && (
-                  <Box paddingLeft={4} gap={1}>
-                    {agent.capabilities.map((cap) => (
-                      <Text key={cap} color="#54a0ff">
-                        [{cap}]
-                      </Text>
-                    ))}
+                {isActive && (
+                  <Box paddingLeft={4} flexDirection="column">
+                    <Text dimColor>{agent.description}</Text>
+                    <Box gap={1}>
+                      {agent.capabilities.map((cap) => (
+                        <Text key={cap} color="#54a0ff">[{cap}]</Text>
+                      ))}
+                    </Box>
                   </Box>
                 )}
               </Box>
@@ -244,18 +196,8 @@ export function Search({ onBack, onViewAgent, savedQuery, savedIndex, onQueryCha
         )}
       </Box>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <Box marginTop={1}>
-          <Text dimColor>
-            Page {page + 1}/{totalPages}  {"\u2190\u2192"} prev/next
-          </Text>
-        </Box>
-      )}
-
-      {/* Help text */}
       <Box marginTop={1}>
-        <Text dimColor>Esc back · ↑↓ nav · Enter select · / search</Text>
+        <Text dimColor>Esc back · ↑↓ nav · Enter select{totalPages > 1 ? " · ←→ pages" : ""}</Text>
       </Box>
     </Box>
   );

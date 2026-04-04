@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
-import { Box, Text, useInput } from "ink";
+import React, { useMemo } from "react";
+import { Box, Text, useInput, useApp } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
+import { useStore } from "../bottel_state.js";
 
 interface StoreData {
   featured: string[];
@@ -33,16 +34,6 @@ const MENU_ITEMS = [
   { label: "Exit", value: "exit", description: "Quit bottel" },
 ];
 
-interface HomeProps {
-  onViewAgent: (id: string) => void;
-  onViewCategory: (name: string) => void;
-  onSearch: () => void;
-  onBrowse: () => void;
-  onInstalled: () => void;
-  onSettings: () => void;
-  onExit: () => void;
-}
-
 // Each navigable item in the flat list
 type NavItem =
   | { section: "menu"; index: number }
@@ -50,15 +41,12 @@ type NavItem =
   | { section: "trending"; index: number }
   | { section: "categories"; index: number };
 
-export function Home({
-  onViewAgent,
-  onViewCategory,
-  onSearch,
-  onBrowse,
-  onInstalled,
-  onSettings,
-  onExit,
-}: HomeProps) {
+export function Home() {
+  const { state, dispatch, navigate } = useStore();
+  const { exit } = useApp();
+
+  const selectedIndex = state.home.selectedIndex;
+
   const agentMap = useMemo(() => {
     const map = new Map<string, Agent>();
     for (const a of storeData.agents) map.set(a.id, a);
@@ -93,8 +81,6 @@ export function Home({
     return items;
   }, [featuredAgents.length, trendingAgents.length, categories.length]);
 
-  const [selectedIndex, setSelectedIndex] = useState(0);
-
   const current = navItems[selectedIndex];
   const activeSection = current?.section ?? "menu";
   const activeIndexInSection = current?.index ?? 0;
@@ -103,11 +89,11 @@ export function Home({
 
   useInput((input, key) => {
     if (input === "q") {
-      onExit();
+      exit();
       return;
     }
     if (input === "/") {
-      onSearch();
+      navigate({ name: "search" });
       return;
     }
 
@@ -118,33 +104,33 @@ export function Home({
         const item = MENU_ITEMS[current.index]!;
         switch (item.value) {
           case "home": break;
-          case "browse": onBrowse(); break;
-          case "search": onSearch(); break;
-          case "installed": onInstalled(); break;
-          case "settings": onSettings(); break;
-          case "exit": onExit(); break;
+          case "browse": navigate({ name: "browse" }); break;
+          case "search": navigate({ name: "search" }); break;
+          case "installed": navigate({ name: "installed" }); break;
+          case "settings": navigate({ name: "settings" }); break;
+          case "exit": exit(); break;
         }
       } else if (current.section === "featured") {
         const agent = featuredAgents[current.index];
-        if (agent) onViewAgent(agent.id);
+        if (agent) navigate({ name: "agent-detail", agentId: agent.id });
       } else if (current.section === "trending") {
         const agent = trendingAgents[current.index];
-        if (agent) onViewAgent(agent.id);
+        if (agent) navigate({ name: "agent-detail", agentId: agent.id });
       } else if (current.section === "categories") {
         const cat = categories[current.index];
-        if (cat) onViewCategory(cat.name);
+        if (cat) navigate({ name: "browse" });
       }
       return;
     }
 
     // Up
     if (key.upArrow) {
-      setSelectedIndex((i) => Math.max(0, i - 1));
+      dispatch({ type: "UPDATE_HOME", state: { selectedIndex: Math.max(0, selectedIndex - 1) } });
     }
 
     // Down
     if (key.downArrow) {
-      setSelectedIndex((i) => Math.min(navItems.length - 1, i + 1));
+      dispatch({ type: "UPDATE_HOME", state: { selectedIndex: Math.min(navItems.length - 1, selectedIndex + 1) } });
     }
   });
 

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Box, Text, useInput } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
+import { useStore } from "../bottel_state.js";
 
 interface StoreData {
   agents: Agent[];
@@ -11,24 +12,17 @@ const storeData: StoreData = JSON.parse(
   fs.readFileSync(new URL("../data/store.json", import.meta.url), "utf-8")
 );
 
-// TODO: shared install state — currently hardcoded, should sync with AgentDetail install actions
-const PREINSTALLED = ["code-reviewer", "translator", "data-analyst"];
-
-interface InstalledProps {
-  onBack: () => void;
-  onViewAgent: (id: string) => void;
-}
-
-export function Installed({ onBack, onViewAgent }: InstalledProps) {
+export function Installed() {
+  const { state, navigate, goBack } = useStore();
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const installedAgents = useMemo(() => {
-    return storeData.agents.filter((a) => PREINSTALLED.includes(a.id));
-  }, []);
+    return storeData.agents.filter((a) => state.installed.has(a.id));
+  }, [state.installed]);
 
   useInput((_input, key) => {
     if (key.escape) {
-      onBack();
+      goBack();
       return;
     }
 
@@ -40,7 +34,7 @@ export function Installed({ onBack, onViewAgent }: InstalledProps) {
     }
 
     if (key.return && installedAgents.length > 0) {
-      onViewAgent(installedAgents[selectedIndex].id);
+      navigate({ name: "agent-detail", agentId: installedAgents[selectedIndex].id });
     }
   });
 
