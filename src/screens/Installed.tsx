@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { Box, Text, useInput } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
@@ -13,8 +13,8 @@ const storeData: StoreData = JSON.parse(
 );
 
 export function Installed() {
-  const { state, navigate, goBack } = useStore();
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const { state, dispatch, navigate, goBack } = useStore();
+  const { selectedIndex } = state.installedScreen;
 
   const installedAgents = useMemo(() => {
     return storeData.agents.filter((a) => state.installed.has(a.id));
@@ -25,37 +25,23 @@ export function Installed() {
       goBack();
       return;
     }
-
     if (key.upArrow) {
-      setSelectedIndex((i) => Math.max(0, i - 1));
+      dispatch({ type: "UPDATE_INSTALLED", state: { selectedIndex: Math.max(0, selectedIndex - 1) } });
     }
     if (key.downArrow) {
-      setSelectedIndex((i) => Math.min(installedAgents.length - 1, i + 1));
+      dispatch({ type: "UPDATE_INSTALLED", state: { selectedIndex: Math.min(installedAgents.length - 1, selectedIndex + 1) } });
     }
-
-    if (key.return && installedAgents.length > 0) {
+    if (key.return && installedAgents.length > 0 && installedAgents[selectedIndex]) {
       navigate({ name: "agent-detail", agentId: installedAgents[selectedIndex].id });
     }
   });
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      {/* Breadcrumb */}
-      <Box marginBottom={1}>
-        <Text dimColor>Home &gt; Installed</Text>
-      </Box>
+      <Text dimColor>Home &gt; Installed</Text>
 
-      {/* Header */}
-      <Box
-        borderStyle="single"
-        borderColor="#5f27cd"
-        paddingX={2}
-        width="100%"
-        marginBottom={1}
-      >
-        <Text bold color="#48dbfb">
-          Installed Apps ({installedAgents.length})
-        </Text>
+      <Box borderStyle="single" borderColor="#5f27cd" paddingX={2} marginBottom={1}>
+        <Text bold color="#48dbfb">Installed Apps ({installedAgents.length})</Text>
       </Box>
 
       {installedAgents.length === 0 ? (
@@ -68,14 +54,12 @@ export function Installed() {
           {installedAgents.map((agent, i) => {
             const isSelected = i === selectedIndex;
             return (
-              <Box key={agent.id} marginBottom={0}>
+              <Box key={agent.id}>
                 <Text color={isSelected ? "#48dbfb" : undefined}>
                   {isSelected ? "\u276f " : "  "}
                 </Text>
                 <Box width={22}>
-                  <Text bold={isSelected} color={isSelected ? "#48dbfb" : undefined}>
-                    {agent.name}
-                  </Text>
+                  <Text bold={isSelected} color={isSelected ? "#48dbfb" : undefined}>{agent.name}</Text>
                 </Box>
                 <Box width={10}>
                   <Text dimColor>v{agent.version}</Text>
@@ -90,7 +74,6 @@ export function Installed() {
         </Box>
       )}
 
-      {/* Help text */}
       <Box marginTop={1}>
         <Text dimColor>Esc back · ↑↓ nav · Enter select</Text>
       </Box>

@@ -21,7 +21,7 @@ type InstallStatus = "idle" | "installing";
 
 export function AgentDetail({ agentId }: { agentId: string }) {
   const { state, dispatch, goBack } = useStore();
-  const [buttonIndex, setButtonIndex] = useState(0);
+  const { buttonIndex } = state.agentDetail;
   const [installStatus, setInstallStatus] = useState<InstallStatus>("idle");
 
   const agent = storeData.agents.find((a) => a.id === agentId);
@@ -42,8 +42,8 @@ export function AgentDetail({ agentId }: { agentId: string }) {
       goBack();
       return;
     }
-    if (key.leftArrow) setButtonIndex(0);
-    if (key.rightArrow) setButtonIndex(1);
+    if (key.leftArrow) dispatch({ type: "UPDATE_AGENT_DETAIL", state: { buttonIndex: 0 } });
+    if (key.rightArrow) dispatch({ type: "UPDATE_AGENT_DETAIL", state: { buttonIndex: 1 } });
     if (key.return && installStatus === "idle") {
       if (buttonIndex === 0) {
         if (isInstalled) {

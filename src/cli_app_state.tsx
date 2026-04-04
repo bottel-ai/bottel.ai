@@ -31,6 +31,18 @@ export interface HomeState {
   selectedIndex: number;
 }
 
+export interface InstalledState {
+  selectedIndex: number;
+}
+
+export interface SettingsState {
+  selectedIndex: number;
+}
+
+export interface AgentDetailState {
+  buttonIndex: number;
+}
+
 // ─── App State ──────────────────────────────────────────────────
 
 export interface AppState {
@@ -40,6 +52,9 @@ export interface AppState {
   search: SearchState;
   browse: BrowseState;
   home: HomeState;
+  installedScreen: InstalledState;
+  settings: SettingsState;
+  agentDetail: AgentDetailState;
 }
 
 const INITIAL_SEARCH: SearchState = {
@@ -61,6 +76,18 @@ const INITIAL_HOME: HomeState = {
   selectedIndex: 0,
 };
 
+const INITIAL_INSTALLED: InstalledState = {
+  selectedIndex: 0,
+};
+
+const INITIAL_SETTINGS: SettingsState = {
+  selectedIndex: 0,
+};
+
+const INITIAL_AGENT_DETAIL: AgentDetailState = {
+  buttonIndex: 0,
+};
+
 const INITIAL_STATE: AppState = {
   screen: { name: "home" },
   history: [],
@@ -68,6 +95,9 @@ const INITIAL_STATE: AppState = {
   search: INITIAL_SEARCH,
   browse: INITIAL_BROWSE,
   home: INITIAL_HOME,
+  installedScreen: INITIAL_INSTALLED,
+  settings: INITIAL_SETTINGS,
+  agentDetail: INITIAL_AGENT_DETAIL,
 };
 
 // ─── Actions ────────────────────────────────────────────────────
@@ -81,6 +111,9 @@ export type Action =
   | { type: "UPDATE_SEARCH"; state: Partial<SearchState> }
   | { type: "UPDATE_BROWSE"; state: Partial<BrowseState> }
   | { type: "UPDATE_HOME"; state: Partial<HomeState> }
+  | { type: "UPDATE_INSTALLED"; state: Partial<InstalledState> }
+  | { type: "UPDATE_SETTINGS"; state: Partial<SettingsState> }
+  | { type: "UPDATE_AGENT_DETAIL"; state: Partial<AgentDetailState> }
   | { type: "RESET_SEARCH" }
   | { type: "RESET_BROWSE" };
 
@@ -139,6 +172,24 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         home: { ...state.home, ...action.state },
+      };
+
+    case "UPDATE_INSTALLED":
+      return {
+        ...state,
+        installedScreen: { ...state.installedScreen, ...action.state },
+      };
+
+    case "UPDATE_SETTINGS":
+      return {
+        ...state,
+        settings: { ...state.settings, ...action.state },
+      };
+
+    case "UPDATE_AGENT_DETAIL":
+      return {
+        ...state,
+        agentDetail: { ...state.agentDetail, ...action.state },
       };
 
     case "RESET_SEARCH":
