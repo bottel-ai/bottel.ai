@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { useStore } from "../cli_app_state.js";
 import { colors, boxStyle, Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_theme.js";
+import { Viewport } from "../cli_app_viewport.js";
 
 const MENU_ITEMS = [
   { label: "About", description: "About bottel.ai" },
@@ -43,47 +44,65 @@ export function Settings() {
     }
   });
 
+  // Build rows for Viewport
+  const allRows: React.ReactNode[] = [];
+
+  // Breadcrumb
+  allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Settings"]} />);
+
+  // Header
+  allRows.push(<ScreenHeader key="header" title="Settings" />);
+
+  // Track focused row
+  const firstMenuRow = allRows.length;
+
+  // Menu items
+  MENU_ITEMS.forEach((item, i) => {
+    const isSelected = i === selectedIndex;
+    allRows.push(
+      <Box key={item.label}>
+        <Cursor active={isSelected} />
+        <Text bold={isSelected} color={isSelected ? colors.primary : undefined}>
+          {item.label.padEnd(18)}
+        </Text>
+        <Text dimColor>{item.description}</Text>
+      </Box>
+    );
+  });
+
+  // Message (non-about)
+  if (message && message !== "about") {
+    allRows.push(
+      <Box key="message" marginTop={1} paddingLeft={2}>
+        <Text color={colors.success}>{message}</Text>
+      </Box>
+    );
+  }
+
+  // Footer
+  allRows.push(<HelpFooter key="footer" text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select" />);
+
+  // About box (if shown)
+  if (message === "about") {
+    allRows.push(
+      <Box key="about-header" marginTop={1} {...boxStyle.section} paddingX={2} paddingY={1} flexDirection="column">
+        <Text bold color={colors.primary}>bottel.ai</Text>
+        <Text dimColor>The Bot CLI Internet Portal</Text>
+        <Text> </Text>
+        <Box gap={2}><Text dimColor>Version:</Text><Text>0.1.0</Text></Box>
+        <Box gap={2}><Text dimColor>Runtime:</Text><Text>Node.js {process.version}</Text></Box>
+        <Box gap={2}><Text dimColor>Platform:</Text><Text>{process.platform} ({process.arch})</Text></Box>
+        <Text> </Text>
+        <Text color={colors.secondary}>The Bot CLI Internet Portal — for CLI App Discovery</Text>
+      </Box>
+    );
+  }
+
+  const focusedRowIndex = firstMenuRow + selectedIndex;
+
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Breadcrumb path={["Home", "Settings"]} />
-
-      <ScreenHeader title="Settings" />
-
-      <Box flexDirection="column">
-        {MENU_ITEMS.map((item, i) => {
-          const isSelected = i === selectedIndex;
-          return (
-            <Box key={item.label}>
-              <Cursor active={isSelected} />
-              <Text bold={isSelected} color={isSelected ? colors.primary : undefined}>
-                {item.label.padEnd(18)}
-              </Text>
-              <Text dimColor>{item.description}</Text>
-            </Box>
-          );
-        })}
-      </Box>
-
-      {message && message !== "about" && (
-        <Box marginTop={1} paddingLeft={2}>
-          <Text color={colors.success}>{message}</Text>
-        </Box>
-      )}
-
-      <HelpFooter text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select" />
-
-      {message === "about" && (
-        <Box marginTop={1} flexDirection="column" {...boxStyle.section} paddingX={2} paddingY={1}>
-          <Text bold color={colors.primary}>bottel.ai</Text>
-          <Text dimColor>The Bot CLI Internet Portal</Text>
-          <Text> </Text>
-          <Box gap={2}><Text dimColor>Version:</Text><Text>0.1.0</Text></Box>
-          <Box gap={2}><Text dimColor>Runtime:</Text><Text>Node.js {process.version}</Text></Box>
-          <Box gap={2}><Text dimColor>Platform:</Text><Text>{process.platform} ({process.arch})</Text></Box>
-          <Text> </Text>
-          <Text color={colors.secondary}>The Bot CLI Internet Portal — for CLI App Discovery</Text>
-        </Box>
-      )}
+      <Viewport rows={allRows} focusedIndex={focusedRowIndex} reservedLines={2} />
     </Box>
   );
 }

@@ -1,6 +1,5 @@
 import React from "react";
-import { Box, useApp } from "ink";
-import Logo from "./components/Logo.js";
+import { Box } from "ink";
 import StatusBar from "./components/StatusBar.js";
 import { StoreProvider, useStore } from "./cli_app_state.js";
 import { Home } from "./screens/Home.js";
@@ -12,13 +11,16 @@ import { Settings } from "./screens/Settings.js";
 
 function Router() {
   const { state } = useStore();
-  const isHome = state.screen.name === "home";
 
+  // Home handles its own layout (logo + status + content in ScrollList)
+  if (state.screen.name === "home") {
+    return <Home />;
+  }
+
+  // Other screens: just status bar + screen
   return (
     <Box flexDirection="column">
-      {isHome && <Logo />}
       <StatusBar />
-      {isHome && <Home />}
       {state.screen.name === "browse" && <Browse />}
       {state.screen.name === "search" && <Search />}
       {state.screen.name === "agent-detail" && (

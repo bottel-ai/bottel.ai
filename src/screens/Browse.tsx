@@ -4,6 +4,7 @@ import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
 import { colors, columns, Breadcrumb, Rating, InstallCount, VerifiedBadge, Cursor, HelpFooter } from "../cli_app_theme.js";
+import { Viewport } from "../cli_app_viewport.js";
 
 interface StoreData {
   categories: { name: string; icon: string; agents: string[] }[];
@@ -101,63 +102,91 @@ export function Browse() {
     ? ["Home", "Browse", expandedCat.name]
     : ["Home", "Browse"];
 
+  // Build rows for Viewport
+  const allRows: React.ReactNode[] = [];
+
+  // Row 0: breadcrumb
+  allRows.push(<Breadcrumb key="breadcrumb" path={breadcrumbPath} />);
+
+  // Row 1: header
+  allRows.push(
+    <Box key="header" marginBottom={1}>
+      <Text bold color={colors.primary}>Browse Categories</Text>
+    </Box>
+  );
+
+  // Track focused row index
+  let focusedRowIndex = 0;
+
+  // Category rows (with expanded agents as sub-rows)
+  categories.forEach((cat, i) => {
+    const isActive = i === categoryIndex && !inAgents;
+    const isExpanded = expandedCategory === i;
+
+    if (isActive) {
+      focusedRowIndex = allRows.length;
+    }
+
+    // Category header row
+    allRows.push(
+      <Box key={`cat-${cat.name}`}>
+        <Cursor active={isActive} />
+        <Text bold={isActive || isExpanded} color={isActive ? colors.primary : undefined}>
+          {isExpanded ? "\u25BC" : "\u25B6"} {cat.icon} {cat.name}
+        </Text>
+        <Text dimColor> ({cat.agents.length})</Text>
+      </Box>
+    );
+
+    // Expanded agent sub-rows
+    if (isExpanded) {
+      pagedAgents.forEach((agent, j) => {
+        const isAgentActive = inAgents && j === agentIndex;
+
+        if (isAgentActive) {
+          focusedRowIndex = allRows.length;
+        }
+
+        allRows.push(
+          <Box key={`agent-${agent.id}`} flexDirection="column" paddingLeft={4}>
+            <Box>
+              <Cursor active={isAgentActive} />
+              <Box width={columns.name}>
+                <Text bold={isAgentActive} color={isAgentActive ? colors.primary : undefined}>
+                  {agent.name}
+                </Text>
+              </Box>
+              <Rating value={agent.rating} showNumber={false} />
+              <InstallCount count={agent.installs} />
+              <VerifiedBadge verified={agent.verified} />
+            </Box>
+            <Box paddingLeft={4}>
+              <Text dimColor>{agent.description.slice(0, 70)}</Text>
+            </Box>
+          </Box>
+        );
+      });
+
+      if (totalAgentPages > 1) {
+        allRows.push(
+          <Box key="agent-page-info" paddingLeft={4} marginBottom={1}>
+            <Text dimColor>
+              Page {currentAgentPage + 1}/{totalAgentPages}  ←→ prev/next
+            </Text>
+          </Box>
+        );
+      }
+    }
+  });
+
+  // Footer
+  allRows.push(
+    <HelpFooter key="footer" text={`Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter expand/select${totalAgentPages > 1 && inAgents ? " \u00b7 \u2190\u2192 pages" : ""}`} />
+  );
+
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Breadcrumb path={breadcrumbPath} />
-      <Box marginBottom={1}>
-        <Text bold color={colors.primary}>Browse Categories</Text>
-      </Box>
-
-      <Box flexDirection="column">
-        {categories.map((cat, i) => {
-          const isActive = i === categoryIndex && !inAgents;
-          const isExpanded = expandedCategory === i;
-          return (
-            <Box key={`cat-${cat.name}`} flexDirection="column">
-              <Box>
-                <Cursor active={isActive} />
-                <Text bold={isActive || isExpanded} color={isActive ? colors.primary : undefined}>
-                  {isExpanded ? "\u25BC" : "\u25B6"} {cat.icon} {cat.name}
-                </Text>
-                <Text dimColor> ({cat.agents.length})</Text>
-              </Box>
-
-              {isExpanded && (
-                <Box flexDirection="column" paddingLeft={4} marginBottom={1}>
-                  {pagedAgents.map((agent, j) => {
-                    const isAgentActive = inAgents && j === agentIndex;
-                    return (
-                      <Box key={`agent-${agent.id}`} flexDirection="column">
-                        <Box>
-                          <Cursor active={isAgentActive} />
-                          <Box width={columns.name}>
-                            <Text bold={isAgentActive} color={isAgentActive ? colors.primary : undefined}>
-                              {agent.name}
-                            </Text>
-                          </Box>
-                          <Rating value={agent.rating} showNumber={false} />
-                          <InstallCount count={agent.installs} />
-                          <VerifiedBadge verified={agent.verified} />
-                        </Box>
-                        <Box paddingLeft={4}>
-                          <Text dimColor>{agent.description.slice(0, 70)}</Text>
-                        </Box>
-                      </Box>
-                    );
-                  })}
-                  {totalAgentPages > 1 && (
-                    <Text dimColor>
-                      Page {currentAgentPage + 1}/{totalAgentPages}  ←→ prev/next
-                    </Text>
-                  )}
-                </Box>
-              )}
-            </Box>
-          );
-        })}
-      </Box>
-
-      <HelpFooter text={`Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter expand/select${totalAgentPages > 1 && inAgents ? " \u00b7 \u2190\u2192 pages" : ""}`} />
+      <Viewport rows={allRows} focusedIndex={focusedRowIndex} reservedLines={2} />
     </Box>
   );
 }

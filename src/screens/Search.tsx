@@ -5,6 +5,7 @@ import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
 import { colors, columns, Breadcrumb, Rating, InstallCount, VerifiedBadge, Cursor, Separator, HelpFooter } from "../cli_app_theme.js";
+import { Viewport } from "../cli_app_viewport.js";
 
 interface StoreData {
   agents: Agent[];
@@ -109,75 +110,110 @@ export function Search() {
     update({ query: value, selectedIndex: 0, page: 0 });
   };
 
+  // Build rows for Viewport
+  const allRows: React.ReactNode[] = [];
+
+  // Row 0: breadcrumb
+  allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Search"]} />);
+
+  // Row 1: header
+  allRows.push(
+    <Box key="header" marginBottom={1}>
+      <Text bold color={colors.primary}>Search Agents</Text>
+    </Box>
+  );
+
+  // Row 2: search input
+  allRows.push(
+    <Box key="search-input" marginBottom={1}>
+      <Text color={inputFocused ? colors.primary : undefined}>{"\u276f "}</Text>
+      <TextInput
+        value={query}
+        onChange={handleQueryChange}
+        placeholder="Type to search..."
+        focus={inputFocused}
+      />
+    </Box>
+  );
+
+  // Row 3: result count
+  allRows.push(
+    <Box key="result-count" marginBottom={1}>
+      <Text dimColor>
+        {results.length} result{results.length !== 1 ? "s" : ""}
+        {query.trim() ? ` for "${query}"` : ""}
+        {totalPages > 1 ? `  Page ${currentPage + 1}/${totalPages}` : ""}
+      </Text>
+    </Box>
+  );
+
+  // Row 4: separator
+  allRows.push(<Separator key="separator" />);
+
+  // Track the focused row index (for Viewport scrolling)
+  const firstResultRow = allRows.length;
+
+  if (results.length === 0 && query.trim()) {
+    allRows.push(
+      <Box key="no-results" paddingLeft={2} flexDirection="column">
+        <Text dimColor>No results found for "{query}"</Text>
+      </Box>
+    );
+    allRows.push(
+      <Box key="no-results-hint" paddingLeft={2}>
+        <Text dimColor>Try a different search term.</Text>
+      </Box>
+    );
+  } else {
+    pagedResults.forEach((agent, i) => {
+      const isActive = !inputFocused && i === selectedIndex;
+      allRows.push(
+        <Box key={`result-${agent.id}`} flexDirection="column" marginBottom={1}>
+          <Box>
+            <Cursor active={isActive} />
+            <Box width={columns.name}>
+              <Text bold={isActive} color={isActive ? colors.primary : undefined}>
+                {agent.name}
+              </Text>
+            </Box>
+            <Box width={16}>
+              <Text dimColor>by {agent.author}</Text>
+            </Box>
+            <Rating value={agent.rating} />
+            <InstallCount count={agent.installs} />
+            <VerifiedBadge verified={agent.verified} />
+          </Box>
+          {isActive && (
+            <Box paddingLeft={4} flexDirection="column">
+              <Text dimColor>{agent.description}</Text>
+              <Box gap={1}>
+                {agent.capabilities.map((cap) => (
+                  <Text key={cap} color={colors.secondary}>[{cap}]</Text>
+                ))}
+              </Box>
+            </Box>
+          )}
+        </Box>
+      );
+    });
+  }
+
+  // Row: help footer
+  allRows.push(
+    <HelpFooter key="footer" text={`Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select${totalPages > 1 ? " \u00b7 \u2190\u2192 pages" : ""}`} />
+  );
+
+  // Determine focused row index
+  let focusedRowIndex: number;
+  if (inputFocused) {
+    focusedRowIndex = 2; // the search input row
+  } else {
+    focusedRowIndex = firstResultRow + selectedIndex;
+  }
+
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Breadcrumb path={["Home", "Search"]} />
-      <Box marginBottom={1}>
-        <Text bold color={colors.primary}>Search Agents</Text>
-      </Box>
-
-      <Box marginBottom={1}>
-        <Text color={inputFocused ? colors.primary : undefined}>{"\u276f "}</Text>
-        <TextInput
-          value={query}
-          onChange={handleQueryChange}
-          placeholder="Type to search..."
-          focus={inputFocused}
-        />
-      </Box>
-
-      <Box marginBottom={1}>
-        <Text dimColor>
-          {results.length} result{results.length !== 1 ? "s" : ""}
-          {query.trim() ? ` for "${query}"` : ""}
-          {totalPages > 1 ? `  Page ${currentPage + 1}/${totalPages}` : ""}
-        </Text>
-      </Box>
-
-      <Separator />
-
-      <Box flexDirection="column">
-        {results.length === 0 && query.trim() ? (
-          <Box paddingLeft={2} flexDirection="column">
-            <Text dimColor>No results found for "{query}"</Text>
-            <Text dimColor>Try a different search term.</Text>
-          </Box>
-        ) : (
-          pagedResults.map((agent, i) => {
-            const isActive = !inputFocused && i === selectedIndex;
-            return (
-              <Box key={agent.id} flexDirection="column" marginBottom={1}>
-                <Box>
-                  <Cursor active={isActive} />
-                  <Box width={columns.name}>
-                    <Text bold={isActive} color={isActive ? colors.primary : undefined}>
-                      {agent.name}
-                    </Text>
-                  </Box>
-                  <Box width={16}>
-                    <Text dimColor>by {agent.author}</Text>
-                  </Box>
-                  <Rating value={agent.rating} />
-                  <InstallCount count={agent.installs} />
-                  <VerifiedBadge verified={agent.verified} />
-                </Box>
-                {isActive && (
-                  <Box paddingLeft={4} flexDirection="column">
-                    <Text dimColor>{agent.description}</Text>
-                    <Box gap={1}>
-                      {agent.capabilities.map((cap) => (
-                        <Text key={cap} color={colors.secondary}>[{cap}]</Text>
-                      ))}
-                    </Box>
-                  </Box>
-                )}
-              </Box>
-            );
-          })
-        )}
-      </Box>
-
-      <HelpFooter text={`Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select${totalPages > 1 ? " \u00b7 \u2190\u2192 pages" : ""}`} />
+      <Viewport rows={allRows} focusedIndex={focusedRowIndex} reservedLines={2} />
     </Box>
   );
 }
