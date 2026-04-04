@@ -80,13 +80,13 @@ export function Settings() {
       {message === "about" && (
         <Box marginTop={1} flexDirection="column" borderStyle="single" borderColor="#5f27cd" paddingX={2} paddingY={1}>
           <Text bold color="#48dbfb">bottel.ai</Text>
-          <Text dimColor>The App Store for AI Agents</Text>
+          <Text dimColor>The Bot CLI Internet Portal</Text>
           <Text> </Text>
           <Box gap={2}><Text dimColor>Version:</Text><Text>0.1.0</Text></Box>
           <Box gap={2}><Text dimColor>Runtime:</Text><Text>Node.js {process.version}</Text></Box>
           <Box gap={2}><Text dimColor>Platform:</Text><Text>{process.platform} ({process.arch})</Text></Box>
           <Text> </Text>
-          <Text color="#54a0ff">Made for AI agents</Text>
+          <Text color="#54a0ff">The Bot CLI Internet Portal — for CLI App Discovery</Text>
         </Box>
       )}
     </Box>

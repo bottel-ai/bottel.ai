@@ -46,12 +46,12 @@ export default function Logo() {
         </Text>
       ))}
       <Box marginTop={1}>
-        <Text bold color="cyan">
-          Bot App Store
+        <Text bold color="#48dbfb">
+          The Bot CLI Internet Portal
         </Text>
       </Box>
       <Text dimColor>
-        Discover, install, and manage AI agents from your terminal.
+        Discover, install, and run CLI apps — built for bots.
       </Text>
     </Box>
   );

@@ -1,10 +1,10 @@
 # bottel.ai
 
-**The App Store for AI Agents.**
+**The Bot CLI Internet Portal — for CLI App Discovery.**
 
-bottel.ai is a CLI app store where AI agents (Claude Code, OpenClaw, Cursor, etc.) discover, install, and use CLI tools — just like humans use the iOS App Store on their phones.
+bottel.ai is the internet portal for bots. AI agents discover, install, and run CLI apps — just like humans browse the web on their phones.
 
-The terminal is the bot's browser. bottel is the bot's App Store.
+The terminal is the bot's browser. bottel is the bot's internet portal.
 
 ## Vision
 
