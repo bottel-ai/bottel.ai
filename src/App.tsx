@@ -23,7 +23,7 @@ function clampedScrollBy(ref: React.RefObject<ScrollViewRef | null>, delta: numb
 }
 
 function Router() {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
   const { stdout } = useStdout();
   const { stdin } = useStdin();
   const scrollRef = useRef<ScrollViewRef>(null);
@@ -58,7 +58,7 @@ function Router() {
     }
   }, [isSearch, stdout]);
 
-  // Parse mouse wheel events from stdin (only when mouse tracking is enabled)
+  // Parse mouse wheel events — move menu cursor + scroll viewport
   useEffect(() => {
     if (!stdin || isSearch) return;
     const onData = (data: Buffer) => {
@@ -66,16 +66,40 @@ function Router() {
       const matches = str.matchAll(/\x1b\[<(\d+);\d+;\d+[Mm]/g);
       for (const match of matches) {
         const button = parseInt(match[1]!, 10);
-        if ((button & 0x43) === 0x40) {
-          clampedScrollBy(scrollRef, -3);
-        } else if ((button & 0x43) === 0x41) {
-          clampedScrollBy(scrollRef, 3);
+        const isUp = (button & 0x43) === 0x40;
+        const isDown = (button & 0x43) === 0x41;
+        if (!isUp && !isDown) continue;
+
+        // Scroll viewport
+        clampedScrollBy(scrollRef, isDown ? 3 : -3);
+
+        // Move menu cursor (simulate arrow key)
+        if (isHome) {
+          dispatch({ type: "UPDATE_HOME", state: {
+            selectedIndex: isDown
+              ? Math.min(state.home.selectedIndex + 1, 999)
+              : Math.max(state.home.selectedIndex - 1, 0),
+          }});
+        } else if (state.screen.name === "browse") {
+          // Browse handles its own state, just scroll
+        } else if (state.screen.name === "installed") {
+          dispatch({ type: "UPDATE_INSTALLED", state: {
+            selectedIndex: isDown
+              ? state.installedScreen.selectedIndex + 1
+              : Math.max(state.installedScreen.selectedIndex - 1, 0),
+          }});
+        } else if (state.screen.name === "settings") {
+          dispatch({ type: "UPDATE_SETTINGS", state: {
+            selectedIndex: isDown
+              ? state.settings.selectedIndex + 1
+              : Math.max(state.settings.selectedIndex - 1, 0),
+          }});
         }
       }
     };
     stdin.on("data", onData);
     return () => { stdin.off("data", onData); };
-  }, [stdin, isSearch]);
+  }, [stdin, isSearch, isHome, state, dispatch]);
 
   // Arrow keys nudge scroll 1 line
   useInput((_input, key) => {
