@@ -2,11 +2,10 @@ import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
 
 const MENU_ITEMS = [
-  { label: "Clear cache", action: "clear-cache" },
-  { label: "Check for updates", action: "check-updates" },
-  { label: "About", action: "about" },
-  { label: "Back", action: "back" },
-] as const;
+  { label: "About", description: "About bottel.ai" },
+  { label: "Clear cache", description: "Clear cached data" },
+  { label: "Back", description: "Return to home" },
+];
 
 interface SettingsProps {
   onBack: () => void;
@@ -21,27 +20,26 @@ export function Settings({ onBack }: SettingsProps) {
       onBack();
       return;
     }
+
     if (key.upArrow) {
-      setSelectedIndex((prev) => Math.max(0, prev - 1));
+      setSelectedIndex((i) => Math.max(0, i - 1));
       setMessage(null);
     }
     if (key.downArrow) {
-      setSelectedIndex((prev) => Math.min(MENU_ITEMS.length - 1, prev + 1));
+      setSelectedIndex((i) => Math.min(MENU_ITEMS.length - 1, i + 1));
       setMessage(null);
     }
+
     if (key.return) {
       const item = MENU_ITEMS[selectedIndex];
-      switch (item.action) {
-        case "clear-cache":
-          setMessage("Cache cleared.");
+      switch (item.label) {
+        case "About":
+          setMessage("bottel.ai v0.1.0 -- The App Store for AI Agents");
           break;
-        case "check-updates":
-          setMessage("All agents are up to date.");
+        case "Clear cache":
+          setMessage("Cache cleared");
           break;
-        case "about":
-          setMessage("bottel v0.1.0 - bottel.ai - Bot App Store");
-          break;
-        case "back":
+        case "Back":
           onBack();
           break;
       }
@@ -49,37 +47,40 @@ export function Settings({ onBack }: SettingsProps) {
   });
 
   return (
-    <Box flexDirection="column" padding={1}>
+    <Box flexDirection="column" paddingX={1}>
+      {/* Header */}
       <Box marginBottom={1}>
         <Text bold color="#48dbfb">
           Settings
         </Text>
+        <Text dimColor>{"   "}Esc: back | Enter: select</Text>
       </Box>
 
-      {MENU_ITEMS.map((item, i) => {
-        const isSelected = i === selectedIndex;
-        return (
-          <Box key={item.action}>
-            <Text>{isSelected ? "> " : "  "}</Text>
-            <Text
-              bold={isSelected}
-              color={isSelected ? "#48dbfb" : undefined}
-            >
-              {item.label}
-            </Text>
-          </Box>
-        );
-      })}
+      {/* Menu */}
+      <Box flexDirection="column">
+        {MENU_ITEMS.map((item, i) => {
+          const isSelected = i === selectedIndex;
+          return (
+            <Box key={item.label}>
+              <Text>{isSelected ? "> " : "  "}</Text>
+              <Text
+                bold={isSelected}
+                color={isSelected ? "#48dbfb" : undefined}
+              >
+                {item.label.padEnd(18)}
+              </Text>
+              <Text dimColor>{item.description}</Text>
+            </Box>
+          );
+        })}
+      </Box>
 
+      {/* Message display */}
       {message && (
-        <Box marginTop={1}>
+        <Box marginTop={1} paddingLeft={2}>
           <Text color="#2ed573">{message}</Text>
         </Box>
       )}
-
-      <Box marginTop={1}>
-        <Text dimColor>[Esc] Back</Text>
-      </Box>
     </Box>
   );
 }

@@ -9,27 +9,27 @@
     {
       "name": "Security",
       "icon": "##",
-      "agents": ["security-scanner", "vuln-hunter", "pen-test-bot", "compliance-checker"]
+      "agents": ["security-scanner", "vuln-hunter"]
     },
     {
       "name": "Data & Analytics",
       "icon": "::",
-      "agents": ["data-analyst", "sql-wizard", "viz-bot", "etl-runner", "stats-bot"]
+      "agents": ["data-analyst", "sql-wizard"]
     },
     {
       "name": "Writing & Content",
       "icon": "~~",
-      "agents": ["translator", "copywriter", "tech-writer", "proofreader", "blog-bot"]
+      "agents": ["translator", "copywriter"]
     },
     {
       "name": "DevOps & Infra",
       "icon": "%%",
-      "agents": ["devops-pilot", "k8s-helper", "terraform-bot", "monitor-bot"]
+      "agents": ["devops-pilot", "k8s-helper"]
     },
     {
       "name": "Research",
       "icon": "??",
-      "agents": ["research-agent", "paper-reader", "fact-checker", "trend-watcher"]
+      "agents": ["research-agent", "fact-checker"]
     }
   ],
   "agents": [
