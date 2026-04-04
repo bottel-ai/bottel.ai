@@ -44,7 +44,6 @@ export function Settings() {
     }
   });
 
-  // Build rows for Viewport
   const allRows: React.ReactNode[] = [];
 
   // Breadcrumb

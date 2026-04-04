@@ -38,7 +38,6 @@ export function Installed() {
     }
   });
 
-  // Build rows for Viewport
   const allRows: React.ReactNode[] = [];
 
   // Breadcrumb

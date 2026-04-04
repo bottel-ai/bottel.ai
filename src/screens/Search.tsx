@@ -110,7 +110,6 @@ export function Search() {
     update({ query: value, selectedIndex: 0, page: 0 });
   };
 
-  // Build rows for Viewport
   const allRows: React.ReactNode[] = [];
 
   // Row 0: breadcrumb
@@ -150,8 +149,6 @@ export function Search() {
   // Row 4: separator
   allRows.push(<Separator key="separator" />);
 
-  // Track the focused row index (for Viewport scrolling)
-  const firstResultRow = allRows.length;
 
   if (results.length === 0 && query.trim()) {
     allRows.push(
@@ -200,14 +197,6 @@ export function Search() {
   allRows.push(
     <HelpFooter key="footer" text={`Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select${totalPages > 1 ? " \u00b7 \u2190\u2192 pages" : ""}`} />
   );
-
-  // Determine focused row index
-  let focusedRowIndex: number;
-  if (inputFocused) {
-    focusedRowIndex = 2; // the search input row
-  } else {
-    focusedRowIndex = firstResultRow + selectedIndex;
-  }
 
   return (
     <Box flexDirection="column" paddingX={1}>

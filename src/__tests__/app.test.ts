@@ -9,7 +9,6 @@ const requiredFiles = [
   "components/Logo.tsx",
   "components/StatusBar.tsx",
   "components/AgentCard.tsx",
-  "components/SearchBar.tsx",
   "screens/Home.tsx",
   "screens/Browse.tsx",
   "screens/Search.tsx",

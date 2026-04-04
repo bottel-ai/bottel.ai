@@ -20,7 +20,7 @@ bottel.ai is a CLI App Store for AI agents. It provides a terminal-based user in
 │  Screen  │  Screen  │  Screen  │  Screen    │
 ├──────────┴──────────┴──────────┴────────────┤
 │            Reusable Components               │
-│  Logo, StatusBar, AgentCard, CategoryCard    │
+│        Logo, StatusBar, AgentCard            │
 ├─────────────────────────────────────────────┤
 │              Store Data (JSON)               │
 │           (src/data/store.json)              │
@@ -37,6 +37,7 @@ bottel.ai is a CLI App Store for AI agents. It provides a terminal-based user in
 | React | React | 19.x |
 | Text Input | ink-text-input | 6.x |
 | Spinner | ink-spinner | 5.x |
+| Scrolling | ink-scroll-view | 0.3.x |
 | Build | tsc | - |
 | Dev runner | tsx | 4.x |
 
@@ -187,9 +188,15 @@ npm test
 
 ## Changelog
 
+### v0.2.0 — Cleanup + Fullscreen (2026-04-05)
+- Fullscreen alternate screen buffer for immersive TUI experience
+- ScrollView-based scrolling via ink-scroll-view
+- Mouse wheel support for navigating long lists
+- Dead code cleanup: removed unused SearchBar, CategoryCard, cli_fullscreen, cli_app_viewport, Accordion, ScrollList, and useTerminalHeight
+
 ### v0.1.0 — Initial Scaffold (2026-04-04)
 - Project setup: TypeScript, ink, React
-- Core components: Logo, StatusBar, AgentCard, CategoryCard, SearchBar
+- Core components: Logo, StatusBar, AgentCard
 - Screens: Home (featured/trending/categories), Browse, Search
 - Sample data: 15 agents across 6 categories
 - Alternate screen buffer for fullscreen experience

@@ -66,7 +66,6 @@ export function AgentDetail({ agentId }: { agentId: string }) {
 
   const descLines = agent.longDescription.split("\n");
 
-  // Build rows for Viewport
   const allRows: React.ReactNode[] = [];
 
   // Breadcrumb
@@ -114,7 +113,7 @@ export function AgentDetail({ agentId }: { agentId: string }) {
   // Blank line
   allRows.push(<Text key="blank4">{""}</Text>);
 
-  // Long description lines (no truncation - viewport handles overflow)
+  // Long description lines
   descLines.forEach((line, i) => {
     allRows.push(<Text key={`desc-${i}`}>{line}</Text>);
   });

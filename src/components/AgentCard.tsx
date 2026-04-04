@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
+import { formatStars, formatInstalls } from "../cli_app_theme.js";
 
 export interface Agent {
   id: string;
@@ -24,20 +25,6 @@ interface AgentCardProps {
   compact?: boolean;
 }
 
-function renderStars(rating: number): string {
-  const full = Math.floor(rating);
-  const half = rating - full >= 0.5 ? 1 : 0;
-  const empty = 5 - full - half;
-  return "★".repeat(full) + (half ? "☆" : "") + "·".repeat(empty);
-}
-
-function formatInstalls(n: number): string {
-  if (n >= 1000) {
-    return `${(n / 1000).toFixed(1)}k`;
-  }
-  return String(n);
-}
-
 export default function AgentCard({
   agent,
   selected = false,
@@ -51,7 +38,7 @@ export default function AgentCard({
           {agent.name}
         </Text>
         <Text dimColor> by {agent.author} </Text>
-        <Text color="#feca57">{renderStars(agent.rating)}</Text>
+        <Text color="#feca57">{formatStars(agent.rating)}</Text>
         <Text dimColor> {formatInstalls(agent.installs)} installs </Text>
         {agent.verified && <Text color="#2ed573">✓</Text>}
       </Box>
@@ -73,7 +60,7 @@ export default function AgentCard({
       </Box>
       <Box marginTop={1} gap={2}>
         <Text color="#feca57">
-          {renderStars(agent.rating)} {agent.rating.toFixed(1)}
+          {formatStars(agent.rating)} {agent.rating.toFixed(1)}
         </Text>
         <Text dimColor>({agent.reviews} reviews)</Text>
         <Text dimColor>{formatInstalls(agent.installs)} installs</Text>

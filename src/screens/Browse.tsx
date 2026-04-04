@@ -102,7 +102,7 @@ export function Browse() {
     ? ["Home", "Browse", expandedCat.name]
     : ["Home", "Browse"];
 
-  // Build rows for Viewport
+
   const allRows: React.ReactNode[] = [];
 
   // Row 0: breadcrumb
