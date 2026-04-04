@@ -139,3 +139,63 @@ export function ScreenHeader({ title, style = "section" }: { title: string; styl
     </Box>
   );
 }
+
+// ─── Accordion Layout ───────────────────────────────────────────
+
+export interface AccordionSection {
+  key: string;
+  title: string;
+  itemCount: number;
+  render: (activeIndex: number) => React.ReactNode;
+}
+
+interface AccordionProps {
+  sections: AccordionSection[];
+  selectedIndex: number;
+}
+
+export function Accordion({ sections, selectedIndex }: AccordionProps) {
+  // Decode flat selectedIndex into section + itemIndex
+  let remaining = selectedIndex;
+  let activeSection = 0;
+  let activeItemIndex = 0;
+
+  for (let i = 0; i < sections.length; i++) {
+    if (remaining < sections[i]!.itemCount) {
+      activeSection = i;
+      activeItemIndex = remaining;
+      break;
+    }
+    remaining -= sections[i]!.itemCount;
+  }
+
+  return (
+    <Box flexDirection="column">
+      {sections.map((section, i) => {
+        const isActive = i === activeSection;
+        return (
+          <Box key={`accordion-${section.key}`} flexDirection="column">
+            <Box>
+              <Text bold color={isActive ? colors.primary : undefined}>
+                {isActive ? "\u25BC " : "\u25B6 "}{section.title}
+              </Text>
+              {!isActive && (
+                <Text dimColor> ({section.itemCount})</Text>
+              )}
+            </Box>
+            {isActive && (
+              <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+                {section.render(activeItemIndex)}
+              </Box>
+            )}
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
+// Helper: get total items across all accordion sections
+export function accordionTotalItems(sections: AccordionSection[]): number {
+  return sections.reduce((sum, s) => sum + s.itemCount, 0);
+}

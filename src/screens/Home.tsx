@@ -3,7 +3,8 @@ import { Box, Text, useInput, useApp } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
-import { colors, columns, formatStars, formatInstalls, Cursor, Rating, InstallCount, VerifiedBadge, HelpFooter } from "../cli_app_theme.js";
+import { colors, columns, formatInstalls, Cursor, Rating, InstallCount, VerifiedBadge, HelpFooter, Accordion, accordionTotalItems } from "../cli_app_theme.js";
+import type { AccordionSection } from "../cli_app_theme.js";
 
 interface StoreData {
   featured: string[];
@@ -25,14 +26,9 @@ const MENU_ITEMS = [
   { label: "Exit", value: "exit", description: "Quit bottel" },
 ];
 
-type Section = "menu" | "featured" | "trending" | "categories";
-
-const SECTIONS: Section[] = ["menu", "featured", "trending", "categories"];
-
 export function Home() {
   const { state, dispatch, navigate } = useStore();
   const { exit } = useApp();
-
   const selectedIndex = state.home.selectedIndex;
 
   const agentMap = useMemo(() => {
@@ -51,46 +47,117 @@ export function Home() {
 
   const categories = storeData.categories;
 
-  // Track active section + index within section separately
-  // selectedIndex encodes: section (0-3) in high bits, item index in low bits
-  // Actually simpler: just track section + itemIndex
-  const sectionSizes: Record<Section, number> = {
-    menu: MENU_ITEMS.length,
-    featured: featuredAgents.length,
-    trending: trendingAgents.length,
-    categories: categories.length,
-  };
+  const sections: AccordionSection[] = useMemo(() => [
+    {
+      key: "menu",
+      title: "Navigation",
+      itemCount: MENU_ITEMS.length,
+      render: (activeIndex: number) => (
+        <>
+          {MENU_ITEMS.map((item, i) => (
+            <Box key={`menu-${item.value}`}>
+              <Cursor active={i === activeIndex} />
+              <Box width={18}>
+                <Text color={i === activeIndex ? colors.primary : undefined} bold={i === activeIndex}>
+                  {item.label}
+                </Text>
+              </Box>
+              <Text dimColor={i !== activeIndex} color={i === activeIndex ? colors.primary : undefined}>
+                {item.description}
+              </Text>
+            </Box>
+          ))}
+        </>
+      ),
+    },
+    {
+      key: "featured",
+      title: "Featured",
+      itemCount: featuredAgents.length,
+      render: (activeIndex: number) => (
+        <>
+          {featuredAgents.map((agent, i) => (
+            <Box key={`featured-${agent.id}`}>
+              <Cursor active={i === activeIndex} />
+              <Box width={columns.name}>
+                <Text color={i === activeIndex ? colors.primary : undefined} bold={i === activeIndex}>
+                  {agent.name}
+                </Text>
+              </Box>
+              <Rating value={agent.rating} />
+              <InstallCount count={agent.installs} />
+              <VerifiedBadge verified={agent.verified} />
+            </Box>
+          ))}
+        </>
+      ),
+    },
+    {
+      key: "trending",
+      title: "Trending",
+      itemCount: trendingAgents.length,
+      render: (activeIndex: number) => (
+        <>
+          {trendingAgents.map((agent, i) => (
+            <Box key={`trending-${agent.id}`}>
+              <Cursor active={i === activeIndex} />
+              <Box width={columns.rank}><Text dimColor>{i + 1}.</Text></Box>
+              <Box width={columns.name}>
+                <Text color={i === activeIndex ? colors.primary : undefined} bold={i === activeIndex}>
+                  {agent.name}
+                </Text>
+              </Box>
+              <Rating value={agent.rating} />
+              <InstallCount count={agent.installs} />
+              <VerifiedBadge verified={agent.verified} />
+            </Box>
+          ))}
+        </>
+      ),
+    },
+    {
+      key: "categories",
+      title: "Categories",
+      itemCount: categories.length,
+      render: (activeIndex: number) => (
+        <>
+          {categories.map((cat, i) => (
+            <Box key={`category-${cat.name}`}>
+              <Cursor active={i === activeIndex} />
+              <Text color={i === activeIndex ? colors.primary : undefined} bold={i === activeIndex}>
+                {cat.icon} {cat.name}
+              </Text>
+              <Text dimColor> ({cat.agents.length})</Text>
+            </Box>
+          ))}
+        </>
+      ),
+    },
+  ], [featuredAgents, trendingAgents, categories]);
 
-  // Decode selectedIndex into section + itemIndex
+  const totalItems = accordionTotalItems(sections);
+
+  // Decode selected index to find which section is active for Enter handling
   const decoded = useMemo(() => {
     let remaining = selectedIndex;
-    for (const sec of SECTIONS) {
-      const size = sectionSizes[sec];
-      if (remaining < size) {
-        return { section: sec, itemIndex: remaining };
+    for (let i = 0; i < sections.length; i++) {
+      if (remaining < sections[i]!.itemCount) {
+        return { sectionIndex: i, itemIndex: remaining };
       }
-      remaining -= size;
+      remaining -= sections[i]!.itemCount;
     }
-    return { section: "menu" as Section, itemIndex: 0 };
-  }, [selectedIndex, sectionSizes]);
-
-  const { section: activeSection, itemIndex: activeItemIndex } = decoded;
-
-  const totalItems = SECTIONS.reduce((sum, s) => sum + sectionSizes[s], 0);
+    return { sectionIndex: 0, itemIndex: 0 };
+  }, [selectedIndex, sections]);
 
   useInput((input, key) => {
-    if (input === "q") {
-      exit();
-      return;
-    }
-    if (input === "/") {
-      navigate({ name: "search" });
-      return;
-    }
+    if (input === "q") { exit(); return; }
+    if (input === "/") { navigate({ name: "search" }); return; }
 
     if (key.return) {
-      if (activeSection === "menu") {
-        const item = MENU_ITEMS[activeItemIndex]!;
+      const { sectionIndex, itemIndex } = decoded;
+      const sec = sections[sectionIndex]!;
+      if (sec.key === "menu") {
+        const item = MENU_ITEMS[itemIndex]!;
         switch (item.value) {
           case "home": break;
           case "browse": navigate({ name: "browse" }); break;
@@ -99,13 +166,13 @@ export function Home() {
           case "settings": navigate({ name: "settings" }); break;
           case "exit": exit(); break;
         }
-      } else if (activeSection === "featured") {
-        const agent = featuredAgents[activeItemIndex];
+      } else if (sec.key === "featured") {
+        const agent = featuredAgents[itemIndex];
         if (agent) navigate({ name: "agent-detail", agentId: agent.id });
-      } else if (activeSection === "trending") {
-        const agent = trendingAgents[activeItemIndex];
+      } else if (sec.key === "trending") {
+        const agent = trendingAgents[itemIndex];
         if (agent) navigate({ name: "agent-detail", agentId: agent.id });
-      } else if (activeSection === "categories") {
+      } else if (sec.key === "categories") {
         navigate({ name: "browse" });
       }
       return;
@@ -119,109 +186,9 @@ export function Home() {
     }
   });
 
-  // Section header — clickable title, shows expanded/collapsed
-  const sectionHeader = (sec: Section, label: string, isActive: boolean) => (
-    <Box key={`header-${sec}`}>
-      <Text bold color={isActive ? colors.primary : undefined}>
-        {isActive ? "▼ " : "▶ "}{label}
-      </Text>
-      {!isActive && (
-        <Text dimColor> ({sectionSizes[sec]} items)</Text>
-      )}
-    </Box>
-  );
-
   return (
     <Box flexDirection="column" paddingX={1}>
-      {/* Menu — always show if active, collapse to title if not */}
-      {sectionHeader("menu", "Navigation", activeSection === "menu")}
-      {activeSection === "menu" && (
-        <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-          {MENU_ITEMS.map((item, i) => {
-            const isActive = i === activeItemIndex;
-            return (
-              <Box key={`menu-${item.value}`}>
-                <Cursor active={isActive} />
-                <Box width={18}>
-                  <Text color={isActive ? colors.primary : undefined} bold={isActive}>
-                    {item.label}
-                  </Text>
-                </Box>
-                <Text dimColor={!isActive} color={isActive ? colors.primary : undefined}>
-                  {item.description}
-                </Text>
-              </Box>
-            );
-          })}
-        </Box>
-      )}
-
-      {/* Featured — show cards if active, collapse if not */}
-      {sectionHeader("featured", "Featured", activeSection === "featured")}
-      {activeSection === "featured" && (
-        <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-          {featuredAgents.map((agent, i) => {
-            const isActive = i === activeItemIndex;
-            return (
-              <Box key={`featured-${agent.id}`}>
-                <Cursor active={isActive} />
-                <Box width={columns.name}>
-                  <Text color={isActive ? colors.primary : undefined} bold={isActive}>
-                    {agent.name}
-                  </Text>
-                </Box>
-                <Rating value={agent.rating} />
-                <InstallCount count={agent.installs} />
-                <VerifiedBadge verified={agent.verified} />
-              </Box>
-            );
-          })}
-        </Box>
-      )}
-
-      {/* Trending — show list if active, collapse if not */}
-      {sectionHeader("trending", "Trending", activeSection === "trending")}
-      {activeSection === "trending" && (
-        <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-          {trendingAgents.map((agent, i) => {
-            const isActive = i === activeItemIndex;
-            return (
-              <Box key={`trending-${agent.id}`}>
-                <Cursor active={isActive} />
-                <Box width={columns.rank}><Text dimColor>{i + 1}.</Text></Box>
-                <Box width={columns.name}>
-                  <Text color={isActive ? colors.primary : undefined} bold={isActive}>
-                    {agent.name}
-                  </Text>
-                </Box>
-                <Rating value={agent.rating} />
-                <InstallCount count={agent.installs} />
-                <VerifiedBadge verified={agent.verified} />
-              </Box>
-            );
-          })}
-        </Box>
-      )}
-
-      {/* Categories — show list if active, collapse if not */}
-      {sectionHeader("categories", "Categories", activeSection === "categories")}
-      {activeSection === "categories" && (
-        <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
-          {categories.map((cat, i) => {
-            const isActive = i === activeItemIndex;
-            return (
-              <Box key={`category-${cat.name}`}>
-                <Cursor active={isActive} />
-                <Text color={isActive ? colors.primary : undefined} bold={isActive}>
-                  {cat.icon} {cat.name}
-                </Text>
-                <Text dimColor> ({cat.agents.length})</Text>
-              </Box>
-            );
-          })}
-        </Box>
-      )}
-
+      <Accordion sections={sections} selectedIndex={selectedIndex} />
       <HelpFooter text="↑↓ nav · Enter select · / search · q quit" />
     </Box>
   );
