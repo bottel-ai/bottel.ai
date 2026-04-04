@@ -22,34 +22,51 @@ function renderStars(rating: number): string {
 }
 
 function formatInstalls(n: number): string {
-  if (n >= 1000) {
-    return `${(n / 1000).toFixed(1)}k`;
-  }
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
   return String(n);
 }
 
-type Section = "featured" | "trending" | "categories";
+type Section = "menu" | "featured" | "trending" | "categories";
+
+const MENU_ITEMS = [
+  { label: "Home", value: "home", description: "Store front" },
+  { label: "Browse", value: "browse", description: "Browse by category" },
+  { label: "Search", value: "search", description: "Find apps" },
+  { label: "Installed", value: "installed", description: "Your apps" },
+  { label: "Settings", value: "settings", description: "Preferences" },
+  { label: "Exit", value: "exit", description: "Quit bottel" },
+];
 
 interface HomeProps {
   onViewAgent: (id: string) => void;
   onViewCategory: (name: string) => void;
   onSearch: () => void;
+  onBrowse: () => void;
+  onInstalled: () => void;
+  onSettings: () => void;
+  onExit: () => void;
 }
 
-export function Home({ onViewAgent, onViewCategory, onSearch }: HomeProps) {
-  const [section, setSection] = useState<Section>("trending");
+export function Home({
+  onViewAgent,
+  onViewCategory,
+  onSearch,
+  onBrowse,
+  onInstalled,
+  onSettings,
+  onExit,
+}: HomeProps) {
+  const [section, setSection] = useState<Section>("menu");
+  const [menuIndex, setMenuIndex] = useState(0);
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [trendingIndex, setTrendingIndex] = useState(0);
   const [categoryIndex, setCategoryIndex] = useState(0);
 
-  const agents = storeData.agents;
   const agentMap = useMemo(() => {
     const map = new Map<string, Agent>();
-    for (const a of agents) {
-      map.set(a.id, a);
-    }
+    for (const a of storeData.agents) map.set(a.id, a);
     return map;
-  }, [agents]);
+  }, []);
 
   const featuredAgents = storeData.featured
     .map((id) => agentMap.get(id))
@@ -61,7 +78,7 @@ export function Home({ onViewAgent, onViewCategory, onSearch }: HomeProps) {
 
   const categories = storeData.categories;
 
-  const sections: Section[] = ["featured", "trending", "categories"];
+  const sections: Section[] = ["menu", "featured", "trending", "categories"];
 
   useInput((input, key) => {
     if (input === "/") {
@@ -69,15 +86,26 @@ export function Home({ onViewAgent, onViewCategory, onSearch }: HomeProps) {
       return;
     }
 
+    // Tab to switch sections
     if (key.tab) {
       const idx = sections.indexOf(section);
-      const next = sections[(idx + 1) % sections.length];
-      setSection(next);
+      setSection(sections[(idx + 1) % sections.length]!);
       return;
     }
 
+    // Enter
     if (key.return) {
-      if (section === "featured") {
+      if (section === "menu") {
+        const item = MENU_ITEMS[menuIndex]!;
+        switch (item.value) {
+          case "home": break;
+          case "browse": onBrowse(); break;
+          case "search": onSearch(); break;
+          case "installed": onInstalled(); break;
+          case "settings": onSettings(); break;
+          case "exit": onExit(); break;
+        }
+      } else if (section === "featured") {
         const agent = featuredAgents[featuredIndex];
         if (agent) onViewAgent(agent.id);
       } else if (section === "trending") {
@@ -90,36 +118,48 @@ export function Home({ onViewAgent, onViewCategory, onSearch }: HomeProps) {
       return;
     }
 
+    // Up / Left
     if (key.upArrow || key.leftArrow) {
-      if (section === "featured") {
-        setFeaturedIndex((i) => Math.max(0, i - 1));
-      } else if (section === "trending") {
-        setTrendingIndex((i) => Math.max(0, i - 1));
-      } else if (section === "categories") {
-        setCategoryIndex((i) => Math.max(0, i - 1));
-      }
+      if (section === "menu") setMenuIndex((i) => Math.max(0, i - 1));
+      else if (section === "featured") setFeaturedIndex((i) => Math.max(0, i - 1));
+      else if (section === "trending") setTrendingIndex((i) => Math.max(0, i - 1));
+      else if (section === "categories") setCategoryIndex((i) => Math.max(0, i - 1));
     }
 
+    // Down / Right
     if (key.downArrow || key.rightArrow) {
-      if (section === "featured") {
-        setFeaturedIndex((i) => Math.min(featuredAgents.length - 1, i + 1));
-      } else if (section === "trending") {
-        setTrendingIndex((i) => Math.min(trendingAgents.length - 1, i + 1));
-      } else if (section === "categories") {
-        setCategoryIndex((i) => Math.min(categories.length - 1, i + 1));
-      }
+      if (section === "menu") setMenuIndex((i) => Math.min(MENU_ITEMS.length - 1, i + 1));
+      else if (section === "featured") setFeaturedIndex((i) => Math.min(featuredAgents.length - 1, i + 1));
+      else if (section === "trending") setTrendingIndex((i) => Math.min(trendingAgents.length - 1, i + 1));
+      else if (section === "categories") setCategoryIndex((i) => Math.min(categories.length - 1, i + 1));
     }
   });
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      {/* Header */}
-      <Box marginBottom={1}>
-        <Text bold color="#48dbfb">
-          bottel
+      {/* Menu */}
+      <Box flexDirection="column" marginBottom={1}>
+        <Text bold color={section === "menu" ? "#48dbfb" : undefined}>
+          Menu
         </Text>
-        <Text dimColor> - Agent Store</Text>
-        <Text dimColor>{"   "}Tab: switch section | Enter: select | /: search</Text>
+        <Box flexDirection="column" marginTop={1} paddingLeft={1}>
+          {MENU_ITEMS.map((item, i) => {
+            const isActive = section === "menu" && i === menuIndex;
+            return (
+              <Box key={item.value}>
+                <Text color={isActive ? "#48dbfb" : undefined} bold={isActive}>
+                  {isActive ? "> " : "  "}
+                </Text>
+                <Box width={18}>
+                  <Text color={isActive ? "#48dbfb" : undefined} bold={isActive}>
+                    {item.label}
+                  </Text>
+                </Box>
+                {isActive && <Text dimColor>{item.description}</Text>}
+              </Box>
+            );
+          })}
+        </Box>
       </Box>
 
       {/* Featured Agents */}
@@ -197,6 +237,11 @@ export function Home({ onViewAgent, onViewCategory, onSearch }: HomeProps) {
             );
           })}
         </Box>
+      </Box>
+
+      {/* Help */}
+      <Box marginTop={1}>
+        <Text dimColor>Tab: switch section | ↑↓: navigate | Enter: select | /: search</Text>
       </Box>
     </Box>
   );
