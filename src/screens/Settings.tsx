@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
-import { useStore } from "../bottel_state.js";
+import { useStore } from "../cli_app_state.js";
 
 const MENU_ITEMS = [
   { label: "About", description: "About bottel.ai" },

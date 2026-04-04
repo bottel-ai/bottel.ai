@@ -2,7 +2,7 @@ import React from "react";
 import { Box, useApp } from "ink";
 import Logo from "./components/Logo.js";
 import StatusBar from "./components/StatusBar.js";
-import { StoreProvider, useStore } from "./bottel_state.js";
+import { StoreProvider, useStore } from "./cli_app_state.js";
 import { Home } from "./screens/Home.js";
 import { Browse } from "./screens/Browse.js";
 import { Search } from "./screens/Search.js";

@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
-import { useStore } from "../bottel_state.js";
+import { useStore } from "../cli_app_state.js";
 
 interface StoreData {
   featured: string[];
