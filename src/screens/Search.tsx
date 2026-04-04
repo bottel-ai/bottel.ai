@@ -28,14 +28,16 @@ interface SearchProps {
   onBack: () => void;
   onViewAgent: (id: string) => void;
   savedQuery?: string;
+  savedIndex?: number;
   onQueryChange?: (query: string) => void;
+  onIndexChange?: (index: number) => void;
 }
 
-export function Search({ onBack, onViewAgent, savedQuery, onQueryChange }: SearchProps) {
+export function Search({ onBack, onViewAgent, savedQuery, savedIndex, onQueryChange, onIndexChange }: SearchProps) {
   const [query, setQuery] = useState(savedQuery || "");
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(savedIndex ?? 0);
   const [inputFocused, setInputFocused] = useState(!savedQuery);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(savedIndex != null ? Math.floor(savedIndex / PAGE_SIZE) : 0);
 
   const allAgents = storeData.agents;
 
@@ -125,7 +127,11 @@ export function Search({ onBack, onViewAgent, savedQuery, onQueryChange }: Searc
     }
     if (key.return) {
       const agent = pagedResults[selectedIndex];
-      if (agent) onViewAgent(agent.id);
+      if (agent) {
+        const globalIndex = page * PAGE_SIZE + selectedIndex;
+        onIndexChange?.(globalIndex);
+        onViewAgent(agent.id);
+      }
       return;
     }
 

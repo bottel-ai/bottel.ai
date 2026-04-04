@@ -24,6 +24,7 @@ export function App() {
 
   // Persisted state across navigation
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchIndex, setSearchIndex] = useState(0);
 
   const navigate = useCallback((s: Screen) => {
     setHistory((prev) => [...prev, screen]);
@@ -79,7 +80,9 @@ export function App() {
           onBack={goBack}
           onViewAgent={(id) => navigate({ name: "agent-detail", agentId: id })}
           savedQuery={searchQuery}
+          savedIndex={searchIndex}
           onQueryChange={setSearchQuery}
+          onIndexChange={setSearchIndex}
         />
       )}
 
