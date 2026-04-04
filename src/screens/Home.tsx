@@ -165,18 +165,26 @@ export function Home() {
         <Text bold color={activeSection === "featured" ? colors.primary : undefined}>
           {activeSection === "featured" ? "▶ " : "  "}Featured Agents
         </Text>
-        <Box flexDirection="column" marginTop={1}>
+        <Box gap={1} marginTop={1}>
           {featuredAgents.map((agent, i) => {
             const isActive = activeSection === "featured" && i === activeIndexInSection;
             return (
-              <Box key={`featured-${agent.id}`}>
-                <Cursor active={isActive} />
-                <Box width={columns.name}>
-                  <Text bold color={isActive ? colors.primary : undefined}>{agent.name}</Text>
-                </Box>
-                <Rating value={agent.rating} />
-                <InstallCount count={agent.installs} />
-                <VerifiedBadge verified={agent.verified} />
+              <Box
+                key={`featured-${agent.id}`}
+                flexDirection="column"
+                borderStyle="round"
+                borderColor={isActive ? colors.primary : undefined}
+                width={24}
+                paddingX={1}
+              >
+                <Text bold color={isActive ? colors.primary : undefined}>
+                  {agent.name}
+                </Text>
+                <Text color={colors.warning}>
+                  {formatStars(agent.rating)} {agent.rating.toFixed(1)}
+                </Text>
+                <Text dimColor>by {agent.author}</Text>
+                <Text dimColor>{formatInstalls(agent.installs)} installs</Text>
               </Box>
             );
           })}
