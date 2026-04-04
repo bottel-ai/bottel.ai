@@ -42,7 +42,7 @@ function Router() {
 
   return (
     <Box flexDirection="column">
-      <ScrollView ref={scrollRef}>
+      <ScrollView ref={scrollRef} height={termHeight}>
         {isHome && <Logo key="logo" />}
         <StatusBar key="statusbar" />
         {isHome && <Home key="home" />}
