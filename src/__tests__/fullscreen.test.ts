@@ -16,8 +16,8 @@ describe("Fullscreen component", () => {
     expect(content).toContain("FullScreen");
   });
 
-  it("uses alternate screen buffer codes", () => {
-    const content = fs.readFileSync(path.resolve(__dirname, "../cli_fullscreen.tsx"), "utf-8");
+  it("cli.tsx uses alternate screen buffer codes", () => {
+    const content = fs.readFileSync(path.resolve(__dirname, "../cli.tsx"), "utf-8");
     expect(content).toContain("1049h");
     expect(content).toContain("1049l");
   });
@@ -28,8 +28,8 @@ describe("Fullscreen component", () => {
     expect(content).toContain("rows");
   });
 
-  it("handles cleanup on signals", () => {
-    const content = fs.readFileSync(path.resolve(__dirname, "../cli_fullscreen.tsx"), "utf-8");
+  it("cli.tsx handles cleanup on signals", () => {
+    const content = fs.readFileSync(path.resolve(__dirname, "../cli.tsx"), "utf-8");
     expect(content).toContain("SIGINT");
   });
 
