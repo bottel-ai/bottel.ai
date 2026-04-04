@@ -183,16 +183,14 @@ export function Search() {
             <InstallCount count={agent.installs} />
             <VerifiedBadge verified={agent.verified} />
           </Box>
-          {isActive && (
-            <Box paddingLeft={4} flexDirection="column">
-              <Text dimColor>{agent.description}</Text>
-              <Box gap={1}>
-                {agent.capabilities.map((cap) => (
-                  <Text key={cap} color={colors.secondary}>[{cap}]</Text>
-                ))}
-              </Box>
+          <Box paddingLeft={4} flexDirection="column">
+            <Text dimColor>{agent.description}</Text>
+            <Box gap={1}>
+              {agent.capabilities.map((cap) => (
+                <Text key={cap} color={colors.secondary}>[{cap}]</Text>
+              ))}
             </Box>
-          )}
+          </Box>
         </Box>
       );
     });
