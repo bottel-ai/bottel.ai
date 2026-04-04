@@ -43,38 +43,12 @@ function Router() {
     scrollRef.current?.scrollToTop();
   }, [state.screen.name]);
 
-  // Auto-scroll when selected item changes (arrow down/up past viewport)
-  const selectedIndex = state.home.selectedIndex;
-  const browseState = state.browse;
-  const searchState = state.search;
-  const installedState = state.installedScreen;
-
-  useEffect(() => {
+  // Arrow keys also nudge scroll by 1 line to follow cursor
+  useInput((_input, key) => {
     if (!scrollRef.current) return;
-    // Estimate selected item position (each navigable item ~1 line, header ~15 lines)
-    const headerLines = isHome ? 15 : 3; // logo+status vs just breadcrumb+header
-    let itemLine = headerLines;
-
-    if (isHome) {
-      // Menu section starts at ~15, each section header adds 2
-      itemLine = 15 + selectedIndex;
-      if (selectedIndex >= 6) itemLine += 2; // past menu, into featured
-      if (selectedIndex >= 9) itemLine += 2; // past featured, into trending
-      if (selectedIndex >= 14) itemLine += 2; // past trending, into categories
-    }
-
-    const offset = scrollRef.current.getScrollOffset();
-    const viewportH = scrollRef.current.getViewportHeight();
-
-    // If item is below viewport, scroll down
-    if (itemLine >= offset + viewportH - 1) {
-      scrollRef.current.scrollTo(itemLine - viewportH + 2);
-    }
-    // If item is above viewport, scroll up
-    if (itemLine < offset) {
-      scrollRef.current.scrollTo(itemLine);
-    }
-  }, [selectedIndex, isHome, browseState, searchState, installedState]);
+    if (key.downArrow) clampedScrollBy(scrollRef, 1);
+    if (key.upArrow) clampedScrollBy(scrollRef, -1);
+  });
 
   // Parse mouse wheel events from stdin (SGR mouse tracking)
   useEffect(() => {
