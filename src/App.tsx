@@ -9,27 +9,36 @@ import { AgentDetail } from "./screens/AgentDetail.js";
 import { Installed } from "./screens/Installed.js";
 import { Settings } from "./screens/Settings.js";
 
-function Router() {
-  const { state } = useStore();
-
-  // Home handles its own layout (logo + status + content in ScrollList)
-  if (state.screen.name === "home") {
-    return <Home />;
-  }
-
-  // Other screens: just status bar + screen
+function ScreenWrapper({ children }: { children: React.ReactNode }) {
   return (
     <Box flexDirection="column">
       <StatusBar />
-      {state.screen.name === "browse" && <Browse />}
-      {state.screen.name === "search" && <Search />}
-      {state.screen.name === "agent-detail" && (
-        <AgentDetail agentId={state.screen.agentId} />
-      )}
-      {state.screen.name === "installed" && <Installed />}
-      {state.screen.name === "settings" && <Settings />}
+      {children}
     </Box>
   );
+}
+
+function Router() {
+  const { state } = useStore();
+  const screenName = state.screen.name;
+
+  // Force remount on screen change with key
+  switch (screenName) {
+    case "home":
+      return <Home key="home" />;
+    case "browse":
+      return <ScreenWrapper key="browse"><Browse /></ScreenWrapper>;
+    case "search":
+      return <ScreenWrapper key="search"><Search /></ScreenWrapper>;
+    case "agent-detail":
+      return <ScreenWrapper key={`detail-${state.screen.agentId}`}><AgentDetail agentId={state.screen.agentId} /></ScreenWrapper>;
+    case "installed":
+      return <ScreenWrapper key="installed"><Installed /></ScreenWrapper>;
+    case "settings":
+      return <ScreenWrapper key="settings"><Settings /></ScreenWrapper>;
+    default:
+      return <Home key="home" />;
+  }
 }
 
 export function App() {
