@@ -6,14 +6,8 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 describe("Fullscreen component", () => {
-  it("cli_fullscreen.tsx exists", () => {
-    expect(fs.existsSync(path.resolve(__dirname, "../cli_fullscreen.tsx"))).toBe(true);
-  });
-
-  it("exports FullScreen component", () => {
-    const content = fs.readFileSync(path.resolve(__dirname, "../cli_fullscreen.tsx"), "utf-8");
-    expect(content).toContain("export");
-    expect(content).toContain("FullScreen");
+  it("ink-scroll-view is installed", () => {
+    expect(fs.existsSync(path.resolve(__dirname, "../../node_modules/ink-scroll-view"))).toBe(true);
   });
 
   it("cli.tsx uses alternate screen buffer codes", () => {
@@ -22,10 +16,10 @@ describe("Fullscreen component", () => {
     expect(content).toContain("1049l");
   });
 
-  it("tracks terminal size", () => {
-    const content = fs.readFileSync(path.resolve(__dirname, "../cli_fullscreen.tsx"), "utf-8");
-    expect(content).toContain("rows");
-    expect(content).toContain("columns");
+  it("App.tsx tracks terminal size for resize", () => {
+    const content = fs.readFileSync(path.resolve(__dirname, "../App.tsx"), "utf-8");
+    expect(content).toContain("resize");
+    expect(content).toContain("remeasure");
   });
 
   it("cli.tsx handles cleanup on signals", () => {
@@ -33,9 +27,9 @@ describe("Fullscreen component", () => {
     expect(content).toContain("SIGINT");
   });
 
-  it("App.tsx uses FullScreen wrapper", () => {
+  it("App.tsx uses ScrollView for scrolling", () => {
     const content = fs.readFileSync(path.resolve(__dirname, "../App.tsx"), "utf-8");
-    expect(content).toContain("FullScreen");
-    expect(content).toContain("cli_fullscreen");
+    expect(content).toContain("ScrollView");
+    expect(content).toContain("ink-scroll-view");
   });
 });
