@@ -121,12 +121,25 @@ export type Action =
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
-    case "NAVIGATE":
+    case "NAVIGATE": {
+      // Reset the target screen's state when navigating forward
+      // (going BACK will not reset — it preserves state)
+      const resets: Partial<AppState> = {};
+      switch (action.screen.name) {
+        case "search": resets.search = INITIAL_SEARCH; break;
+        case "browse": resets.browse = INITIAL_BROWSE; break;
+        case "installed": resets.installedScreen = INITIAL_INSTALLED; break;
+        case "settings": resets.settings = INITIAL_SETTINGS; break;
+        case "agent-detail": resets.agentDetail = INITIAL_AGENT_DETAIL; break;
+        case "home": resets.home = INITIAL_HOME; break;
+      }
       return {
         ...state,
+        ...resets,
         history: [...state.history, state.screen],
         screen: action.screen,
       };
+    }
 
     case "GO_BACK": {
       if (state.history.length === 0) {
