@@ -27,12 +27,14 @@ const PAGE_SIZE = 5;
 interface SearchProps {
   onBack: () => void;
   onViewAgent: (id: string) => void;
+  savedQuery?: string;
+  onQueryChange?: (query: string) => void;
 }
 
-export function Search({ onBack, onViewAgent }: SearchProps) {
-  const [query, setQuery] = useState("");
+export function Search({ onBack, onViewAgent, savedQuery, onQueryChange }: SearchProps) {
+  const [query, setQuery] = useState(savedQuery || "");
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [inputFocused, setInputFocused] = useState(true);
+  const [inputFocused, setInputFocused] = useState(!savedQuery);
   const [page, setPage] = useState(0);
 
   const allAgents = storeData.agents;
@@ -139,6 +141,7 @@ export function Search({ onBack, onViewAgent }: SearchProps) {
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
+    onQueryChange?.(value);
     setSelectedIndex(0);
     setPage(0);
   };
