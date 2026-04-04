@@ -1,9 +1,10 @@
 import React, { useMemo } from "react";
-import { Box, Text, useInput, useApp } from "ink";
+import { Box, Text, useInput, useApp, useStdout } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
 import { colors, columns, formatStars, formatInstalls, Cursor, Rating, InstallCount, VerifiedBadge, Separator, HelpFooter } from "../cli_app_theme.js";
+import { CompactLogo } from "../components/Logo.js";
 
 interface StoreData {
   featured: string[];
@@ -35,6 +36,9 @@ type NavItem =
 export function Home() {
   const { state, dispatch, navigate } = useStore();
   const { exit } = useApp();
+  const { stdout } = useStdout();
+  const termRows = stdout?.rows ?? 40;
+  const compact = termRows < 45;
 
   const selectedIndex = state.home.selectedIndex;
 
@@ -127,8 +131,15 @@ export function Home() {
 
   return (
     <Box flexDirection="column" paddingX={1}>
+      {/* Compact logo header when terminal is small */}
+      {compact && (
+        <Box marginBottom={1} flexDirection="column">
+          <CompactLogo />
+        </Box>
+      )}
+
       {/* Header */}
-      <Box marginBottom={1}>
+      <Box marginBottom={compact ? 0 : 1}>
         <Text dimColor>{totalAgents} apps available</Text>
       </Box>
 
@@ -165,30 +176,47 @@ export function Home() {
         <Text bold color={activeSection === "featured" ? colors.primary : undefined}>
           {activeSection === "featured" ? "▶ " : "  "}Featured Agents
         </Text>
-        <Box gap={1} marginTop={1}>
-          {featuredAgents.map((agent, i) => {
-            const isActive = activeSection === "featured" && i === activeIndexInSection;
-            return (
-              <Box
-                key={`featured-${agent.id}`}
-                flexDirection="column"
-                borderStyle="round"
-                borderColor={isActive ? colors.primary : undefined}
-                width={24}
-                paddingX={1}
-              >
-                <Text bold color={isActive ? colors.primary : undefined}>
-                  {agent.name}
-                </Text>
-                <Text color={colors.warning}>
-                  {formatStars(agent.rating)} {agent.rating.toFixed(1)}
-                </Text>
-                <Text dimColor>by {agent.author}</Text>
-                <Text dimColor>{formatInstalls(agent.installs)} installs</Text>
-              </Box>
-            );
-          })}
-        </Box>
+        {compact ? (
+          <Box flexDirection="column" marginTop={1}>
+            {featuredAgents.map((agent, i) => {
+              const isActive = activeSection === "featured" && i === activeIndexInSection;
+              return (
+                <Box key={`featured-${agent.id}`}>
+                  <Cursor active={isActive} />
+                  <Box width={columns.name}><Text color={isActive ? colors.primary : undefined} bold={isActive}>{agent.name}</Text></Box>
+                  <Rating value={agent.rating} />
+                  <InstallCount count={agent.installs} />
+                  <VerifiedBadge verified={agent.verified} />
+                </Box>
+              );
+            })}
+          </Box>
+        ) : (
+          <Box gap={1} marginTop={1}>
+            {featuredAgents.map((agent, i) => {
+              const isActive = activeSection === "featured" && i === activeIndexInSection;
+              return (
+                <Box
+                  key={`featured-${agent.id}`}
+                  flexDirection="column"
+                  borderStyle="round"
+                  borderColor={isActive ? colors.primary : undefined}
+                  width={24}
+                  paddingX={1}
+                >
+                  <Text bold color={isActive ? colors.primary : undefined}>
+                    {agent.name}
+                  </Text>
+                  <Text color={colors.warning}>
+                    {formatStars(agent.rating)} {agent.rating.toFixed(1)}
+                  </Text>
+                  <Text dimColor>by {agent.author}</Text>
+                  <Text dimColor>{formatInstalls(agent.installs)} installs</Text>
+                </Box>
+              );
+            })}
+          </Box>
+        )}
       </Box>
 
       {/* Separator */}

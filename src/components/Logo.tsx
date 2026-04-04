@@ -32,6 +32,16 @@ const LOGO_LINES: [string, string][] = [
   ],
 ];
 
+export function CompactLogo() {
+  return (
+    <Box paddingX={1}>
+      <Text bold color="#ff9ff3">bottel.ai</Text>
+      <Text dimColor> — </Text>
+      <Text bold color="#48dbfb">The Bot CLI Internet Portal</Text>
+    </Box>
+  );
+}
+
 export default function Logo() {
   return (
     <Box

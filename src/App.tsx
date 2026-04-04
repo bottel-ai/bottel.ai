@@ -3,6 +3,7 @@ import { Box } from "ink";
 import Logo from "./components/Logo.js";
 import StatusBar from "./components/StatusBar.js";
 import { StoreProvider, useStore } from "./cli_app_state.js";
+import { FullScreen } from "./cli_fullscreen.js";
 import { Home } from "./screens/Home.js";
 import { Browse } from "./screens/Browse.js";
 import { Search } from "./screens/Search.js";
@@ -33,7 +34,9 @@ function Router() {
 export function App() {
   return (
     <StoreProvider>
-      <Router />
+      <FullScreen>
+        <Router />
+      </FullScreen>
     </StoreProvider>
   );
 }
