@@ -3,7 +3,7 @@ import { Box, Text, useInput, useApp } from "ink";
 import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
-import { Viewport } from "../cli_app_viewport.js";
+
 import { colors, columns, Cursor, Rating, InstallCount, VerifiedBadge } from "../cli_app_theme.js";
 
 interface StoreData {
@@ -287,6 +287,6 @@ export function Home() {
   });
 
   return (
-    <Viewport rows={renderedRows} focusedIndex={focusedRowIndex} reservedLines={0} />
+    <Box flexDirection="column">{renderedRows}</Box>
   );
 }

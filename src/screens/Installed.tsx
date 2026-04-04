@@ -4,7 +4,7 @@ import fs from "fs";
 import type { Agent } from "../components/AgentCard.js";
 import { useStore } from "../cli_app_state.js";
 import { colors, columns, Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_theme.js";
-import { Viewport } from "../cli_app_viewport.js";
+
 
 interface StoreData {
   agents: Agent[];
@@ -91,7 +91,7 @@ export function Installed() {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Viewport rows={allRows} focusedIndex={focusedRowIndex} reservedLines={2} />
+      {allRows}
     </Box>
   );
 }

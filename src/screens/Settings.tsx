@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { useStore } from "../cli_app_state.js";
 import { colors, boxStyle, Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_theme.js";
-import { Viewport } from "../cli_app_viewport.js";
+
 
 const MENU_ITEMS = [
   { label: "About", description: "About bottel.ai" },
@@ -102,7 +102,7 @@ export function Settings() {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Viewport rows={allRows} focusedIndex={focusedRowIndex} reservedLines={2} />
+      {allRows}
     </Box>
   );
 }
