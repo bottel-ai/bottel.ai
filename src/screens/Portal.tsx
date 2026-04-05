@@ -34,18 +34,26 @@ type NavItem = { serviceId: string; service: ServiceData };
 
 function buildNavItems(): NavItem[] {
   const items: NavItem[] = [];
+  const seen = new Set<string>();
 
-  // Featured
+  // Featured first
   for (const id of servicesData.featured) {
     const svc = serviceMap.get(id);
-    if (svc) items.push({ serviceId: id, service: svc });
+    if (svc) {
+      items.push({ serviceId: id, service: svc });
+      seen.add(id);
+    }
   }
 
-  // All services by category
+  // Remaining services by category (skip featured to avoid duplicates)
   for (const cat of servicesData.categories) {
     for (const id of cat.services) {
+      if (seen.has(id)) continue;
       const svc = serviceMap.get(id);
-      if (svc) items.push({ serviceId: id, service: svc });
+      if (svc) {
+        items.push({ serviceId: id, service: svc });
+        seen.add(id);
+      }
     }
   }
 

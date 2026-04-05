@@ -21,7 +21,8 @@ function Router() {
   const { stdin } = useStdin();
   const scrollRef = useRef<ScrollViewRef>(null);
   const isHome = state.screen.name === "home";
-  const isSearch = state.screen.name === "search" || state.screen.name === "service";
+  const isSearch = state.screen.name === "search";
+  const hasTextInput = state.screen.name === "search" || state.screen.name === "service";
 
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
   useEffect(() => {
@@ -43,12 +44,12 @@ function Router() {
   // Disable mouse tracking on search screen
   useEffect(() => {
     if (!stdout) return;
-    stdout.write(isSearch ? DISABLE_MOUSE : ENABLE_MOUSE);
-  }, [isSearch, stdout]);
+    stdout.write(hasTextInput ? DISABLE_MOUSE : ENABLE_MOUSE);
+  }, [hasTextInput, stdout]);
 
   // Mouse wheel — scroll viewport only (no cursor movement)
   useEffect(() => {
-    if (!stdin || isSearch) return;
+    if (!stdin || hasTextInput) return;
     const onData = (data: Buffer) => {
       const str = data.toString();
       const matches = str.matchAll(/\x1b\[<(\d+);\d+;\d+[Mm]/g);
@@ -68,7 +69,7 @@ function Router() {
     };
     stdin.on("data", onData);
     return () => { stdin.off("data", onData); };
-  }, [stdin, isSearch]);
+  }, [stdin, hasTextInput]);
 
   // Arrow keys: scroll viewport 1 line when cursor moves
   // PageUp/PageDown: jump 10 lines
