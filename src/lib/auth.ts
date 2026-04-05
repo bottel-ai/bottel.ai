@@ -82,9 +82,8 @@ export function clearAuth(): void {
 export function getShortFingerprint(): string {
   const auth = getAuth();
   if (!auth) return "not logged in";
-  // "SHA256:xxxx..." -> take prefix of the base64 hash
   const hash = auth.fingerprint.replace("SHA256:", "");
-  return `SHA256:${hash.substring(0, 16)}`;
+  return hash.substring(0, 12);
 }
 
 /** Import a private key from a base64-encoded PKCS8 DER string. */
