@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
+import TextInput from "ink-text-input";
 import { useStore } from "../cli_app_state.js";
 import { colors } from "../cli_app_theme.js";
 import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_components.js";
 import { isLoggedIn, getAuth } from "../lib/auth.js";
-import { type App, getMyApps, deleteApp } from "../lib/api.js";
+import { type App, getMyApps, deleteApp, updateApp } from "../lib/api.js";
 
 export function MyApps() {
   const { state, dispatch, navigate, goBack } = useStore();
@@ -15,6 +16,13 @@ export function MyApps() {
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editStep, setEditStep] = useState(0); // 0=name, 1=description, 2=version, 3=confirm
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editVersion, setEditVersion] = useState("");
+  const [editConfirmIndex, setEditConfirmIndex] = useState(0);
+  const [saving, setSaving] = useState(false);
 
   const loggedIn = isLoggedIn();
   const auth = getAuth();
@@ -40,6 +48,71 @@ export function MyApps() {
   }, [loggedIn, fingerprint]);
 
   useInput((input, key) => {
+    // Edit mode input handling
+    if (editing) {
+      if (editStep === 3) {
+        // Confirm step
+        if (key.escape) {
+          setEditStep(2);
+          return;
+        }
+        if (key.leftArrow) {
+          setEditConfirmIndex(0);
+          return;
+        }
+        if (key.rightArrow) {
+          setEditConfirmIndex(1);
+          return;
+        }
+        if (key.return) {
+          if (editConfirmIndex === 1) {
+            // Cancel
+            setEditing(false);
+            return;
+          }
+          // Save
+          const app = apps[selectedIndex];
+          if (!app || saving) return;
+          setSaving(true);
+          setError(null);
+          updateApp(app.slug, { name: editName, description: editDescription, version: editVersion }, fingerprint)
+            .then(() => {
+              // Refresh the list
+              return getMyApps(fingerprint);
+            })
+            .then((data) => {
+              setApps(data);
+              setEditing(false);
+            })
+            .catch((err: Error) => {
+              setError(err.message);
+            })
+            .finally(() => {
+              setSaving(false);
+            });
+        }
+        return;
+      }
+
+      // Steps 0-2: text input steps
+      if (key.escape) {
+        if (editStep === 0) {
+          setEditing(false);
+        } else {
+          setEditStep(editStep - 1);
+        }
+        return;
+      }
+      if (key.return) {
+        setEditStep(editStep + 1);
+        if (editStep + 1 === 3) {
+          setEditConfirmIndex(0);
+        }
+        return;
+      }
+      return;
+    }
+
     if (confirmDelete !== null) {
       if (input === "y" || input === "Y") {
         const app = apps[confirmDelete];
@@ -91,6 +164,18 @@ export function MyApps() {
       const app = apps[selectedIndex];
       if (app) {
         navigate({ name: "agent-detail", agentId: app.id });
+      }
+      return;
+    }
+
+    if (input === "e" && !confirmDelete && apps.length > 0) {
+      const app = apps[selectedIndex];
+      if (app) {
+        setEditName(app.name);
+        setEditDescription(app.description);
+        setEditVersion(app.version);
+        setEditStep(0);
+        setEditing(true);
       }
       return;
     }
@@ -166,6 +251,120 @@ export function MyApps() {
     );
   }
 
+  // Edit mode rendering
+  if (editing) {
+    const app = apps[selectedIndex];
+    const EDIT_STEP_LABELS = ["Name", "Description", "Version"];
+
+    rows.push(
+      <Box key="editing-title" paddingLeft={2} marginBottom={1}>
+        <Text bold>Editing: {app?.name}</Text>
+      </Box>,
+    );
+
+    if (editStep < 3) {
+      const editFieldMap: Record<number, { label: string; value: string; setter: (v: string) => void }> = {
+        0: { label: "Name", value: editName, setter: setEditName },
+        1: { label: "Description", value: editDescription, setter: setEditDescription },
+        2: { label: "Version", value: editVersion, setter: setEditVersion },
+      };
+
+      const field = editFieldMap[editStep]!;
+
+      rows.push(
+        <Box key="edit-step-label" paddingLeft={4} marginBottom={1}>
+          <Text bold>Step {editStep + 1}/3: {EDIT_STEP_LABELS[editStep]}</Text>
+        </Box>,
+      );
+
+      rows.push(
+        <Box key="edit-input-row" paddingLeft={4}>
+          <Text>{field.label}: </Text>
+          <TextInput
+            value={field.value}
+            onChange={field.setter}
+            focus={true}
+          />
+        </Box>,
+      );
+
+      rows.push(
+        <HelpFooter key="footer" text="Esc cancel · Enter next" />,
+      );
+    } else {
+      // Confirm step
+      rows.push(
+        <Box key="changes-label" paddingLeft={4} marginBottom={1}>
+          <Text bold>Changes:</Text>
+        </Box>,
+      );
+
+      const changes: [string, string, string][] = [
+        ["Name:", app?.name ?? "", editName],
+        ["Description:", app?.description ?? "", editDescription],
+        ["Version:", app?.version ?? "", editVersion],
+      ];
+
+      changes.forEach(([label, oldVal, newVal]) => {
+        const changed = oldVal !== newVal;
+        rows.push(
+          <Box key={`change-${label}`} paddingLeft={6}>
+            <Text dimColor>{label.padEnd(14)}</Text>
+            {changed ? (
+              <Text>
+                <Text dimColor>{oldVal}</Text>
+                <Text dimColor> → </Text>
+                <Text color={colors.primary}>{newVal}</Text>
+              </Text>
+            ) : (
+              <Text>{oldVal}</Text>
+            )}
+          </Box>,
+        );
+      });
+
+      rows.push(
+        <Box key="edit-confirm-buttons" paddingLeft={4} marginTop={1} gap={2}>
+          <Cursor active={editConfirmIndex === 0} />
+          <Text bold={editConfirmIndex === 0} color={editConfirmIndex === 0 ? colors.success : undefined}>
+            Save
+          </Text>
+          <Text>   </Text>
+          <Cursor active={editConfirmIndex === 1} />
+          <Text bold={editConfirmIndex === 1} color={editConfirmIndex === 1 ? colors.error : undefined}>
+            Cancel
+          </Text>
+        </Box>,
+      );
+
+      if (saving) {
+        rows.push(
+          <Box key="saving" paddingLeft={4} marginTop={1}>
+            <Text color={colors.primary}>Saving...</Text>
+          </Box>,
+        );
+      }
+
+      if (error) {
+        rows.push(
+          <Box key="edit-error" paddingLeft={4} marginTop={1}>
+            <Text color={colors.error}>Error: {error}</Text>
+          </Box>,
+        );
+      }
+
+      rows.push(
+        <HelpFooter key="footer" text="Esc cancel · ←→ nav · Enter confirm" />,
+      );
+    }
+
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        {rows}
+      </Box>
+    );
+  }
+
   rows.push(
     <Box key="count" paddingLeft={2} marginBottom={1}>
       <Text bold>Your Apps ({apps.length})</Text>
@@ -206,7 +405,7 @@ export function MyApps() {
   });
 
   rows.push(
-    <HelpFooter key="footer" text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter view \u00b7 d delete" />,
+    <HelpFooter key="footer" text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter view \u00b7 e edit \u00b7 d delete" />,
   );
 
   return (
