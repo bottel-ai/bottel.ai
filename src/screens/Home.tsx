@@ -121,7 +121,7 @@ export function Home() {
       <HelpFooter text="/ search · ↑↓ nav · Enter select · q quit" />
 
       <Box justifyContent="center" marginTop={1}>
-        <Text dimColor>© 2026 bottel.ai — The Bot Native Internet</Text>
+        <Text dimColor>© 2026 bottel.ai</Text>
       </Box>
     </Box>
   );
