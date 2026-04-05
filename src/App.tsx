@@ -22,7 +22,7 @@ function Router() {
   const scrollRef = useRef<ScrollViewRef>(null);
   const isHome = state.screen.name === "home";
   const isSearch = state.screen.name === "search";
-  const hasTextInput = state.screen.name === "search" || state.screen.name === "submit";
+  const hasTextInput = ["search", "submit", "home", "auth", "my-apps"].includes(state.screen.name);
 
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
   useEffect(() => {
