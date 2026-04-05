@@ -11,6 +11,7 @@ export type Screen =
   | { name: "auth" }
   | { name: "submit" }
   | { name: "my-apps" }
+  | { name: "trending" }
 ;
 
 // ─── Screen State (persisted across navigation) ─────────────────

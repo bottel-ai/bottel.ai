@@ -11,6 +11,7 @@ import { Settings } from "./screens/Settings.js";
 import { Auth } from "./screens/Auth.js";
 import { Submit } from "./screens/Submit.js";
 import { MyApps } from "./screens/MyApps.js";
+import { Trending } from "./screens/Trending.js";
 
 const ENABLE_MOUSE = "\x1b[?1000h\x1b[?1002h\x1b[?1006h";
 const DISABLE_MOUSE = "\x1b[?1006l\x1b[?1002l\x1b[?1000l";
@@ -101,6 +102,7 @@ function Router() {
         {state.screen.name === "auth" && <Auth key="auth" />}
         {state.screen.name === "submit" && <Submit key="submit" />}
         {state.screen.name === "my-apps" && <MyApps key="my-apps" />}
+        {state.screen.name === "trending" && <Trending key="trending" />}
       </ScrollView>
     </Box>
   );
