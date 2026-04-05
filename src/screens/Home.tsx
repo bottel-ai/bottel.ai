@@ -1,21 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Box, Text, useInput, useApp, useStdout } from "ink";
-import fs from "fs";
-import type { Agent } from "../components/AgentCard.js";
+import { type App, getApps, getCategories } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
 import { colors, columns, formatStars, formatInstalls } from "../cli_app_theme.js";
 import { Cursor, Rating, InstallCount, VerifiedBadge, Separator, HelpFooter, CompactLogo } from "../cli_app_components.js";
-
-interface StoreData {
-  featured: string[];
-  trending: string[];
-  categories: { name: string; icon: string; agents: string[] }[];
-  agents: Agent[];
-}
-
-const storeData: StoreData = JSON.parse(
-  fs.readFileSync(new URL("../data/store.json", import.meta.url), "utf-8")
-);
 
 const MENU_ITEMS = [
   { label: "Home", value: "home", description: "Store front" },
@@ -44,21 +32,32 @@ export function Home() {
 
   const selectedIndex = state.home.selectedIndex;
 
-  const agentMap = useMemo(() => {
-    const map = new Map<string, Agent>();
-    for (const a of storeData.agents) map.set(a.id, a);
-    return map;
+  const [apps, setApps] = useState<App[]>([]);
+  const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getApps(), getCategories()])
+      .then(([appsData, catsData]) => {
+        if (!cancelled) {
+          setApps(appsData);
+          setCategories(catsData);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
-  const featuredAgents = storeData.featured
-    .map((id) => agentMap.get(id))
-    .filter(Boolean) as Agent[];
-
-  const trendingAgents = storeData.trending
-    .map((id) => agentMap.get(id))
-    .filter(Boolean) as Agent[];
-
-  const categories = storeData.categories;
+  // Featured = first 3 apps, Trending = first 5
+  const featuredAgents = apps.slice(0, 3);
+  const trendingAgents = apps.slice(0, 5);
 
   // Build flat navigable list
   const navItems = useMemo((): NavItem[] => {
@@ -82,7 +81,7 @@ export function Home() {
   const activeSection = current?.section ?? "menu";
   const activeIndexInSection = current?.index ?? 0;
 
-  const totalAgents = storeData.agents.length;
+  const totalAgents = apps.length;
 
   useInput((input, key) => {
     if (input === "q") {
@@ -116,8 +115,7 @@ export function Home() {
         const agent = trendingAgents[current.index];
         if (agent) navigate({ name: "agent-detail", agentId: agent.id });
       } else if (current.section === "categories") {
-        const cat = categories[current.index];
-        if (cat) navigate({ name: "browse" });
+        navigate({ name: "browse" });
       }
       return;
     }
@@ -132,6 +130,23 @@ export function Home() {
       dispatch({ type: "UPDATE_HOME", state: { selectedIndex: Math.min(navItems.length - 1, selectedIndex + 1) } });
     }
   });
+
+  if (loading) {
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Text>Loading...</Text>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Text color="red">Failed to load: {error}</Text>
+        <Text dimColor>Is the backend running at {process.env.BOTTEL_API_URL || "http://localhost:8787"}?</Text>
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column" paddingX={1}>
@@ -268,7 +283,7 @@ export function Home() {
                   {cat.name}
                 </Text>
                 <Text dimColor={!isActive} color={isActive ? colors.primary : undefined}>
-                  {" "}({cat.agents.length})
+                  {" "}({cat.count})
                 </Text>
               </Box>
             );

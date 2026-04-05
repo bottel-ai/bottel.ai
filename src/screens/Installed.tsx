@@ -1,27 +1,36 @@
-import React, { useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Box, Text, useInput } from "ink";
-import fs from "fs";
-import type { Agent } from "../components/AgentCard.js";
+import { type App, getApps } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
 import { colors, columns } from "../cli_app_theme.js";
 import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_components.js";
-
-
-interface StoreData {
-  agents: Agent[];
-}
-
-const storeData: StoreData = JSON.parse(
-  fs.readFileSync(new URL("../data/store.json", import.meta.url), "utf-8")
-);
 
 export function Installed() {
   const { state, dispatch, navigate, goBack } = useStore();
   const { selectedIndex } = state.installedScreen;
 
+  const [allApps, setAllApps] = useState<App[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getApps()
+      .then((apps) => {
+        if (!cancelled) setAllApps(apps);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   const installedAgents = useMemo(() => {
-    return storeData.agents.filter((a) => state.installed.has(a.id));
-  }, [state.installed]);
+    return allApps.filter((a) => state.installed.has(a.id));
+  }, [state.installed, allApps]);
 
   useInput((_input, key) => {
     if (key.escape) {
@@ -39,6 +48,22 @@ export function Installed() {
     }
   });
 
+  if (loading) {
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Text>Loading...</Text>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Text color="red">Failed to load apps: {error}</Text>
+      </Box>
+    );
+  }
+
   const allRows: React.ReactNode[] = [];
 
   // Breadcrumb
@@ -46,9 +71,6 @@ export function Installed() {
 
   // Header
   allRows.push(<ScreenHeader key="header" title={`Installed Apps (${installedAgents.length})`} />);
-
-  // Track focused row
-  const firstAgentRow = allRows.length;
 
   if (installedAgents.length === 0) {
     allRows.push(
@@ -84,10 +106,6 @@ export function Installed() {
 
   // Footer
   allRows.push(<HelpFooter key="footer" text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select" />);
-
-  const focusedRowIndex = installedAgents.length > 0
-    ? firstAgentRow + selectedIndex
-    : firstAgentRow;
 
   return (
     <Box flexDirection="column" paddingX={1}>

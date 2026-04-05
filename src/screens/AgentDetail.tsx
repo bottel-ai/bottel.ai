@@ -1,20 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
-import fs from "fs";
-import type { Agent } from "../components/AgentCard.js";
+import { type App, getApp } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
 import { colors, formatStars, formatNumber, boxStyle } from "../cli_app_theme.js";
 import { Breadcrumb, Separator, HelpFooter } from "../cli_app_components.js";
-
-
-interface StoreData {
-  agents: Agent[];
-}
-
-const storeData: StoreData = JSON.parse(
-  fs.readFileSync(new URL("../data/store.json", import.meta.url), "utf-8")
-);
 
 type InstallStatus = "idle" | "installing";
 
@@ -23,7 +13,26 @@ export function AgentDetail({ agentId }: { agentId: string }) {
   const { buttonIndex } = state.agentDetail;
   const [installStatus, setInstallStatus] = useState<InstallStatus>("idle");
 
-  const agent = storeData.agents.find((a) => a.id === agentId);
+  const [agent, setAgent] = useState<App | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getApp(agentId)
+      .then((app) => {
+        if (!cancelled) setAgent(app);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [agentId]);
+
   const isInstalled = state.installed.has(agentId);
 
   useEffect(() => {
@@ -56,7 +65,15 @@ export function AgentDetail({ agentId }: { agentId: string }) {
     }
   });
 
-  if (!agent) {
+  if (loading) {
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Text>Loading...</Text>
+      </Box>
+    );
+  }
+
+  if (error || !agent) {
     return (
       <Box paddingX={1} flexDirection="column">
         <Text color="red">Agent not found: {agentId}</Text>
@@ -143,14 +160,13 @@ export function AgentDetail({ agentId }: { agentId: string }) {
 
   // Metadata
   allRows.push(
-    <Text key="metadata" dimColor>Updated: {agent.updated}  |  Category: <Text color={colors.secondary} underline>{agent.category}</Text></Text>
+    <Text key="metadata" dimColor>Category: <Text color={colors.secondary} underline>{agent.category}</Text></Text>
   );
 
   // Blank line
   allRows.push(<Text key="blank8">{""}</Text>);
 
-  // Buttons row - this is the focused row
-  const buttonsRowIndex = allRows.length;
+  // Buttons row
   allRows.push(
     <Box key="buttons" gap={2}>
       {installStatus === "installing" ? (

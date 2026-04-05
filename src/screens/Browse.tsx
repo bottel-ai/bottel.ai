@@ -1,20 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
-import fs from "fs";
-import type { Agent } from "../components/AgentCard.js";
+import { type App, getApps, getCategories } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
 import { colors, columns } from "../cli_app_theme.js";
 import { Breadcrumb, Rating, InstallCount, VerifiedBadge, Cursor, HelpFooter } from "../cli_app_components.js";
-
-
-interface StoreData {
-  categories: { name: string; icon: string; agents: string[] }[];
-  agents: Agent[];
-}
-
-const storeData: StoreData = JSON.parse(
-  fs.readFileSync(new URL("../data/store.json", import.meta.url), "utf-8")
-);
 
 const AGENTS_PAGE_SIZE = 5;
 
@@ -22,19 +11,34 @@ export function Browse() {
   const { state, dispatch, navigate, goBack } = useStore();
   const { categoryIndex, expandedCategory, agentIndex, agentPage, inAgents } = state.browse;
 
-  const categories = storeData.categories;
+  const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
+  const [categoryAgents, setCategoryAgents] = useState<App[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [agentsLoading, setAgentsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const agentMap = useMemo(() => {
-    const map = new Map<string, Agent>();
-    for (const a of storeData.agents) map.set(a.id, a);
-    return map;
+  // Fetch categories on mount
+  useEffect(() => {
+    getCategories()
+      .then(setCategories)
+      .catch((err) => setError(String(err)))
+      .finally(() => setLoading(false));
   }, []);
 
-  const expandedCat = expandedCategory != null ? categories[expandedCategory] : null;
-  const categoryAgents = useMemo(() => {
-    if (!expandedCat) return [];
-    return expandedCat.agents.map((id) => agentMap.get(id)).filter(Boolean) as Agent[];
-  }, [expandedCat, agentMap]);
+  // Fetch agents when a category is expanded
+  useEffect(() => {
+    if (expandedCategory == null || categories.length === 0) {
+      setCategoryAgents([]);
+      return;
+    }
+    const cat = categories[expandedCategory];
+    if (!cat) return;
+    setAgentsLoading(true);
+    getApps(undefined, cat.name)
+      .then(setCategoryAgents)
+      .catch(() => setCategoryAgents([]))
+      .finally(() => setAgentsLoading(false));
+  }, [expandedCategory, categories]);
 
   const totalAgentPages = Math.max(1, Math.ceil(categoryAgents.length / AGENTS_PAGE_SIZE));
   const currentAgentPage = Math.min(agentPage, totalAgentPages - 1);
@@ -99,10 +103,27 @@ export function Browse() {
     }
   });
 
+  if (loading) {
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Text>Loading...</Text>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Text color="red">Failed to load categories: {error}</Text>
+      </Box>
+    );
+  }
+
+  const expandedCat = expandedCategory != null ? categories[expandedCategory] : null;
+
   const breadcrumbPath = expandedCat
     ? ["Home", "Browse", expandedCat.name]
     : ["Home", "Browse"];
-
 
   const allRows: React.ReactNode[] = [];
 
@@ -116,17 +137,10 @@ export function Browse() {
     </Box>
   );
 
-  // Track focused row index
-  let focusedRowIndex = 0;
-
   // Category rows (with expanded agents as sub-rows)
   categories.forEach((cat, i) => {
     const isActive = i === categoryIndex && !inAgents;
     const isExpanded = expandedCategory === i;
-
-    if (isActive) {
-      focusedRowIndex = allRows.length;
-    }
 
     // Category header row
     allRows.push(
@@ -135,47 +149,51 @@ export function Browse() {
         <Text bold={isActive || isExpanded} color={isActive ? colors.primary : undefined}>
           {isExpanded ? "\u25BC" : "\u25B6"} {cat.name}
         </Text>
-        <Text dimColor> ({cat.agents.length})</Text>
+        <Text dimColor> ({cat.count})</Text>
       </Box>
     );
 
     // Expanded agent sub-rows
     if (isExpanded) {
-      pagedAgents.forEach((agent, j) => {
-        const isAgentActive = inAgents && j === agentIndex;
-
-        if (isAgentActive) {
-          focusedRowIndex = allRows.length;
-        }
-
+      if (agentsLoading) {
         allRows.push(
-          <Box key={`agent-${agent.id}`} flexDirection="column" paddingLeft={4}>
-            <Box>
-              <Cursor active={isAgentActive} />
-              <Box width={columns.name}>
-                <Text bold={isAgentActive} color={isAgentActive ? colors.primary : undefined}>
-                  {agent.name}
-                </Text>
+          <Box key="agents-loading" paddingLeft={4}>
+            <Text dimColor>Loading agents...</Text>
+          </Box>
+        );
+      } else {
+        pagedAgents.forEach((agent, j) => {
+          const isAgentActive = inAgents && j === agentIndex;
+
+          allRows.push(
+            <Box key={`agent-${agent.id}`} flexDirection="column" paddingLeft={4}>
+              <Box>
+                <Cursor active={isAgentActive} />
+                <Box width={columns.name}>
+                  <Text bold={isAgentActive} color={isAgentActive ? colors.primary : undefined}>
+                    {agent.name}
+                  </Text>
+                </Box>
+                <Rating value={agent.rating} showNumber={false} />
+                <InstallCount count={agent.installs} />
+                <VerifiedBadge verified={agent.verified} />
               </Box>
-              <Rating value={agent.rating} showNumber={false} />
-              <InstallCount count={agent.installs} />
-              <VerifiedBadge verified={agent.verified} />
+              <Box paddingLeft={4}>
+                <Text dimColor>{agent.description.slice(0, 70)}</Text>
+              </Box>
             </Box>
-            <Box paddingLeft={4}>
-              <Text dimColor>{agent.description.slice(0, 70)}</Text>
-            </Box>
-          </Box>
-        );
-      });
+          );
+        });
 
-      if (totalAgentPages > 1) {
-        allRows.push(
-          <Box key="agent-page-info" paddingLeft={4} marginBottom={1}>
-            <Text dimColor>
-              Page {currentAgentPage + 1}/{totalAgentPages}  ←→ prev/next
-            </Text>
-          </Box>
-        );
+        if (totalAgentPages > 1) {
+          allRows.push(
+            <Box key="agent-page-info" paddingLeft={4} marginBottom={1}>
+              <Text dimColor>
+                Page {currentAgentPage + 1}/{totalAgentPages}  ←→ prev/next
+              </Text>
+            </Box>
+          );
+        }
       }
     }
   });

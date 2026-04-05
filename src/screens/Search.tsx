@@ -1,20 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import fs from "fs";
-import type { Agent } from "../components/AgentCard.js";
+import { type App, getApps } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
 import { colors, columns } from "../cli_app_theme.js";
 import { Breadcrumb, Rating, InstallCount, VerifiedBadge, Cursor, Separator, HelpFooter } from "../cli_app_components.js";
-
-
-interface StoreData {
-  agents: Agent[];
-}
-
-const storeData: StoreData = JSON.parse(
-  fs.readFileSync(new URL("../data/store.json", import.meta.url), "utf-8")
-);
 
 const PAGE_SIZE = 5;
 
@@ -22,19 +12,28 @@ export function Search() {
   const { state, dispatch, navigate, goBack } = useStore();
   const { query, selectedIndex, page, inputFocused } = state.search;
 
-  const allAgents = storeData.agents;
+  const [results, setResults] = useState<App[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const results = useMemo(() => {
-    if (!query.trim()) return allAgents;
-    const q = query.toLowerCase();
-    return allAgents.filter((agent) =>
-      agent.name.toLowerCase().includes(q) ||
-      agent.description.toLowerCase().includes(q) ||
-      agent.category.toLowerCase().includes(q) ||
-      agent.author.toLowerCase().includes(q) ||
-      agent.capabilities.some((c) => c.toLowerCase().includes(q))
-    );
-  }, [query, allAgents]);
+  // Fetch apps when query changes
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    const trimmed = query.trim();
+    getApps(trimmed || undefined)
+      .then((apps) => {
+        if (!cancelled) setResults(apps);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [query]);
 
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
@@ -56,7 +55,7 @@ export function Search() {
     }
 
     if (inputFocused) {
-      // Only down arrow leaves the input — left/right stay in text field
+      // Only down arrow leaves the input
       if (key.downArrow && results.length > 0) {
         update({ inputFocused: false, selectedIndex: 0 });
       }
@@ -132,9 +131,13 @@ export function Search() {
   allRows.push(
     <Box key="result-count" marginBottom={1}>
       <Text dimColor>
-        {results.length} result{results.length !== 1 ? "s" : ""}
-        {query.trim() ? ` for "${query}"` : ""}
-        {totalPages > 1 ? `  Page ${currentPage + 1}/${totalPages}` : ""}
+        {loading ? "Searching..." : (
+          <>
+            {results.length} result{results.length !== 1 ? "s" : ""}
+            {query.trim() ? ` for "${query}"` : ""}
+            {totalPages > 1 ? `  Page ${currentPage + 1}/${totalPages}` : ""}
+          </>
+        )}
       </Text>
     </Box>
   );
@@ -142,8 +145,13 @@ export function Search() {
   // Row 4: separator
   allRows.push(<Separator key="separator" />);
 
-
-  if (results.length === 0 && query.trim()) {
+  if (error) {
+    allRows.push(
+      <Box key="error" paddingLeft={2}>
+        <Text color="red">Error: {error}</Text>
+      </Box>
+    );
+  } else if (results.length === 0 && query.trim() && !loading) {
     allRows.push(
       <Box key="no-results" paddingLeft={2} flexDirection="column">
         <Text dimColor>No results found for "{query}"</Text>
@@ -154,7 +162,7 @@ export function Search() {
         <Text dimColor>Try a different search term.</Text>
       </Box>
     );
-  } else {
+  } else if (!loading) {
     pagedResults.forEach((agent, i) => {
       const isActive = !inputFocused && i === selectedIndex;
       allRows.push(
