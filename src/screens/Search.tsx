@@ -3,8 +3,8 @@ import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { type App, getApps } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
-import { colors, columns } from "../cli_app_theme.js";
-import { Breadcrumb, Rating, InstallCount, VerifiedBadge, Cursor, Separator, HelpFooter } from "../cli_app_components.js";
+import { colors } from "../cli_app_theme.js";
+import { Cursor, HelpFooter } from "../cli_app_components.js";
 
 const PAGE_SIZE = 5;
 
@@ -20,17 +20,10 @@ export function Search() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    const trimmed = query.trim();
-    getApps(trimmed || undefined)
-      .then((apps) => {
-        if (!cancelled) setResults(apps);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(String(err));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    getApps(query.trim() || undefined)
+      .then((apps) => { if (!cancelled) setResults(apps); })
+      .catch((err) => { if (!cancelled) setError(String(err)); })
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [query]);
 
@@ -43,155 +36,104 @@ export function Search() {
 
   useInput((input, key) => {
     if (key.escape) {
-      if (!inputFocused) {
-        update({ inputFocused: true });
-      } else if (query) {
-        update({ query: "", selectedIndex: 0, page: 0 });
-      } else {
-        goBack();
-      }
+      if (!inputFocused) update({ inputFocused: true });
+      else if (query) update({ query: "", selectedIndex: 0, page: 0 });
+      else goBack();
       return;
     }
-
     if (inputFocused) {
-      if (key.downArrow && results.length > 0) {
-        update({ inputFocused: false, selectedIndex: 0 });
-      }
+      if (key.downArrow && results.length > 0) update({ inputFocused: false, selectedIndex: 0 });
       return;
     }
-
     if (key.upArrow) {
-      if (selectedIndex <= 0) {
-        update({ inputFocused: true });
-      } else {
-        update({ selectedIndex: selectedIndex - 1 });
-      }
+      if (selectedIndex <= 0) update({ inputFocused: true });
+      else update({ selectedIndex: selectedIndex - 1 });
       return;
     }
-    if (key.downArrow) {
-      update({ selectedIndex: Math.min(pagedResults.length - 1, selectedIndex + 1) });
-      return;
-    }
-    if (key.leftArrow && currentPage > 0) {
-      update({ page: currentPage - 1, selectedIndex: 0 });
-      return;
-    }
-    if (key.rightArrow && currentPage < totalPages - 1) {
-      update({ page: currentPage + 1, selectedIndex: 0 });
-      return;
-    }
+    if (key.downArrow) { update({ selectedIndex: Math.min(pagedResults.length - 1, selectedIndex + 1) }); return; }
+    if (key.leftArrow && currentPage > 0) { update({ page: currentPage - 1, selectedIndex: 0 }); return; }
+    if (key.rightArrow && currentPage < totalPages - 1) { update({ page: currentPage + 1, selectedIndex: 0 }); return; }
     if (key.return) {
       const agent = pagedResults[selectedIndex];
-      if (agent) {
-        navigate({ name: "agent-detail", agentId: agent.id });
-      }
+      if (agent) navigate({ name: "agent-detail", agentId: agent.id });
       return;
     }
-
     if (input && !key.ctrl && !key.meta) {
       update({ inputFocused: true, query: query + input, selectedIndex: 0, page: 0 });
-      return;
     }
   });
 
-  const handleQueryChange = (value: string) => {
-    update({ query: value, selectedIndex: 0, page: 0 });
-  };
-
-  const allRows: React.ReactNode[] = [];
-
-  allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Search"]} />);
-
-  allRows.push(
-    <Box key="header" marginBottom={1}>
-      <Text bold color={colors.primary}>Search Agents</Text>
-    </Box>
-  );
-
-  allRows.push(
-    <Box key="search-input" marginBottom={1}>
-      <Text color={inputFocused ? colors.primary : undefined}>{"\u276f "}</Text>
-      <TextInput
-        value={query}
-        onChange={handleQueryChange}
-        placeholder="Type to search..."
-        focus={inputFocused}
-      />
-    </Box>
-  );
-
-  allRows.push(
-    <Box key="result-count" marginBottom={1}>
-      <Text dimColor>
-        {loading ? "Searching..." : (
-          <>
-            {results.length} result{results.length !== 1 ? "s" : ""}
-            {query.trim() ? ` for "${query}"` : ""}
-            {totalPages > 1 ? `  Page ${currentPage + 1}/${totalPages}` : ""}
-          </>
-        )}
-      </Text>
-    </Box>
-  );
-
-  allRows.push(<Separator key="separator" />);
-
-  if (error) {
-    allRows.push(
-      <Box key="error" paddingLeft={2}>
-        <Text color="red">Error: {error}</Text>
-      </Box>
-    );
-  } else if (results.length === 0 && query.trim() && !loading) {
-    allRows.push(
-      <Box key="no-results" paddingLeft={2} flexDirection="column">
-        <Text dimColor>No results found for "{query}"</Text>
-      </Box>
-    );
-    allRows.push(
-      <Box key="no-results-hint" paddingLeft={2}>
-        <Text dimColor>Try a different search term.</Text>
-      </Box>
-    );
-  } else if (!loading) {
-    pagedResults.forEach((agent, i) => {
-      const isActive = !inputFocused && i === selectedIndex;
-      allRows.push(
-        <Box key={`result-${agent.id}`} flexDirection="column" marginBottom={1}>
-          <Box>
-            <Cursor active={isActive} />
-            <Box width={columns.name}>
-              <Text bold={isActive} color={isActive ? colors.primary : undefined}>
-                {agent.name}
-              </Text>
-            </Box>
-            <Box width={16}>
-              <Text dimColor>by {agent.author}</Text>
-            </Box>
-            <Rating value={agent.rating} />
-            <InstallCount count={agent.installs} />
-            <VerifiedBadge verified={agent.verified} />
-          </Box>
-          <Box paddingLeft={4} flexDirection="column">
-            <Text dimColor>{agent.description}</Text>
-            <Box gap={1}>
-              {agent.capabilities.map((cap) => (
-                <Text key={cap} color={colors.secondary}>[{cap}]</Text>
-              ))}
-            </Box>
-          </Box>
-        </Box>
-      );
-    });
-  }
-
-  allRows.push(
-    <HelpFooter key="footer" text={`Esc back · ↑↓ nav · Enter select${totalPages > 1 ? " · ←→ pages" : ""}`} />
-  );
-
   return (
     <Box flexDirection="column" paddingX={1}>
-      {allRows}
+      {/* Search bar — Google style */}
+      <Box marginBottom={1}>
+        <Box borderStyle="round" borderColor={inputFocused ? colors.primary : colors.border} paddingX={2} width={50}>
+          <Text color={inputFocused ? colors.primary : undefined}>🔍 </Text>
+          <TextInput
+            value={query}
+            onChange={(v) => update({ query: v, selectedIndex: 0, page: 0 })}
+            placeholder="Search apps and services..."
+            focus={inputFocused}
+          />
+        </Box>
+      </Box>
+
+      {/* Result count */}
+      <Box marginBottom={1}>
+        <Text dimColor>
+          {loading ? "Searching..." : (
+            `About ${results.length} result${results.length !== 1 ? "s" : ""}${query.trim() ? ` for "${query}"` : ""}` +
+            (totalPages > 1 ? `  ·  Page ${currentPage + 1} of ${totalPages}` : "")
+          )}
+        </Text>
+      </Box>
+
+      {/* Results — Google style */}
+      {error && (
+        <Box paddingLeft={1}><Text color="red">Error: {error}</Text></Box>
+      )}
+
+      {!loading && !error && results.length === 0 && query.trim() && (
+        <Box flexDirection="column" paddingLeft={1}>
+          <Text>No results found for <Text bold>"{query}"</Text></Text>
+          <Text dimColor>Try different keywords or check the spelling.</Text>
+        </Box>
+      )}
+
+      {!loading && !error && pagedResults.map((agent, i) => {
+        const isActive = !inputFocused && i === selectedIndex;
+        return (
+          <Box key={agent.id} flexDirection="column" marginBottom={1} paddingLeft={1}>
+            {/* Row 1: cursor + title (link style) */}
+            <Box>
+              <Cursor active={isActive} />
+              <Text color={isActive ? "#48dbfb" : "#54a0ff"} bold underline>
+                {agent.name}
+              </Text>
+              {agent.verified && <Text color={colors.success}> ✓</Text>}
+            </Box>
+            {/* Row 2: slug/url (green, like Google) */}
+            <Box paddingLeft={3}>
+              <Text color="#2ed573">bottel.ai/apps/{agent.slug}</Text>
+              <Text dimColor>  ·  v{agent.version}  ·  by {agent.author}</Text>
+            </Box>
+            {/* Row 3: description */}
+            <Box paddingLeft={3}>
+              <Text>{agent.description}</Text>
+            </Box>
+            {/* Row 4: meta */}
+            <Box paddingLeft={3} gap={2}>
+              <Text color={colors.warning}>{"★".repeat(Math.round(agent.rating))} {agent.rating.toFixed(1)}</Text>
+              <Text dimColor>{agent.installs.toLocaleString()} installs</Text>
+              {agent.capabilities.length > 0 && (
+                <Text dimColor>{agent.capabilities.join(" · ")}</Text>
+              )}
+            </Box>
+          </Box>
+        );
+      })}
+
+      <HelpFooter text={`Esc back · ↑↓ nav · Enter select${totalPages > 1 ? " · ←→ pages" : ""}`} />
     </Box>
   );
 }
