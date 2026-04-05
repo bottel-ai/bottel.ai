@@ -96,9 +96,9 @@ export function ScreenHeader({ title, style = "section" }: { title: string; styl
 // ─── App Branding ───────────────────────────────────────────
 
 const LOGO_LINES: [string, string][] = [
-  ["╔═╗ ╔═╗ ╔╦╗ ╔╦╗ ╔═╗ ╦     ╔═╗ ╦", "#48dbfb"],
-  ["╠═╣ ║ ║  ║   ║  ╠═  ║  ●  ╠═╣ ║", "#54a0ff"],
-  ["╚═╝ ╚═╝  ╩   ╩  ╚═╝ ╚═╝   ╩ ╩ ╩", "#5f27cd"],
+  ["╔═╗ ╔═╗ ╔╦╗ ╔╦╗ ╔═╗ ╦     ╔═╗ ╦", "#ff6b6b"],
+  ["╠═╣ ║ ║  ║   ║  ╠═  ║  ●  ╠═╣ ║", "#feca57"],
+  ["╚═╝ ╚═╝  ╩   ╩  ╚═╝ ╚═╝   ╩ ╩ ╩", "#54a0ff"],
 ];
 
 /** Compact multi-color border logo with login status top-right */
@@ -118,9 +118,7 @@ export function Logo() {
           <Text key={`logo-${i}`} color={color} bold>{line}</Text>
         ))}
         <Box marginTop={1}>
-          {Array.from("The Bot Native Internet").map((ch, i) => (
-            <Text key={`tagline-${i}`} bold color={[colors.error, colors.warning, colors.primary][i % 3]}>{ch}</Text>
-          ))}
+          <Text bold color={colors.primary}>The Bot Native Internet</Text>
         </Box>
         <Text dimColor>Search apps and websites - built for bots.</Text>
       </Box>
@@ -136,9 +134,7 @@ export function CompactLogo() {
         <Text key={`cl-${i}`} bold color={[colors.error, colors.warning, colors.primary][i % 3]}>{ch}</Text>
       ))}</Box>
       <Text dimColor> — </Text>
-      <Box>{"The Bot Native Internet".split("").map((ch, i) => (
-        <Text key={`ct-${i}`} bold color={[colors.error, colors.warning, colors.primary][i % 3]}>{ch}</Text>
-      ))}</Box>
+      <Text bold color={colors.primary}>The Bot Native Internet</Text>
     </Box>
   );
 }

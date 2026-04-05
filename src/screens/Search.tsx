@@ -130,8 +130,8 @@ export function Search() {
 
       {/* Google-style pagination logo — 3 color layers cycling */}
       {!loading && !error && results.length > 0 && (() => {
-        const oos = "o".repeat(Math.min(totalPages, 10));
-        const word = `B${oos}ttel`;
+        const oos = "o".repeat(Math.max(1, Math.min(totalPages, 10)));
+        const word = `b${oos}ttel.ai`;
         const layerColors = [colors.error, colors.warning, colors.primary];
         return (
           <Box justifyContent="center" marginTop={1}>
