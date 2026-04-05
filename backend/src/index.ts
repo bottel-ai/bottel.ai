@@ -4,7 +4,7 @@ import { authMiddleware } from "./middleware/auth.js";
 
 interface Env { DB: D1Database; }
 
-const app = new Hono<{ Bindings: Env; Variables: { fingerprint: string; publicKey: string } }>();
+const app = new Hono<{ Bindings: Env; Variables: { fingerprint: string } }>();
 
 app.use("*", cors());
 
@@ -15,6 +15,7 @@ app.get("/", (c) => c.json({ name: "bottel.ai", version: "0.1.0", status: "ok" }
 app.get("/apps", async (c) => {
   const q = c.req.query("q");
   const category = c.req.query("category");
+  const author = c.req.query("author");
 
   let sql = "SELECT * FROM apps";
   const conditions: string[] = [];
@@ -28,6 +29,11 @@ app.get("/apps", async (c) => {
   if (category) {
     conditions.push("category = ?");
     bindings.push(category);
+  }
+
+  if (author) {
+    conditions.push("public_key = ?");
+    bindings.push(author);
   }
 
   if (conditions.length > 0) {
@@ -82,25 +88,9 @@ app.get("/categories", async (c) => {
   return c.json({ categories });
 });
 
-// POST /register — register public key (no auth required)
-app.post("/register", async (c) => {
-  const body = await c.req.json<{ fingerprint: string; publicKey: string }>();
-
-  if (!body.fingerprint || !body.publicKey) {
-    return c.json({ error: "fingerprint and publicKey are required" }, 400);
-  }
-
-  await c.env.DB.prepare(
-    "INSERT OR IGNORE INTO users (fingerprint, public_key) VALUES (?, ?)"
-  ).bind(body.fingerprint, body.publicKey).run();
-
-  return c.json({ ok: true });
-});
-
 // POST /apps — submit new app (requires auth)
 app.post("/apps", authMiddleware, async (c) => {
   const fingerprint = c.get("fingerprint");
-  const publicKey = c.get("publicKey");
 
   const body = await c.req.json<{
     name: string;
@@ -131,7 +121,7 @@ app.post("/apps", authMiddleware, async (c) => {
     fingerprint,
     body.version,
     JSON.stringify(body.capabilities ?? []),
-    publicKey
+    fingerprint
   ).run();
 
   const app = await c.env.DB.prepare("SELECT * FROM apps WHERE id = ?")

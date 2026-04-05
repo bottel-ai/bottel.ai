@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import Conf from "conf";
 import { useStore } from "../cli_app_state.js";
 import { colors } from "../cli_app_theme.js";
 import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_components.js";
 import { isLoggedIn, getAuth, getShortFingerprint } from "../lib/auth.js";
+import { submitApp } from "../lib/api.js";
 
 const CATEGORIES = [
   "Productivity",
@@ -23,21 +23,6 @@ const STEP_LABELS = [
   "Confirm",
 ];
 
-interface Submission {
-  name: string;
-  slug: string;
-  description: string;
-  category: string;
-  version: string;
-  fingerprint: string;
-  submittedAt: string;
-}
-
-const submissionStore = new Conf<{ submissions: Submission[] }>({
-  projectName: "bottel",
-  defaults: { submissions: [] },
-});
-
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -50,6 +35,8 @@ export function Submit() {
   const { step, name, slug, description, category, version } = state.submit;
   const [confirmIndex, setConfirmIndex] = useState(0); // 0=Submit, 1=Cancel
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loggedIn = isLoggedIn();
   const auth = getAuth();
@@ -90,18 +77,20 @@ export function Submit() {
           goBack();
           return;
         }
-        const existing = submissionStore.get("submissions");
-        const submission: Submission = {
-          name,
-          slug,
-          description,
-          category,
-          version,
-          fingerprint: auth?.fingerprint ?? "unknown",
-          submittedAt: new Date().toISOString(),
-        };
-        submissionStore.set("submissions", [...existing, submission]);
-        setSubmitted(true);
+        if (submitting) return;
+        const fingerprint = auth?.fingerprint ?? "unknown";
+        setSubmitting(true);
+        setError(null);
+        submitApp({ name, slug, description, category, version }, fingerprint)
+          .then(() => {
+            setSubmitted(true);
+          })
+          .catch((err: Error) => {
+            setError(err.message);
+          })
+          .finally(() => {
+            setSubmitting(false);
+          });
         return;
       }
       return;
@@ -183,7 +172,7 @@ export function Submit() {
         <Text color={colors.success} bold>
           App submitted successfully!
         </Text>
-        <Text dimColor>Your submission has been saved.</Text>
+        <Text dimColor>Your app has been published to bottel.ai.</Text>
       </Box>,
     );
     allRows.push(<HelpFooter key="footer" text="Esc/Enter back to home" />);
@@ -235,6 +224,22 @@ export function Submit() {
         </Text>
       </Box>,
     );
+
+    if (submitting) {
+      allRows.push(
+        <Box key="submitting" paddingLeft={2} marginTop={1}>
+          <Text color={colors.primary}>Submitting...</Text>
+        </Box>,
+      );
+    }
+
+    if (error) {
+      allRows.push(
+        <Box key="error" paddingLeft={2} marginTop={1}>
+          <Text color={colors.error}>Error: {error}</Text>
+        </Box>,
+      );
+    }
 
     allRows.push(
       <HelpFooter key="footer" text="Esc cancel · ←→ nav · Enter confirm" />,

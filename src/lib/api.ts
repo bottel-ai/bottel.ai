@@ -86,25 +86,26 @@ export async function getCategories(): Promise<{ name: string; count: number }[]
   return categories;
 }
 
-export async function registerUser(fingerprint: string, publicKey: string): Promise<void> {
-  await request("/register", {
-    method: "POST",
-    body: JSON.stringify({ fingerprint, publicKey }),
-  });
-}
-
-export async function submitApp(data: any, fingerprint: string): Promise<App> {
+export async function submitApp(
+  data: { name: string; slug: string; description: string; category: string; version: string },
+  fingerprint: string,
+): Promise<App> {
   const { app } = await request<{ app: RawApp }>("/apps", {
     method: "POST",
     body: JSON.stringify(data),
-    headers: { "X-Fingerprint": fingerprint, "X-Signature": "" },
+    headers: { "X-Fingerprint": fingerprint },
   });
   return mapApp(app);
 }
 
+export async function getMyApps(fingerprint: string): Promise<App[]> {
+  const { apps } = await request<{ apps: RawApp[] }>(`/apps?author=${encodeURIComponent(fingerprint)}`);
+  return apps.map(mapApp);
+}
+
 export async function getUserInstalls(fingerprint: string): Promise<App[]> {
   const { installs } = await request<{ installs: RawApp[] }>("/user/installs", {
-    headers: { "X-Fingerprint": fingerprint, "X-Signature": "" },
+    headers: { "X-Fingerprint": fingerprint },
   });
   return installs.map(mapApp);
 }
@@ -112,7 +113,7 @@ export async function getUserInstalls(fingerprint: string): Promise<App[]> {
 export async function toggleInstall(appId: string, fingerprint: string): Promise<boolean> {
   const { installed } = await request<{ installed: boolean }>(`/user/installs/${appId}`, {
     method: "POST",
-    headers: { "X-Fingerprint": fingerprint, "X-Signature": "" },
+    headers: { "X-Fingerprint": fingerprint },
   });
   return installed;
 }
