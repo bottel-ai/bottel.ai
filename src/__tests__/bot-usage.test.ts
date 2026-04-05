@@ -35,7 +35,7 @@ describe("Bot can use bottel store", () => {
 
   // A bot needs to know what's available in a category
   it("can list agents in a category", () => {
-    const category = storeData.categories.find((c: any) => c.name === "Development");
+    const category = storeData.categories.find((c: any) => c.name === "Productivity");
     expect(category).toBeDefined();
     expect(category.agents.length).toBeGreaterThan(0);
     // Every listed agent should exist
@@ -69,7 +69,7 @@ describe("Bot can use bottel store", () => {
   // A bot should be able to find the best agent for a task
   it("can rank agents by rating and installs", () => {
     const devAgents = storeData.agents
-      .filter((a: any) => a.category === "Development")
+      .filter((a: any) => a.category === "Productivity")
       .sort((a: any, b: any) => b.rating - a.rating || b.installs - a.installs);
     expect(devAgents[0].id).toBe("code-reviewer"); // highest rated dev tool
   });

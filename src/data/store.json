@@ -2,34 +2,24 @@
   "featured": ["code-reviewer", "translator", "security-scanner"],
   "categories": [
     {
-      "name": "Development",
+      "name": "Productivity",
       "icon": ">>",
-      "agents": ["code-reviewer", "devops-pilot", "test-writer", "doc-generator", "refactor-bot", "api-designer"]
+      "agents": ["code-reviewer", "doc-generator", "refactor-bot", "api-designer"]
     },
     {
-      "name": "Security",
+      "name": "Utilities",
       "icon": "##",
-      "agents": ["security-scanner", "vuln-hunter"]
+      "agents": ["security-scanner", "vuln-hunter", "devops-pilot", "k8s-helper", "test-writer"]
     },
     {
-      "name": "Data & Analytics",
+      "name": "Education",
       "icon": "::",
-      "agents": ["data-analyst", "sql-wizard"]
+      "agents": ["data-analyst", "sql-wizard", "research-agent", "fact-checker"]
     },
     {
-      "name": "Writing & Content",
+      "name": "Business",
       "icon": "~~",
-      "agents": ["translator", "copywriter"]
-    },
-    {
-      "name": "DevOps & Infra",
-      "icon": "%%",
-      "agents": ["devops-pilot", "k8s-helper"]
-    },
-    {
-      "name": "Research",
-      "icon": "??",
-      "agents": ["research-agent", "fact-checker"]
+      "agents": ["copywriter", "translator"]
     }
   ],
   "agents": [
@@ -40,7 +30,7 @@
       "version": "2.4.1",
       "description": "Reviews pull requests for bugs, style issues, and security vulnerabilities. Supports 20+ languages.",
       "longDescription": "Code Reviewer is an advanced static analysis agent that combines deep code understanding with security best practices. It reviews your pull requests line-by-line, identifies potential bugs, suggests performance improvements, and flags security vulnerabilities before they reach production.\n\nSupported languages: Python, JavaScript, TypeScript, Go, Rust, Java, C++, Ruby, PHP, Swift, Kotlin, and more.\n\nIntegrations: GitHub, GitLab, Bitbucket, Azure DevOps.",
-      "category": "Development",
+      "category": "Productivity",
       "rating": 4.9,
       "reviews": 2847,
       "installs": 45200,
@@ -56,7 +46,7 @@
       "version": "3.1.0",
       "description": "Translates text between 95 languages with cultural context and tone preservation.",
       "longDescription": "Universal Translator goes beyond word-for-word translation. It understands cultural nuance, preserves tone and intent, and handles domain-specific terminology for legal, medical, technical, and marketing content.\n\nFeatures:\n- 95 language pairs\n- Context-aware translation\n- Glossary support for custom terminology\n- Batch translation for large documents\n- API rate: 10,000 words/minute",
-      "category": "Writing & Content",
+      "category": "Business",
       "rating": 4.7,
       "reviews": 1923,
       "installs": 38100,
@@ -72,7 +62,7 @@
       "version": "1.8.3",
       "description": "Scans codebases for OWASP Top 10 vulnerabilities, secrets, and dependency risks.",
       "longDescription": "SecureBot provides continuous security scanning for your entire codebase. It detects hardcoded secrets, SQL injection, XSS, CSRF, insecure dependencies, and more.\n\nFeatures:\n- OWASP Top 10 coverage\n- Secret detection (API keys, passwords, tokens)\n- Dependency vulnerability scanning\n- SBOM generation\n- CI/CD integration\n- Compliance reporting (SOC2, HIPAA, PCI-DSS)",
-      "category": "Security",
+      "category": "Utilities",
       "rating": 4.8,
       "reviews": 1456,
       "installs": 29800,
@@ -88,7 +78,7 @@
       "version": "2.0.0",
       "description": "Manages CI/CD pipelines, Docker containers, and Kubernetes deployments from natural language.",
       "longDescription": "DevOps Pilot translates natural language instructions into infrastructure actions. Tell it what you want deployed and it generates Dockerfiles, Kubernetes manifests, GitHub Actions workflows, and Terraform configs.\n\nSupports:\n- Docker & Docker Compose\n- Kubernetes (EKS, GKE, AKS)\n- Terraform & Pulumi\n- GitHub Actions, GitLab CI, CircleCI\n- AWS, GCP, Azure",
-      "category": "DevOps & Infra",
+      "category": "Utilities",
       "rating": 4.6,
       "reviews": 987,
       "installs": 18500,
@@ -104,7 +94,7 @@
       "version": "1.5.2",
       "description": "Analyzes datasets, generates SQL queries, creates visualizations, and produces reports.",
       "longDescription": "DataBot connects to your databases and data warehouses to answer questions in natural language. Ask it anything about your data and it writes the SQL, runs the query, and presents the results.\n\nConnectors:\n- PostgreSQL, MySQL, SQLite\n- BigQuery, Snowflake, Redshift\n- CSV, Parquet, JSON files\n- REST APIs",
-      "category": "Data & Analytics",
+      "category": "Education",
       "rating": 4.5,
       "reviews": 756,
       "installs": 14200,
@@ -120,7 +110,7 @@
       "version": "1.3.0",
       "description": "Generates comprehensive test suites from your source code. Unit, integration, and e2e tests.",
       "longDescription": "TestGen reads your codebase and generates meaningful tests with high coverage. It understands your code's intent and creates tests that catch real bugs, not just hit line numbers.\n\nFrameworks: Jest, Vitest, Pytest, Go testing, JUnit, RSpec\nTest types: Unit, Integration, E2E, Property-based, Snapshot",
-      "category": "Development",
+      "category": "Productivity",
       "rating": 4.4,
       "reviews": 634,
       "installs": 12800,
@@ -136,7 +126,7 @@
       "version": "2.1.0",
       "description": "Generates API docs, README files, and technical documentation from your codebase.",
       "longDescription": "DocBot scans your code and generates comprehensive documentation. It creates API references, guides, tutorials, and README files that stay in sync with your code.\n\nOutputs: Markdown, HTML, OpenAPI/Swagger, JSDoc, Sphinx",
-      "category": "Development",
+      "category": "Productivity",
       "rating": 4.3,
       "reviews": 521,
       "installs": 9800,
@@ -152,7 +142,7 @@
       "version": "1.0.5",
       "description": "Refactors messy code into clean, maintainable patterns. Detects code smells automatically.",
       "longDescription": "Refactor Pro identifies code smells, suggests refactoring patterns, and can automatically apply safe transformations. It respects your existing patterns and conventions.\n\nDetects: Long methods, god classes, feature envy, duplicate code, dead code, complex conditionals",
-      "category": "Development",
+      "category": "Productivity",
       "rating": 4.2,
       "reviews": 412,
       "installs": 7600,
@@ -168,7 +158,7 @@
       "version": "1.2.0",
       "description": "Converts natural language to optimized SQL. Supports PostgreSQL, MySQL, and SQLite.",
       "longDescription": "SQL Wizard understands your schema and converts plain English questions into optimized SQL queries. It explains query plans and suggests index improvements.",
-      "category": "Data & Analytics",
+      "category": "Education",
       "rating": 4.6,
       "reviews": 689,
       "installs": 11300,
@@ -184,7 +174,7 @@
       "version": "1.1.0",
       "description": "Researches topics across papers, docs, and the web. Compiles structured reports.",
       "longDescription": "DeepResearch performs multi-source research on any topic. It reads academic papers, documentation, articles, and synthesizes findings into structured reports with citations.",
-      "category": "Research",
+      "category": "Education",
       "rating": 4.4,
       "reviews": 445,
       "installs": 8900,
@@ -200,7 +190,7 @@
       "version": "1.4.0",
       "description": "Troubleshoots Kubernetes clusters, generates manifests, and monitors pod health.",
       "longDescription": "KubeAssist is your Kubernetes co-pilot. It diagnoses pod failures, generates YAML manifests, manages helm charts, and provides real-time cluster health monitoring.",
-      "category": "DevOps & Infra",
+      "category": "Utilities",
       "rating": 4.5,
       "reviews": 534,
       "installs": 10100,
@@ -216,7 +206,7 @@
       "version": "2.0.1",
       "description": "Writes marketing copy, landing pages, emails, and social media posts.",
       "longDescription": "CopyBot generates high-converting marketing copy tailored to your brand voice. It A/B tests headlines, writes email sequences, and creates social media content calendars.",
-      "category": "Writing & Content",
+      "category": "Business",
       "rating": 4.3,
       "reviews": 378,
       "installs": 7200,
@@ -232,7 +222,7 @@
       "version": "1.2.0",
       "description": "Actively probes your APIs and endpoints for security vulnerabilities.",
       "longDescription": "VulnHunter performs active security testing against your APIs. It fuzzes endpoints, tests authentication flows, checks for injection attacks, and generates detailed vulnerability reports.",
-      "category": "Security",
+      "category": "Utilities",
       "rating": 4.7,
       "reviews": 623,
       "installs": 11800,
@@ -248,7 +238,7 @@
       "version": "1.0.0",
       "description": "Designs RESTful and GraphQL APIs from requirements. Generates OpenAPI specs.",
       "longDescription": "API Architect takes your requirements and designs clean, consistent APIs following industry best practices. It generates OpenAPI 3.1 specs, GraphQL schemas, and mock servers.",
-      "category": "Development",
+      "category": "Productivity",
       "rating": 4.1,
       "reviews": 234,
       "installs": 4500,
@@ -264,7 +254,7 @@
       "version": "1.0.2",
       "description": "Verifies claims against trusted sources. Flags misinformation with citations.",
       "longDescription": "FactCheck cross-references claims against academic databases, news archives, and official sources. It provides confidence scores and full citation chains for every verification.",
-      "category": "Research",
+      "category": "Education",
       "rating": 4.3,
       "reviews": 312,
       "installs": 5600,

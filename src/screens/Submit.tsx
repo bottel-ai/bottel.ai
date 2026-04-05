@@ -8,12 +8,10 @@ import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_compone
 import { isLoggedIn, getAuth, getShortFingerprint } from "../lib/auth.js";
 
 const CATEGORIES = [
-  "Development",
-  "Security",
-  "Data & Analytics",
-  "Writing & Content",
-  "DevOps & Infra",
-  "Research",
+  "Productivity",
+  "Utilities",
+  "Education",
+  "Business",
 ];
 
 const STEP_LABELS = [
