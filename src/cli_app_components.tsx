@@ -96,9 +96,11 @@ export function ScreenHeader({ title, style = "section" }: { title: string; styl
 // ─── App Branding ───────────────────────────────────────────
 
 const LOGO_LINES: [string, string][] = [
-  ["╔═╗ ╔═╗ ╔╦╗ ╔╦╗ ╔═╗ ╦     ╔═╗ ╦", "#ff6b6b"],
-  ["╠═╣ ║ ║  ║   ║  ╠═  ║  ●  ╠═╣ ║", "#feca57"],
-  ["╚═╝ ╚═╝  ╩   ╩  ╚═╝ ╚═╝   ╩ ╩ ╩", "#54a0ff"],
+  ["██████   ██████  ████████ ████████ ███████ ██      █████  ██", "#ff6b6b"],
+  ["██   ██ ██    ██    ██       ██    ██      ██     ██   ██ ██", "#feca57"],
+  ["██████  ██    ██    ██       ██    █████   ██     ███████ ██", "#feca57"],
+  ["██   ██ ██    ██    ██       ██    ██      ██  ●  ██   ██ ██", "#54a0ff"],
+  ["██████   ██████     ██       ██    ███████ ██     ██   ██ ██", "#54a0ff"],
 ];
 
 /** Compact multi-color border logo with login status top-right */
