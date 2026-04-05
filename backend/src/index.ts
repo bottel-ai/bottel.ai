@@ -163,6 +163,46 @@ app.post("/user/installs/:appId", authMiddleware, async (c) => {
   }
 });
 
+// PUT /apps/:slug — update app (auth required, must own it)
+app.put("/apps/:slug", authMiddleware, async (c) => {
+  const slug = c.req.param("slug");
+  const fingerprint = c.get("fingerprint");
+
+  // Check ownership
+  const existing = await c.env.DB.prepare("SELECT * FROM apps WHERE slug = ? AND public_key = ?")
+    .bind(slug, fingerprint).first();
+  if (!existing) return c.json({ error: "App not found or not owned by you" }, 404);
+
+  const body = await c.req.json<{ name?: string; description?: string; version?: string }>();
+
+  // Build UPDATE dynamically for provided fields
+  const updates: string[] = [];
+  const values: string[] = [];
+  if (body.name) { updates.push("name = ?"); values.push(body.name); }
+  if (body.description) { updates.push("description = ?"); values.push(body.description); }
+  if (body.version) { updates.push("version = ?"); values.push(body.version); }
+
+  if (updates.length === 0) return c.json({ error: "No fields to update" }, 400);
+
+  await c.env.DB.prepare(`UPDATE apps SET ${updates.join(", ")} WHERE slug = ? AND public_key = ?`)
+    .bind(...values, slug, fingerprint).run();
+
+  const updated = await c.env.DB.prepare("SELECT * FROM apps WHERE slug = ?").bind(slug).first();
+  return c.json({ app: { ...updated, capabilities: JSON.parse((updated as any).capabilities || "[]"), verified: !!(updated as any).verified } });
+});
+
+// DELETE /apps/:slug — delete app (auth required, must own it)
+app.delete("/apps/:slug", authMiddleware, async (c) => {
+  const slug = c.req.param("slug");
+  const fingerprint = c.get("fingerprint");
+
+  const result = await c.env.DB.prepare("DELETE FROM apps WHERE slug = ? AND public_key = ?")
+    .bind(slug, fingerprint).run();
+
+  if (result.meta.changes === 0) return c.json({ error: "App not found or not owned by you" }, 404);
+  return c.json({ ok: true });
+});
+
 // 404 handler
 app.notFound((c) => {
   return c.json({ error: "Not found" }, 404);

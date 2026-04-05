@@ -10,6 +10,7 @@ export type Screen =
   | { name: "settings" }
   | { name: "auth" }
   | { name: "submit" }
+  | { name: "my-apps" }
 ;
 
 // ─── Screen State (persisted across navigation) ─────────────────
@@ -41,6 +42,10 @@ export interface AuthScreenState {
   selectedIndex: number;
 }
 
+export interface MyAppsState {
+  selectedIndex: number;
+}
+
 export interface SubmitState {
   step: number;  // 0=name, 1=slug, 2=description, 3=version, 4=confirm
   name: string;
@@ -62,6 +67,7 @@ export interface AppState {
   agentDetail: AgentDetailState;
   authScreen: AuthScreenState;
   submit: SubmitState;
+  myApps: MyAppsState;
 }
 
 const INITIAL_SEARCH: SearchState = {
@@ -91,6 +97,10 @@ const INITIAL_AUTH_SCREEN: AuthScreenState = {
   selectedIndex: 0,
 };
 
+const INITIAL_MY_APPS: MyAppsState = {
+  selectedIndex: 0,
+};
+
 const INITIAL_SUBMIT: SubmitState = {
   step: 0,
   name: "",
@@ -110,6 +120,7 @@ const INITIAL_STATE: AppState = {
   agentDetail: INITIAL_AGENT_DETAIL,
   authScreen: INITIAL_AUTH_SCREEN,
   submit: INITIAL_SUBMIT,
+  myApps: INITIAL_MY_APPS,
 };
 
 // ─── Actions ────────────────────────────────────────────────────
@@ -127,6 +138,7 @@ export type Action =
   | { type: "UPDATE_AGENT_DETAIL"; state: Partial<AgentDetailState> }
   | { type: "UPDATE_AUTH_SCREEN"; state: Partial<AuthScreenState> }
   | { type: "UPDATE_SUBMIT"; state: Partial<SubmitState> }
+  | { type: "UPDATE_MY_APPS"; state: Partial<MyAppsState> }
   | { type: "RESET_SEARCH" };
 
 // ─── Reducer ────────────────────────────────────────────────────
@@ -145,6 +157,7 @@ function reducer(state: AppState, action: Action): AppState {
         case "home": resets.home = INITIAL_HOME; break;
         case "auth": resets.authScreen = INITIAL_AUTH_SCREEN; break;
         case "submit": resets.submit = INITIAL_SUBMIT; break;
+        case "my-apps": resets.myApps = INITIAL_MY_APPS; break;
       }
       return {
         ...state,
@@ -222,6 +235,12 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         submit: { ...state.submit, ...action.state },
+      };
+
+    case "UPDATE_MY_APPS":
+      return {
+        ...state,
+        myApps: { ...state.myApps, ...action.state },
       };
 
     case "RESET_SEARCH":

@@ -104,6 +104,22 @@ export async function getMyApps(fingerprint: string): Promise<App[]> {
   return apps.map(mapApp);
 }
 
+export async function updateApp(slug: string, data: { name?: string; description?: string; version?: string }, fingerprint: string): Promise<App> {
+  const { app } = await request<{ app: RawApp }>(`/apps/${slug}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+    headers: { "X-Fingerprint": fingerprint },
+  });
+  return mapApp(app);
+}
+
+export async function deleteApp(slug: string, fingerprint: string): Promise<void> {
+  await request(`/apps/${slug}`, {
+    method: "DELETE",
+    headers: { "X-Fingerprint": fingerprint },
+  });
+}
+
 export async function getUserInstalls(fingerprint: string): Promise<App[]> {
   const { installs } = await request<{ installs: RawApp[] }>("/user/installs", {
     headers: { "X-Fingerprint": fingerprint },

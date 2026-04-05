@@ -9,6 +9,7 @@ const MENU_ITEMS = [
   { label: "Home", value: "home", description: "Store front" },
   { label: "Search", value: "search", description: "Find apps" },
   { label: "Submit", value: "submit", description: "Submit your app" },
+  { label: "My Apps", value: "my-apps", description: "Manage your apps" },
   { label: "Auth", value: "auth", description: "Login / manage keys" },
   { label: "Installed", value: "installed", description: "Your apps" },
   { label: "Settings", value: "settings", description: "Preferences" },
@@ -91,6 +92,7 @@ export function Home() {
           case "home": break;
           case "search": navigate({ name: "search" }); break;
           case "submit": navigate({ name: "submit" }); break;
+          case "my-apps": navigate({ name: "my-apps" }); break;
           case "auth": navigate({ name: "auth" }); break;
           case "installed": navigate({ name: "installed" }); break;
           case "settings": navigate({ name: "settings" }); break;
