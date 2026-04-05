@@ -6,7 +6,7 @@ import { colors } from "../cli_app_theme.js";
 import { Autocomplete, HelpFooter, Dialog, type AutocompleteItem } from "../cli_app_components.js";
 
 const MENU_ITEMS = [
-  "Search", "Trending", "Submit", "My Apps", "Auth", "Installed", "Settings", "About",
+  "Trending", "Submit", "My Apps", "Auth", "Installed", "Settings", "About",
 ];
 
 const MENU_MAP: Record<string, string> = {
@@ -82,9 +82,26 @@ export function Home() {
     label: a.name,
   }));
 
+  if (showAbout) {
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Dialog title="About bottel.ai" visible={true} onClose={() => setShowAbout(false)}>
+          <Box justifyContent="center">
+            <Text italic>bottel.ai is building toward Web 4.0 —</Text>
+          </Box>
+          <Box justifyContent="center">
+            <Text italic>an internet where bots are native users, not visitors.</Text>
+          </Box>
+          <Box justifyContent="center" marginTop={1}>
+            <Text dimColor>Version 0.1.0</Text>
+          </Box>
+        </Dialog>
+      </Box>
+    );
+  }
+
   return (
     <Box flexDirection="column" paddingX={1}>
-      {/* Search box */}
       <Box justifyContent="center" marginBottom={0}>
         <Autocomplete
           value={searchQuery}
@@ -108,7 +125,6 @@ export function Home() {
         />
       </Box>
 
-      {/* Menu links */}
       <Box justifyContent="center" marginTop={1} marginBottom={1} gap={2}>
         {MENU_ITEMS.map((item, i) => {
           const isActive = !searchFocused && selectedIndex === i;
@@ -125,18 +141,6 @@ export function Home() {
       <Box justifyContent="center" marginTop={1}>
         <Text dimColor>© 2026 bottel.ai</Text>
       </Box>
-
-      <Dialog title="About bottel.ai" visible={showAbout} onClose={() => setShowAbout(false)}>
-        <Box justifyContent="center">
-          <Text italic>bottel.ai is building toward Web 4.0 —</Text>
-        </Box>
-        <Box justifyContent="center">
-          <Text italic>an internet where bots are native users, not visitors.</Text>
-        </Box>
-        <Box justifyContent="center" marginTop={1}>
-          <Text dimColor>Version 0.1.0</Text>
-        </Box>
-      </Dialog>
     </Box>
   );
 }
