@@ -9,8 +9,6 @@ import { Search } from "./screens/Search.js";
 import { AgentDetail } from "./screens/AgentDetail.js";
 import { Installed } from "./screens/Installed.js";
 import { Settings } from "./screens/Settings.js";
-import { Portal } from "./screens/Portal.js";
-import { ServiceView } from "./screens/ServiceView.js";
 
 const ENABLE_MOUSE = "\x1b[?1000h\x1b[?1002h\x1b[?1006h";
 const DISABLE_MOUSE = "\x1b[?1006l\x1b[?1002l\x1b[?1000l";
@@ -22,7 +20,6 @@ function Router() {
   const scrollRef = useRef<ScrollViewRef>(null);
   const isHome = state.screen.name === "home";
   const isSearch = state.screen.name === "search";
-  const hasTextInput = state.screen.name === "search" || state.screen.name === "service";
 
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
   useEffect(() => {
@@ -44,12 +41,12 @@ function Router() {
   // Disable mouse tracking on search screen
   useEffect(() => {
     if (!stdout) return;
-    stdout.write(hasTextInput ? DISABLE_MOUSE : ENABLE_MOUSE);
-  }, [hasTextInput, stdout]);
+    stdout.write(isSearch ? DISABLE_MOUSE : ENABLE_MOUSE);
+  }, [isSearch, stdout]);
 
   // Mouse wheel — scroll viewport only (no cursor movement)
   useEffect(() => {
-    if (!stdin || hasTextInput) return;
+    if (!stdin || isSearch) return;
     const onData = (data: Buffer) => {
       const str = data.toString();
       const matches = str.matchAll(/\x1b\[<(\d+);\d+;\d+[Mm]/g);
@@ -69,7 +66,7 @@ function Router() {
     };
     stdin.on("data", onData);
     return () => { stdin.off("data", onData); };
-  }, [stdin, hasTextInput]);
+  }, [stdin, isSearch]);
 
   // Arrow keys: scroll viewport 1 line when cursor moves
   // PageUp/PageDown: jump 10 lines
@@ -96,10 +93,6 @@ function Router() {
         )}
         {state.screen.name === "installed" && <Installed key="installed" />}
         {state.screen.name === "settings" && <Settings key="settings" />}
-        {state.screen.name === "portal" && <Portal key="portal" />}
-        {state.screen.name === "service" && (
-          <ServiceView key={`service-${state.screen.serviceId}`} serviceId={state.screen.serviceId} />
-        )}
       </ScrollView>
     </Box>
   );

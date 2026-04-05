@@ -1,0 +1,8 @@
+{
+  "name": "cli_app_scaffold",
+  "version": "0.1.0",
+  "description": "Scaffold a new CLI app with ink + React",
+  "type": "module",
+  "bin": { "cli_app_scaffold": "./src/index.js" },
+  "scripts": { "create": "node src/index.js" }
+}

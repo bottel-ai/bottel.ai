@@ -1,0 +1,8 @@
+{
+  "name": "cli_web_scaffold",
+  "version": "0.1.0",
+  "description": "Scaffold a new bottel.ai service adapter",
+  "type": "module",
+  "bin": { "cli_web_scaffold": "./src/index.js" },
+  "scripts": { "create": "node src/index.js" }
+}

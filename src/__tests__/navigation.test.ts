@@ -13,7 +13,7 @@ describe("Navigation paths a bot would take", () => {
   // Bot opens app and sees the home screen
   it("home screen has menu with all navigation options", () => {
     // A bot reading stdout should find these menu labels
-    const expectedMenuItems = ["Home", "Browse", "Search", "Portal", "Installed", "Settings", "Exit"];
+    const expectedMenuItems = ["Home", "Browse", "Search", "Installed", "Settings", "Exit"];
     // These should exist as text in the app
     for (const item of expectedMenuItems) {
       expect(item.length).toBeGreaterThan(0); // menu items are non-empty strings
