@@ -104,20 +104,18 @@ export function ScreenHeader({ title, style = "section" }: { title: string; styl
 
 // ─── App Branding ───────────────────────────────────────────
 
-const LOGO_LINES = [
-  "██████   ██████  ████████ ████████ ███████ ██       █████  ██",
-  "██   ██ ██    ██    ██       ██    ██      ██      ██   ██ ██",
-  "██████  ██    ██    ██       ██    █████   ██      ███████ ██",
-  "██   ██ ██    ██    ██       ██    ██      ██      ██   ██ ██",
-  "██████   ██████     ██       ██    ███████ ███████ ██   ██ ██",
+const LOGO_LINES: [string, string][] = [
+  ["┌─┐ ┌─┐ ┌┬┐ ┌┬┐ ┌─┐ │   ┌─┐ ┐", "#48dbfb"],
+  ["├─┤ │ │  │   │  ├─  │   ├─┤ │", "#54a0ff"],
+  ["└─┘ └─┘  ┴   ┴  └─┘ └─┘ ┴ ┴ ┘", "#5f27cd"],
 ];
 
-/** Full 3D ASCII art logo in single blue color */
+/** Compact multi-color border logo */
 export function Logo() {
   return (
-    <Box flexDirection="column" alignItems="center" paddingTop={2} paddingBottom={1}>
-      {LOGO_LINES.map((line, i) => (
-        <Text key={`logo-${i}`} color={colors.primary} bold>{line}</Text>
+    <Box flexDirection="column" alignItems="center" paddingTop={1} paddingBottom={1}>
+      {LOGO_LINES.map(([line, color], i) => (
+        <Text key={`logo-${i}`} color={color} bold>{line}</Text>
       ))}
       <Box marginTop={1}>
         <Text bold color={colors.primary}>The Bot CLI Internet Portal</Text>
