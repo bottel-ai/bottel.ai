@@ -105,11 +105,11 @@ export function Home() {
       {/* Search box — centered, prominent */}
       <Box justifyContent="center" marginBottom={1}>
         <Box borderStyle="round" borderColor={searchFocused ? colors.primary : colors.border} paddingX={2} width={50}>
-          <Text color={searchFocused ? colors.primary : undefined}>⦿ </Text>
+          <Text color={searchFocused ? colors.primary : undefined}>🔍 </Text>
           <TextInput
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder="Search CLI apps..."
+            placeholder="Search apps and services..."
             focus={searchFocused}
           />
         </Box>
