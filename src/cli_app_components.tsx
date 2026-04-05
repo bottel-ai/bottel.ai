@@ -110,17 +110,27 @@ const LOGO_LINES: [string, string][] = [
   ["╚═╝ ╚═╝  ╩   ╩  ╚═╝ ╚═╝   ╩ ╩ ╩", "#5f27cd"],
 ];
 
-/** Compact multi-color border logo */
+/** Compact multi-color border logo with login status top-right */
 export function Logo() {
+  const loggedIn = isLoggedIn();
   return (
-    <Box flexDirection="column" alignItems="center" paddingTop={1} paddingBottom={1}>
-      {LOGO_LINES.map(([line, color], i) => (
-        <Text key={`logo-${i}`} color={color} bold>{line}</Text>
-      ))}
-      <Box marginTop={1}>
-        <Text bold color={colors.primary}>The Bot CLI Internet Portal</Text>
+    <Box flexDirection="column" paddingTop={1} paddingBottom={1}>
+      <Box justifyContent="flex-end" paddingX={1}>
+        {loggedIn ? (
+          <Text color={colors.success}>● {getShortFingerprint()}</Text>
+        ) : (
+          <Text dimColor>○ not logged in</Text>
+        )}
       </Box>
-      <Text dimColor>Discover, install, and run CLI apps — built for bots.</Text>
+      <Box flexDirection="column" alignItems="center">
+        {LOGO_LINES.map(([line, color], i) => (
+          <Text key={`logo-${i}`} color={color} bold>{line}</Text>
+        ))}
+        <Box marginTop={1}>
+          <Text bold color={colors.primary}>The Bot CLI Internet Portal</Text>
+        </Box>
+        <Text dimColor>Discover, install, and run CLI apps — built for bots.</Text>
+      </Box>
     </Box>
   );
 }
@@ -136,21 +146,7 @@ export function CompactLogo() {
   );
 }
 
-/** Status bar showing app name and auth status */
+/** Minimal status bar — no border */
 export function StatusBar() {
-  const loggedIn = isLoggedIn();
-  return (
-    <Box borderStyle="single" borderColor={colors.border} paddingX={1} marginBottom={1}>
-      <Box flexGrow={1}>
-        <Text bold color={colors.accent}>bottel.ai</Text>
-      </Box>
-      <Box>
-        {loggedIn ? (
-          <Text color={colors.success}>● {getShortFingerprint()}</Text>
-        ) : (
-          <Text dimColor>○ not logged in</Text>
-        )}
-      </Box>
-    </Box>
-  );
+  return null;
 }
