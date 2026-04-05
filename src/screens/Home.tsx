@@ -51,6 +51,7 @@ export function Home() {
   }, [searchQuery]);
 
   useInput((input, key) => {
+    if (dialogContent) return;
     if (input === "q" && !searchFocused) { exit(); return; }
 
     if (!searchFocused) {
