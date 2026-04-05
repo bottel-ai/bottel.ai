@@ -6,7 +6,7 @@ import { colors, columns, formatStars, formatInstalls } from "../cli_app_theme.j
 import { Cursor, Rating, InstallCount, VerifiedBadge, Separator, HelpFooter, CompactLogo } from "../cli_app_components.js";
 
 const MENU_ITEMS = [
-  { label: "Home", value: "home", description: "Store front" },
+  { label: "Home", value: "home", description: "CLI Internet Gateway" },
   { label: "Search", value: "search", description: "Find apps" },
   { label: "Submit", value: "submit", description: "Submit your app" },
   { label: "My Apps", value: "my-apps", description: "Manage your apps" },
