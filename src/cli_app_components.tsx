@@ -7,8 +7,9 @@
  * Depends on cli_app_theme for colors/formatters.
  */
 
-import React from "react";
-import { Box, Text } from "ink";
+import React, { useState, useEffect } from "react";
+import { Box, Text, useInput } from "ink";
+import TextInput from "ink-text-input";
 import { colors, columns, boxStyle, formatInstalls } from "./cli_app_theme.js";
 import { isLoggedIn, getShortFingerprint } from "./lib/auth.js";
 
@@ -139,4 +140,137 @@ export function CompactLogo() {
 /** Minimal status bar — no border */
 export function StatusBar() {
   return null;
+}
+
+// ─── Autocomplete ──────────────────────────────────────────
+
+/** Autocomplete search input with dropdown suggestions */
+export interface AutocompleteItem {
+  id: string;
+  label: string;
+  detail?: string;
+}
+
+interface AutocompleteProps {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: (value: string) => void;
+  onSelect: (item: AutocompleteItem) => void;
+  onExit?: () => void;
+  suggestions: AutocompleteItem[];
+  placeholder?: string;
+  width?: number;
+  focused?: boolean;
+}
+
+export function Autocomplete({
+  value,
+  onChange,
+  onSubmit,
+  onSelect,
+  onExit,
+  suggestions,
+  placeholder,
+  width = 50,
+  focused,
+}: AutocompleteProps) {
+  const [suggestionIndex, setSuggestionIndex] = useState(-1);
+  const [showDropdown, setShowDropdown] = useState(true);
+
+  // Reset suggestionIndex when value changes
+  useEffect(() => {
+    setSuggestionIndex(-1);
+    setShowDropdown(true);
+  }, [value]);
+
+  useInput(
+    (input, key) => {
+      if (key.downArrow) {
+        if (suggestions.length > 0 && showDropdown) {
+          if (suggestionIndex < suggestions.length - 1) {
+            setSuggestionIndex(suggestionIndex + 1);
+          }
+          // At last item: stay (don't exit)
+        }
+        return;
+      }
+      if (key.upArrow) {
+        if (suggestionIndex > 0) {
+          setSuggestionIndex(suggestionIndex - 1);
+        } else if (suggestionIndex === 0) {
+          setSuggestionIndex(-1);
+        }
+        return;
+      }
+      if (key.return) {
+        if (suggestionIndex >= 0 && suggestions[suggestionIndex]) {
+          onSelect(suggestions[suggestionIndex]);
+        } else {
+          onSubmit(value);
+        }
+        return;
+      }
+      if (key.escape) {
+        if (showDropdown && suggestions.length > 0) {
+          setShowDropdown(false);
+          setSuggestionIndex(-1);
+        } else if (!value) {
+          onExit?.();
+        } else {
+          onChange("");
+        }
+        return;
+      }
+      if (key.tab) {
+        onExit?.();
+        return;
+      }
+    },
+    { isActive: focused ?? true },
+  );
+
+  const showSuggestions = (focused ?? true) && showDropdown && suggestions.length > 0;
+
+  return (
+    <Box flexDirection="column">
+      <Box
+        borderStyle="round"
+        borderColor={(focused ?? true) ? colors.primary : colors.border}
+        paddingX={2}
+        width={width}
+      >
+        <Text color={(focused ?? true) ? colors.primary : undefined}>🔍 </Text>
+        <TextInput
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          focus={focused ?? true}
+        />
+      </Box>
+
+      {showSuggestions && (
+        <Box
+          flexDirection="column"
+          width={width}
+          borderStyle="single"
+          borderColor={colors.border}
+          paddingX={1}
+        >
+          {suggestions.map((item, i) => {
+            const isActive = i === suggestionIndex;
+            return (
+              <Box key={item.id}>
+                <Text color={isActive ? colors.primary : undefined} bold={isActive}>
+                  {isActive ? "❯ " : "  "}{item.label}
+                </Text>
+                {item.detail && (
+                  <Text dimColor>  {item.detail}</Text>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+      )}
+    </Box>
+  );
 }
