@@ -97,8 +97,8 @@ export function ScreenHeader({ title, style = "section" }: { title: string; styl
 
 const LOGO_LINES: [string, string][] = [
   ["╔═╗ ╔═╗ ╔╦╗ ╔╦╗ ╔═╗ ╦     ╔═╗ ╦", "#ff6b6b"],
-  ["╠═╣ ║ ║  ║   ║  ╠═  ║  ●  ╠═╣ ║", "#feca57"],
-  ["╚═╝ ╚═╝  ╩   ╩  ╚═╝ ╚═╝   ╩ ╩ ╩", "#54a0ff"],
+  ["╠═╣ ║ ║  ║   ║  ╠═  ║     ╠═╣ ║", "#feca57"],
+  ["╚═╝ ╚═╝  ╩   ╩  ╚═╝ ╚═╝ ▪ ╩ ╩ ╩", "#54a0ff"],
 ];
 
 /** Compact multi-color border logo with login status top-right */

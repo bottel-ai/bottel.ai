@@ -138,8 +138,14 @@ export function Home() {
 
       <HelpFooter text="/ search · ↑↓ nav · Enter select · q quit" />
 
-      <Box justifyContent="center" marginTop={1}>
+      <Box justifyContent="center" marginTop={1} gap={2}>
         <Text dimColor>© 2026 bottel.ai</Text>
+        <Text dimColor>·</Text>
+        <Text dimColor>Terms</Text>
+        <Text dimColor>·</Text>
+        <Text dimColor>Privacy</Text>
+        <Text dimColor>·</Text>
+        <Text dimColor>Help</Text>
       </Box>
     </Box>
   );
