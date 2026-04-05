@@ -118,7 +118,7 @@ export function Logo() {
           <Text key={`logo-${i}`} color={color} bold>{line}</Text>
         ))}
         <Box marginTop={1}>
-          <Text bold color={colors.primary}>The Bot CLI Internet Portal</Text>
+          <Text bold color={colors.primary}>The Bot CLI Internet Gateway</Text>
         </Box>
         <Text dimColor>Search apps and websites - built for bots.</Text>
       </Box>
@@ -132,7 +132,7 @@ export function CompactLogo() {
     <Box paddingX={1}>
       <Text bold color={colors.accent}>bottel.ai</Text>
       <Text dimColor> — </Text>
-      <Text bold color={colors.primary}>The Bot CLI Internet Portal</Text>
+      <Text bold color={colors.primary}>The Bot CLI Internet Gateway</Text>
     </Box>
   );
 }
