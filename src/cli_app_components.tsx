@@ -276,3 +276,36 @@ export function Autocomplete({
     </Box>
   );
 }
+
+// ─── Dialog ─────────────────────────────────────────────────
+
+interface DialogProps {
+  title: string;
+  visible: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  width?: number;
+}
+
+/** Modal dialog box — centered, bordered, dismissible with Esc/Enter */
+export function Dialog({ title, visible, onClose, children, width = 60 }: DialogProps) {
+  useInput((_input, key) => {
+    if (key.escape || key.return) onClose();
+  }, { isActive: visible });
+
+  if (!visible) return null;
+
+  return (
+    <Box justifyContent="center" marginY={1}>
+      <Box flexDirection="column" borderStyle="double" borderColor={colors.border} width={width} paddingX={2} paddingY={1}>
+        <Box justifyContent="center" marginBottom={1}>
+          <Text bold color={colors.primary}>{title}</Text>
+        </Box>
+        {children}
+        <Box justifyContent="center" marginTop={1}>
+          <Text dimColor>Press Esc or Enter to close</Text>
+        </Box>
+      </Box>
+    </Box>
+  );
+}

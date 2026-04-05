@@ -3,10 +3,10 @@ import { Box, Text, useInput, useApp } from "ink";
 import { type App, getApps } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
 import { colors } from "../cli_app_theme.js";
-import { Autocomplete, HelpFooter, type AutocompleteItem } from "../cli_app_components.js";
+import { Autocomplete, HelpFooter, Dialog, type AutocompleteItem } from "../cli_app_components.js";
 
 const MENU_ITEMS = [
-  "Search", "Trending", "Submit", "My Apps", "Auth", "Installed", "Settings",
+  "Search", "Trending", "Submit", "My Apps", "Auth", "Installed", "Settings", "About",
 ];
 
 const MENU_MAP: Record<string, string> = {
@@ -29,6 +29,7 @@ export function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(true);
   const [apps, setApps] = useState<App[]>([]);
+  const [showAbout, setShowAbout] = useState(false);
 
   // Fetch suggestions as user types
   useEffect(() => {
@@ -63,6 +64,7 @@ export function Home() {
       }
       if (key.return) {
         const item = MENU_ITEMS[selectedIndex]!;
+        if (item === "About") { setShowAbout(true); return; }
         const screen = MENU_MAP[item];
         if (screen) navigate({ name: screen } as any);
         return;
@@ -123,6 +125,18 @@ export function Home() {
       <Box justifyContent="center" marginTop={1}>
         <Text dimColor>© 2026 bottel.ai</Text>
       </Box>
+
+      <Dialog title="About bottel.ai" visible={showAbout} onClose={() => setShowAbout(false)}>
+        <Box justifyContent="center">
+          <Text italic>bottel.ai is building toward Web 4.0 —</Text>
+        </Box>
+        <Box justifyContent="center">
+          <Text italic>an internet where bots are native users, not visitors.</Text>
+        </Box>
+        <Box justifyContent="center" marginTop={1}>
+          <Text dimColor>Version 0.1.0</Text>
+        </Box>
+      </Dialog>
     </Box>
   );
 }
