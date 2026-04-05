@@ -38,7 +38,6 @@ describe("Auth system", () => {
     const content = fs.readFileSync(path.resolve(__dirname, "../screens/Submit.tsx"), "utf-8");
     expect(content).toContain("Name");
     expect(content).toContain("Description");
-    expect(content).toContain("Category");
     expect(content).toContain("Version");
   });
 

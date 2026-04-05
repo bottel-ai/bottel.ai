@@ -4,7 +4,6 @@ import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import { Logo, StatusBar } from "./cli_app_components.js";
 import { StoreProvider, useStore } from "./cli_app_state.js";
 import { Home } from "./screens/Home.js";
-import { Browse } from "./screens/Browse.js";
 import { Search } from "./screens/Search.js";
 import { AgentDetail } from "./screens/AgentDetail.js";
 import { Installed } from "./screens/Installed.js";
@@ -89,7 +88,6 @@ function Router() {
         {isHome && <Logo key="logo" />}
         <StatusBar key="statusbar" />
         {isHome && <Home key="home" />}
-        {state.screen.name === "browse" && <Browse key="browse" />}
         {isSearch && <Search key="search" />}
         {state.screen.name === "agent-detail" && (
           <AgentDetail key={`detail-${state.screen.agentId}`} agentId={state.screen.agentId} />

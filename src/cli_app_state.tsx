@@ -4,7 +4,6 @@ import React, { createContext, useContext, useReducer, useCallback } from "react
 
 export type Screen =
   | { name: "home" }
-  | { name: "browse" }
   | { name: "search" }
   | { name: "agent-detail"; agentId: string }
   | { name: "installed" }
@@ -20,14 +19,6 @@ export interface SearchState {
   selectedIndex: number;
   page: number;
   inputFocused: boolean;
-}
-
-export interface BrowseState {
-  categoryIndex: number;
-  expandedCategory: number | null;
-  agentIndex: number;
-  agentPage: number;
-  inAgents: boolean;
 }
 
 export interface HomeState {
@@ -51,11 +42,10 @@ export interface AuthScreenState {
 }
 
 export interface SubmitState {
-  step: number;  // 0=name, 1=slug, 2=description, 3=category, 4=version, 5=confirm
+  step: number;  // 0=name, 1=slug, 2=description, 3=version, 4=confirm
   name: string;
   slug: string;
   description: string;
-  category: string;
   version: string;
 }
 
@@ -66,7 +56,6 @@ export interface AppState {
   history: Screen[];
   installed: Set<string>;
   search: SearchState;
-  browse: BrowseState;
   home: HomeState;
   installedScreen: InstalledState;
   settings: SettingsState;
@@ -80,14 +69,6 @@ const INITIAL_SEARCH: SearchState = {
   selectedIndex: 0,
   page: 0,
   inputFocused: true,
-};
-
-const INITIAL_BROWSE: BrowseState = {
-  categoryIndex: 0,
-  expandedCategory: null,
-  agentIndex: 0,
-  agentPage: 0,
-  inAgents: false,
 };
 
 const INITIAL_HOME: HomeState = {
@@ -115,7 +96,6 @@ const INITIAL_SUBMIT: SubmitState = {
   name: "",
   slug: "",
   description: "",
-  category: "Development",
   version: "0.1.0",
 };
 
@@ -124,7 +104,6 @@ const INITIAL_STATE: AppState = {
   history: [],
   installed: new Set(["code-reviewer", "translator", "data-analyst"]),
   search: INITIAL_SEARCH,
-  browse: INITIAL_BROWSE,
   home: INITIAL_HOME,
   installedScreen: INITIAL_INSTALLED,
   settings: INITIAL_SETTINGS,
@@ -142,15 +121,13 @@ export type Action =
   | { type: "INSTALL_AGENT"; agentId: string }
   | { type: "UNINSTALL_AGENT"; agentId: string }
   | { type: "UPDATE_SEARCH"; state: Partial<SearchState> }
-  | { type: "UPDATE_BROWSE"; state: Partial<BrowseState> }
   | { type: "UPDATE_HOME"; state: Partial<HomeState> }
   | { type: "UPDATE_INSTALLED"; state: Partial<InstalledState> }
   | { type: "UPDATE_SETTINGS"; state: Partial<SettingsState> }
   | { type: "UPDATE_AGENT_DETAIL"; state: Partial<AgentDetailState> }
   | { type: "UPDATE_AUTH_SCREEN"; state: Partial<AuthScreenState> }
   | { type: "UPDATE_SUBMIT"; state: Partial<SubmitState> }
-  | { type: "RESET_SEARCH" }
-  | { type: "RESET_BROWSE" };
+  | { type: "RESET_SEARCH" };
 
 // ─── Reducer ────────────────────────────────────────────────────
 
@@ -162,7 +139,6 @@ function reducer(state: AppState, action: Action): AppState {
       const resets: Partial<AppState> = {};
       switch (action.screen.name) {
         case "search": resets.search = INITIAL_SEARCH; break;
-        case "browse": resets.browse = INITIAL_BROWSE; break;
         case "installed": resets.installedScreen = INITIAL_INSTALLED; break;
         case "settings": resets.settings = INITIAL_SETTINGS; break;
         case "agent-detail": resets.agentDetail = INITIAL_AGENT_DETAIL; break;
@@ -212,12 +188,6 @@ function reducer(state: AppState, action: Action): AppState {
         search: { ...state.search, ...action.state },
       };
 
-    case "UPDATE_BROWSE":
-      return {
-        ...state,
-        browse: { ...state.browse, ...action.state },
-      };
-
     case "UPDATE_HOME":
       return {
         ...state,
@@ -256,9 +226,6 @@ function reducer(state: AppState, action: Action): AppState {
 
     case "RESET_SEARCH":
       return { ...state, search: INITIAL_SEARCH };
-
-    case "RESET_BROWSE":
-      return { ...state, browse: INITIAL_BROWSE };
 
     default:
       return state;

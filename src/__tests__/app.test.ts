@@ -8,7 +8,6 @@ const requiredFiles = [
   "App.tsx",
   "cli_app_components.tsx",
   "screens/Home.tsx",
-  "screens/Browse.tsx",
   "screens/Search.tsx",
   "screens/AgentDetail.tsx",
   "screens/Installed.tsx",

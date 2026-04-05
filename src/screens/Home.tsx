@@ -1,13 +1,12 @@
 import { useMemo, useState, useEffect } from "react";
 import { Box, Text, useInput, useApp, useStdout } from "ink";
-import { type App, getApps, getCategories } from "../lib/api.js";
+import { type App, getApps } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
 import { colors, columns, formatStars, formatInstalls } from "../cli_app_theme.js";
 import { Cursor, Rating, InstallCount, VerifiedBadge, Separator, HelpFooter, CompactLogo } from "../cli_app_components.js";
 
 const MENU_ITEMS = [
   { label: "Home", value: "home", description: "Store front" },
-  { label: "Browse", value: "browse", description: "Browse by category" },
   { label: "Search", value: "search", description: "Find apps" },
   { label: "Submit", value: "submit", description: "Submit your app" },
   { label: "Auth", value: "auth", description: "Login / manage keys" },
@@ -19,8 +18,7 @@ const MENU_ITEMS = [
 type NavItem =
   | { section: "menu"; index: number }
   | { section: "featured"; index: number }
-  | { section: "trending"; index: number }
-  | { section: "categories"; index: number };
+  | { section: "trending"; index: number };
 
 export function Home() {
   const { state, dispatch, navigate } = useStore();
@@ -32,17 +30,15 @@ export function Home() {
   const selectedIndex = state.home.selectedIndex;
 
   const [apps, setApps] = useState<App[]>([]);
-  const [categories, setCategories] = useState<{ name: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getApps(), getCategories()])
-      .then(([appsData, catsData]) => {
+    getApps()
+      .then((appsData) => {
         if (!cancelled) {
           setApps(appsData);
-          setCategories(catsData);
         }
       })
       .catch((err) => {
@@ -68,11 +64,8 @@ export function Home() {
     for (let i = 0; i < trendingAgents.length; i++) {
       items.push({ section: "trending", index: i });
     }
-    for (let i = 0; i < categories.length; i++) {
-      items.push({ section: "categories", index: i });
-    }
     return items;
-  }, [featuredAgents.length, trendingAgents.length, categories.length]);
+  }, [featuredAgents.length, trendingAgents.length]);
 
   const current = navItems[selectedIndex];
   const activeSection = current?.section ?? "menu";
@@ -96,7 +89,6 @@ export function Home() {
         const item = MENU_ITEMS[current.index]!;
         switch (item.value) {
           case "home": break;
-          case "browse": navigate({ name: "browse" }); break;
           case "search": navigate({ name: "search" }); break;
           case "submit": navigate({ name: "submit" }); break;
           case "auth": navigate({ name: "auth" }); break;
@@ -110,8 +102,6 @@ export function Home() {
       } else if (current.section === "trending") {
         const agent = trendingAgents[current.index];
         if (agent) navigate({ name: "agent-detail", agentId: agent.id });
-      } else if (current.section === "categories") {
-        navigate({ name: "browse" });
       }
       return;
     }
@@ -244,32 +234,6 @@ export function Home() {
                 <Rating value={agent.rating} />
                 <InstallCount count={agent.installs} />
                 <VerifiedBadge verified={agent.verified} />
-              </Box>
-            );
-          })}
-        </Box>
-      </Box>
-
-      <Separator />
-
-      <Box flexDirection="column">
-        <Text bold color={activeSection === "categories" ? colors.primary : undefined}>
-          {activeSection === "categories" ? "▶ " : "  "}Categories
-        </Text>
-        <Box flexDirection="column" marginTop={1} paddingLeft={1}>
-          {categories.map((cat, i) => {
-            const isActive = activeSection === "categories" && i === activeIndexInSection;
-            return (
-              <Box key={`category-${cat.name}`}>
-                <Text color={isActive ? colors.primary : undefined} bold={isActive}>
-                  {isActive ? "\u276F " : "  "}
-                </Text>
-                <Text color={isActive ? colors.primary : undefined} bold={isActive}>
-                  {cat.name}
-                </Text>
-                <Text dimColor={!isActive} color={isActive ? colors.primary : undefined}>
-                  {" "}({cat.count})
-                </Text>
               </Box>
             );
           })}

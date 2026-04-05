@@ -14,7 +14,6 @@ app.get("/", (c) => c.json({ name: "bottel.ai", version: "0.1.0", status: "ok" }
 // GET /apps — list/search/filter apps
 app.get("/apps", async (c) => {
   const q = c.req.query("q");
-  const category = c.req.query("category");
   const author = c.req.query("author");
 
   let sql = "SELECT * FROM apps";
@@ -24,11 +23,6 @@ app.get("/apps", async (c) => {
   if (q) {
     conditions.push("(name LIKE ? OR description LIKE ?)");
     bindings.push(`%${q}%`, `%${q}%`);
-  }
-
-  if (category) {
-    conditions.push("category = ?");
-    bindings.push(category);
   }
 
   if (author) {
@@ -72,20 +66,6 @@ app.get("/apps/:slug", async (c) => {
       capabilities: JSON.parse((app.capabilities as string) || "[]"),
     },
   });
-});
-
-// GET /categories — list categories with counts
-app.get("/categories", async (c) => {
-  const result = await c.env.DB.prepare(
-    "SELECT category, COUNT(*) as count FROM apps GROUP BY category"
-  ).all();
-
-  const categories = (result.results ?? []).map((row) => ({
-    name: row.category as string,
-    count: row.count as number,
-  }));
-
-  return c.json({ categories });
 });
 
 // POST /apps — submit new app (requires auth)

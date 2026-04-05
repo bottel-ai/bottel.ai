@@ -7,18 +7,10 @@ import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_compone
 import { isLoggedIn, getAuth, getShortFingerprint } from "../lib/auth.js";
 import { submitApp } from "../lib/api.js";
 
-const CATEGORIES = [
-  "Productivity",
-  "Utilities",
-  "Education",
-  "Business",
-];
-
 const STEP_LABELS = [
   "App Name",
   "Slug",
   "Description",
-  "Category",
   "Version",
   "Confirm",
 ];
@@ -32,7 +24,7 @@ function slugify(name: string): string {
 
 export function Submit() {
   const { state, dispatch, goBack } = useStore();
-  const { step, name, slug, description, category, version } = state.submit;
+  const { step, name, slug, description, version } = state.submit;
   const [confirmIndex, setConfirmIndex] = useState(0); // 0=Submit, 1=Cancel
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -59,9 +51,9 @@ export function Submit() {
       return;
     }
 
-    if (step === 5) {
+    if (step === 4) {
       if (key.escape) {
-        update({ step: 4 });
+        update({ step: 3 });
         return;
       }
       if (key.leftArrow) {
@@ -81,7 +73,7 @@ export function Submit() {
         const fingerprint = auth?.fingerprint ?? "unknown";
         setSubmitting(true);
         setError(null);
-        submitApp({ name, slug, description, category, version }, fingerprint)
+        submitApp({ name, slug, description, category: "General", version }, fingerprint)
           .then(() => {
             setSubmitted(true);
           })
@@ -91,30 +83,6 @@ export function Submit() {
           .finally(() => {
             setSubmitting(false);
           });
-        return;
-      }
-      return;
-    }
-
-    if (step === 3) {
-      if (key.escape) {
-        update({ step: 2 });
-        return;
-      }
-      if (key.upArrow) {
-        const idx = CATEGORIES.indexOf(category);
-        const newIdx = Math.max(0, idx - 1);
-        update({ category: CATEGORIES[newIdx]! });
-        return;
-      }
-      if (key.downArrow) {
-        const idx = CATEGORIES.indexOf(category);
-        const newIdx = Math.min(CATEGORIES.length - 1, idx + 1);
-        update({ category: CATEGORIES[newIdx]! });
-        return;
-      }
-      if (key.return) {
-        update({ step: 4 });
         return;
       }
       return;
@@ -137,8 +105,8 @@ export function Submit() {
         update({ step: 2 });
       } else if (step === 2) {
         update({ step: 3 });
-      } else if (step === 4) {
-        update({ step: 5 });
+      } else if (step === 3) {
+        update({ step: 4 });
       }
       return;
     }
@@ -184,7 +152,7 @@ export function Submit() {
     );
   }
 
-  if (step === 5) {
+  if (step === 4) {
     const shortFp = getShortFingerprint();
 
     allRows.push(
@@ -197,7 +165,6 @@ export function Submit() {
       ["Name:", name],
       ["Slug:", slug],
       ["Description:", description],
-      ["Category:", category],
       ["Version:", version],
       ["Signed by:", `bottel_${shortFp.replace("SHA256:", "")}...`],
     ];
@@ -252,36 +219,6 @@ export function Submit() {
     );
   }
 
-  if (step === 3) {
-    allRows.push(
-      <Box key="step-label" paddingLeft={2} marginBottom={1}>
-        <Text bold>Step {step + 1}/{STEP_LABELS.length}: {STEP_LABELS[step]}</Text>
-      </Box>,
-    );
-
-    CATEGORIES.forEach((cat) => {
-      const isSelected = cat === category;
-      allRows.push(
-        <Box key={`cat-${cat}`}>
-          <Cursor active={isSelected} />
-          <Text bold={isSelected} color={isSelected ? colors.primary : undefined}>
-            {cat}
-          </Text>
-        </Box>,
-      );
-    });
-
-    allRows.push(
-      <HelpFooter key="footer" text="Esc back · ↑↓ nav · Enter next" />,
-    );
-
-    return (
-      <Box flexDirection="column" paddingX={1}>
-        {allRows}
-      </Box>
-    );
-  }
-
   const fieldMap: Record<number, { label: string; value: string; setter: (v: string) => void; placeholder: string }> = {
     0: {
       label: "Name",
@@ -301,7 +238,7 @@ export function Submit() {
       setter: (v: string) => update({ description: v }),
       placeholder: "A tool that does stuff",
     },
-    4: {
+    3: {
       label: "Version",
       value: version,
       setter: (v: string) => update({ version: v }),

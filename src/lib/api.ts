@@ -74,10 +74,9 @@ function mapApp(raw: RawApp): App {
   };
 }
 
-export async function getApps(query?: string, category?: string): Promise<App[]> {
+export async function getApps(query?: string): Promise<App[]> {
   const params = new URLSearchParams();
   if (query) params.set("q", query);
-  if (category) params.set("category", category);
   const qs = params.toString();
   const { apps } = await request<{ apps: RawApp[] }>(`/apps${qs ? `?${qs}` : ""}`);
   return apps.map(mapApp);
@@ -86,11 +85,6 @@ export async function getApps(query?: string, category?: string): Promise<App[]>
 export async function getApp(slug: string): Promise<App> {
   const { app } = await request<{ app: RawApp }>(`/apps/${slug}`);
   return mapApp(app);
-}
-
-export async function getCategories(): Promise<{ name: string; count: number }[]> {
-  const { categories } = await request<{ categories: { name: string; count: number }[] }>("/categories");
-  return categories;
 }
 
 export async function submitApp(
