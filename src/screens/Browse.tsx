@@ -190,7 +190,7 @@ export function Browse() {
   });
 
   allRows.push(
-    <HelpFooter key="footer" text={`Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter expand/select${totalAgentPages > 1 && inAgents ? " \u00b7 \u2190\u2192 pages" : ""}`} />
+    <HelpFooter key="footer" text={`Esc back · ↑↓ nav · Enter expand/select${totalAgentPages > 1 && inAgents ? " · ←→ pages" : ""}`} />
   );
 
   return (

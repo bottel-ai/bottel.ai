@@ -195,7 +195,7 @@ export function Auth() {
         />
       </Box>,
     );
-    allRows.push(<HelpFooter key="footer" text="Esc cancel \u00b7 Enter import" />);
+    allRows.push(<HelpFooter key="footer" text="Esc cancel · Enter import" />);
   } else if (mode === "show-key" && auth) {
     allRows.push(
       <Box key="fullkey-label" paddingLeft={2}>
@@ -233,7 +233,7 @@ export function Auth() {
     }
 
     allRows.push(
-      <HelpFooter key="footer" text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select" />,
+      <HelpFooter key="footer" text="Esc back · ↑↓ nav · Enter select" />,
     );
   }
 

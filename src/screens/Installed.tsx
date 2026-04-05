@@ -101,7 +101,7 @@ export function Installed() {
     });
   }
 
-  allRows.push(<HelpFooter key="footer" text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select" />);
+  allRows.push(<HelpFooter key="footer" text="Esc back · ↑↓ nav · Enter select" />);
 
   return (
     <Box flexDirection="column" paddingX={1}>

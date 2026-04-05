@@ -237,7 +237,7 @@ export function Submit() {
     );
 
     allRows.push(
-      <HelpFooter key="footer" text="Esc cancel \u00b7 \u2190\u2192 nav \u00b7 Enter confirm" />,
+      <HelpFooter key="footer" text="Esc cancel · ←→ nav · Enter confirm" />,
     );
 
     return (
@@ -267,7 +267,7 @@ export function Submit() {
     });
 
     allRows.push(
-      <HelpFooter key="footer" text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter next" />,
+      <HelpFooter key="footer" text="Esc back · ↑↓ nav · Enter next" />,
     );
 
     return (
@@ -325,7 +325,7 @@ export function Submit() {
   );
 
   allRows.push(
-    <HelpFooter key="footer" text="Esc cancel \u00b7 Enter next" />,
+    <HelpFooter key="footer" text="Esc cancel · Enter next" />,
   );
 
   return (

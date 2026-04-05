@@ -186,7 +186,7 @@ export function Search() {
   }
 
   allRows.push(
-    <HelpFooter key="footer" text={`Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select${totalPages > 1 ? " \u00b7 \u2190\u2192 pages" : ""}`} />
+    <HelpFooter key="footer" text={`Esc back · ↑↓ nav · Enter select${totalPages > 1 ? " · ←→ pages" : ""}`} />
   );
 
   return (
