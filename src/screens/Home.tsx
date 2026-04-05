@@ -4,7 +4,7 @@ import TextInput from "ink-text-input";
 import { type App, getApps } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
 import { colors, columns } from "../cli_app_theme.js";
-import { Cursor, Rating, InstallCount, VerifiedBadge, Separator, HelpFooter } from "../cli_app_components.js";
+import { Cursor, Rating, InstallCount, VerifiedBadge, HelpFooter } from "../cli_app_components.js";
 
 const MENU_ITEMS = [
   "Search", "Submit", "My Apps", "Auth", "Installed", "Settings",
@@ -126,8 +126,6 @@ export function Home() {
           );
         })}
       </Box>
-
-      <Separator />
 
       {/* Trending */}
       {trendingAgents.length > 0 && (
