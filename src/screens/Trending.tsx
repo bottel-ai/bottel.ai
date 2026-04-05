@@ -49,7 +49,6 @@ export function Trending() {
             </Box>
             <Box paddingLeft={6}>
               <Text color="#2ed573">bottel.ai/apps/{agent.slug}</Text>
-              <Text dimColor>  ·  v{agent.version}  ·  by {agent.author}</Text>
             </Box>
             <Box paddingLeft={6}>
               <Text>{agent.description}</Text>

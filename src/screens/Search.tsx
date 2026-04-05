@@ -115,11 +115,6 @@ export function Search() {
             <Box paddingLeft={3}>
               <Text color="#2ed573">{truncate(`bottel.ai/apps/${agent.slug}`, maxTextWidth)}</Text>
             </Box>
-            {!compact && (
-              <Box paddingLeft={3}>
-                <Text dimColor>v{agent.version}  ·  by {agent.author}</Text>
-              </Box>
-            )}
             <Box paddingLeft={3}>
               <Text>{truncate(agent.description, maxTextWidth)}</Text>
             </Box>
