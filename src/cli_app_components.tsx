@@ -129,7 +129,7 @@ export function Logo() {
         <Box marginTop={1}>
           <Text bold color={colors.primary}>The Bot CLI Internet Portal</Text>
         </Box>
-        <Text dimColor>Discover, install, and run CLI apps — built for bots.</Text>
+        <Text dimColor>Discover CLI apps and websites — built for bots.</Text>
       </Box>
     </Box>
   );
