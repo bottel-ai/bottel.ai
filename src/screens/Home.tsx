@@ -6,8 +6,10 @@ import { colors } from "../cli_app_theme.js";
 import { Autocomplete, HelpFooter, Dialog, type AutocompleteItem } from "../cli_app_components.js";
 
 const MENU_ITEMS = [
-  "Trending", "Submit", "My Apps", "Auth", "Installed", "Settings", "About",
+  "Trending", "Submit", "My Apps", "Auth", "Installed", "Settings",
 ];
+
+const FOOTER_ITEMS = ["About", "Terms", "Privacy", "Help"];
 
 const MENU_MAP: Record<string, string> = {
   "Search": "search",
@@ -29,7 +31,7 @@ export function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(true);
   const [apps, setApps] = useState<App[]>([]);
-  const [showAbout, setShowAbout] = useState(false);
+  const [dialogContent, setDialogContent] = useState<{ title: string; body: string[] } | null>(null);
 
   // Fetch suggestions as user types
   useEffect(() => {
@@ -59,12 +61,67 @@ export function Home() {
         return;
       }
       if (key.downArrow) {
-        dispatch({ type: "UPDATE_HOME", state: { selectedIndex: Math.min(MENU_ITEMS.length - 1, selectedIndex + 1) } });
+        const totalNav = MENU_ITEMS.length + FOOTER_ITEMS.length;
+        dispatch({ type: "UPDATE_HOME", state: { selectedIndex: Math.min(totalNav - 1, selectedIndex + 1) } });
         return;
       }
       if (key.return) {
-        const item = MENU_ITEMS[selectedIndex]!;
-        if (item === "About") { setShowAbout(true); return; }
+        const item = selectedIndex < MENU_ITEMS.length
+          ? MENU_ITEMS[selectedIndex]!
+          : FOOTER_ITEMS[selectedIndex - MENU_ITEMS.length]!;
+        const dialogs: Record<string, { title: string; body: string[] }> = {
+          "About": {
+            title: "About bottel.ai",
+            body: [
+              "bottel.ai is building toward Web 4.0 —",
+              "an internet where bots are native users, not visitors.",
+              "",
+              "Version 0.1.0",
+            ],
+          },
+          "Terms": {
+            title: "Terms of Service",
+            body: [
+              "By using bottel.ai, you agree to:",
+              "• Use the platform for lawful purposes only",
+              "• Not submit malicious or harmful apps",
+              "• Respect other users and their submissions",
+              "• Accept that the service is provided as-is",
+              "",
+              "bottel.ai reserves the right to remove any content.",
+            ],
+          },
+          "Privacy": {
+            title: "Privacy",
+            body: [
+              "bottel.ai respects your privacy:",
+              "• Your private key never leaves your device",
+              "• We store only your public key fingerprint",
+              "• No tracking, no cookies, no analytics",
+              "• Search queries are not logged",
+              "• All data transmitted over HTTPS",
+            ],
+          },
+          "Help": {
+            title: "Help",
+            body: [
+              "Navigation:",
+              "  / or type     Search for apps",
+              "  ↑↓            Navigate menu items",
+              "  Enter          Select / open",
+              "  Esc            Go back",
+              "  q              Quit",
+              "",
+              "Getting started:",
+              "  1. Go to Auth and generate a key pair",
+              "  2. Search or browse trending apps",
+              "  3. Submit your own app via Submit",
+              "",
+              "Docs: github.com/cenconq25/bottel.ai",
+            ],
+          },
+        };
+        if (dialogs[item]) { setDialogContent(dialogs[item]); return; }
         const screen = MENU_MAP[item];
         if (screen) navigate({ name: screen } as any);
         return;
@@ -82,19 +139,15 @@ export function Home() {
     label: a.name,
   }));
 
-  if (showAbout) {
+  if (dialogContent) {
     return (
       <Box flexDirection="column" paddingX={1}>
-        <Dialog title="About bottel.ai" visible={true} onClose={() => setShowAbout(false)}>
-          <Box justifyContent="center">
-            <Text italic>bottel.ai is building toward Web 4.0 —</Text>
-          </Box>
-          <Box justifyContent="center">
-            <Text italic>an internet where bots are native users, not visitors.</Text>
-          </Box>
-          <Box justifyContent="center" marginTop={1}>
-            <Text dimColor>Version 0.1.0</Text>
-          </Box>
+        <Dialog title={dialogContent.title} visible={true} onClose={() => setDialogContent(null)}>
+          {dialogContent.body.map((line, i) => (
+            <Box key={i} justifyContent="center">
+              <Text italic={i < 2} dimColor={line === ""}>{line || " "}</Text>
+            </Box>
+          ))}
         </Dialog>
       </Box>
     );
@@ -138,14 +191,17 @@ export function Home() {
 
       <HelpFooter text="/ search · ↑↓ nav · Enter select · q quit" />
 
-      <Box justifyContent="center" marginTop={1} gap={2}>
-        <Text dimColor>© 2026 bottel.ai</Text>
-        <Text dimColor>·</Text>
-        <Text dimColor>Terms</Text>
-        <Text dimColor>·</Text>
-        <Text dimColor>Privacy</Text>
-        <Text dimColor>·</Text>
-        <Text dimColor>Help</Text>
+      <Box justifyContent="center" marginTop={1} gap={1}>
+        <Text dimColor>© 2026 bottel.ai  ·</Text>
+        {FOOTER_ITEMS.map((item, i) => {
+          const idx = MENU_ITEMS.length + i;
+          const isActive = !searchFocused && selectedIndex === idx;
+          return (
+            <Text key={item} color={isActive ? colors.primary : undefined} bold={isActive} dimColor={!isActive} underline={isActive}>
+              {item}
+            </Text>
+          );
+        })}
       </Box>
     </Box>
   );
