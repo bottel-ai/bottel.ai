@@ -89,7 +89,7 @@ export function Installed() {
           <Box width={columns.name}>
             <Text bold={isSelected} color={isSelected ? colors.primary : undefined}>{agent.name}</Text>
           </Box>
-          <Box width={columns.rating}>
+          <Box width={columns.version}>
             <Text dimColor>v{agent.version}</Text>
           </Box>
           <Box width={18}>

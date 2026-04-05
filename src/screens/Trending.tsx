@@ -53,8 +53,7 @@ export function Trending() {
             <Box paddingLeft={6}>
               <Text>{agent.description}</Text>
             </Box>
-            <Box paddingLeft={6} gap={2}>
-              <Text color={colors.warning}>{"★".repeat(Math.round(agent.rating))} {agent.rating.toFixed(1)}</Text>
+            <Box paddingLeft={6}>
               <Text dimColor>{agent.installs.toLocaleString()} installs</Text>
             </Box>
           </Box>

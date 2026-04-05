@@ -3,7 +3,7 @@ import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { type App, getApp } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
-import { colors, formatStars, formatNumber, boxStyle } from "../cli_app_theme.js";
+import { colors, formatNumber, boxStyle } from "../cli_app_theme.js";
 import { Breadcrumb, Separator, HelpFooter } from "../cli_app_components.js";
 
 type InstallStatus = "idle" | "installing";
@@ -103,10 +103,7 @@ export function AgentDetail({ agentId }: { agentId: string }) {
 
   allRows.push(
     <Box key="stats" gap={2}>
-      <Text color={colors.warning}>{formatStars(agent.rating)} {agent.rating.toFixed(1)}</Text>
-      <Text dimColor>({formatNumber(agent.reviews)} reviews)</Text>
       <Text dimColor>{formatNumber(agent.installs)} installs</Text>
-      <Text dimColor>{agent.size}</Text>
     </Box>
   );
 

@@ -2,14 +2,14 @@
  * cli_app_components — Reusable UI components for CLI apps
  *
  * Terminal-specific React components built on ink. Designed for
- * any CLI app that needs navigation, lists, ratings, headers, etc.
+ * any CLI app that needs navigation, lists, headers, etc.
  *
  * Depends on cli_app_theme for colors/formatters.
  */
 
 import React from "react";
 import { Box, Text } from "ink";
-import { colors, columns, boxStyle, formatStars, formatInstalls } from "./cli_app_theme.js";
+import { colors, columns, boxStyle, formatInstalls } from "./cli_app_theme.js";
 import { isLoggedIn, getShortFingerprint } from "./lib/auth.js";
 
 // ─── Navigation ─────────────────────────────────────────────
@@ -55,16 +55,6 @@ export function HelpFooter({ text }: { text: string }) {
 
 // ─── Data Display ───────────────────────────────────────────
 
-/** Star rating display: ★★★★★ 4.8 */
-export function Rating({ value, showNumber = true }: { value: number; showNumber?: boolean }) {
-  return (
-    <Box width={columns.rating}>
-      <Text color={colors.warning}>
-        {formatStars(value)}{showNumber ? ` ${value.toFixed(1)}` : ""}
-      </Text>
-    </Box>
-  );
-}
 
 /** Install count display with auto-formatting (45.2k) */
 export function InstallCount({ count }: { count: number }) {

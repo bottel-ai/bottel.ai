@@ -26,8 +26,6 @@ interface RawApp {
   category: string;
   author: string;
   version: string;
-  rating: number;
-  reviews: number;
   installs: number;
   capabilities: string[];
   size: string;
@@ -35,9 +33,8 @@ interface RawApp {
   created_at?: string;
 }
 
-// Frontend-friendly shape matching existing Agent interface
 export interface App {
-  id: string; // slug (used as id throughout the frontend)
+  id: string;
   name: string;
   slug: string;
   author: string;
@@ -45,8 +42,6 @@ export interface App {
   description: string;
   longDescription: string;
   category: string;
-  rating: number;
-  reviews: number;
   installs: number;
   capabilities: string[];
   size: string;
@@ -64,8 +59,6 @@ function mapApp(raw: RawApp): App {
     description: raw.description,
     longDescription: raw.long_description,
     category: raw.category,
-    rating: raw.rating,
-    reviews: raw.reviews,
     installs: raw.installs,
     capabilities: raw.capabilities,
     size: raw.size,

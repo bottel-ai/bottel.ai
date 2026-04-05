@@ -118,8 +118,7 @@ export function Search() {
             <Box paddingLeft={3}>
               <Text>{truncate(agent.description, maxTextWidth)}</Text>
             </Box>
-            <Box paddingLeft={3} gap={1}>
-              <Text color={colors.warning}>{"★".repeat(Math.round(agent.rating))} {agent.rating.toFixed(1)}</Text>
+            <Box paddingLeft={3}>
               <Text dimColor>{agent.installs.toLocaleString()} installs</Text>
             </Box>
           </Box>

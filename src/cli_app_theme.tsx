@@ -19,10 +19,8 @@ export const columns = {
   rank: 4,
   name: 22,
   author: 16,
-  rating: 10,
   installs: 16,
   version: 10,
-  category: 18,
 } as const;
 
 // ─── Box Styles ─────────────────────────────────────────────────
@@ -33,10 +31,6 @@ export const boxStyle = {
 } as const;
 
 // ─── Text Formatters ────────────────────────────────────────────
-
-export function formatStars(rating: number): string {
-  return "\u2605".repeat(Math.round(rating));
-}
 
 export function formatInstalls(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
