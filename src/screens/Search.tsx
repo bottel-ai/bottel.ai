@@ -71,7 +71,7 @@ export function Search() {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Box marginBottom={1} gap={2}>
+      <Box marginBottom={1} gap={2} alignItems="center">
         <Text bold color="#54a0ff">bottel.ai</Text>
         <Box borderStyle="round" borderColor={inputFocused ? colors.primary : colors.border} paddingX={2} flexGrow={1}>
           <Text color={inputFocused ? colors.primary : undefined}>🔍 </Text>

@@ -87,7 +87,8 @@ function Router() {
   return (
     <Box flexDirection="column">
       <ScrollView ref={scrollRef} height={termHeight}>
-        {isHome ? <Logo key="logo" /> : (
+        {isHome && <Logo key="logo" />}
+        {!isHome && !isSearch && (
           <Box key="mini-logo" paddingX={1} marginBottom={1}>
             <Text bold color="#54a0ff">bottel.ai</Text>
           </Box>
