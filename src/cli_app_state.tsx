@@ -8,7 +8,9 @@ export type Screen =
   | { name: "search" }
   | { name: "agent-detail"; agentId: string }
   | { name: "installed" }
-  | { name: "settings" };
+  | { name: "settings" }
+  | { name: "portal" }
+  | { name: "service"; serviceId: string };
 
 // ─── Screen State (persisted across navigation) ─────────────────
 
@@ -43,6 +45,15 @@ export interface AgentDetailState {
   buttonIndex: number;
 }
 
+export interface PortalState {
+  selectedIndex: number;
+}
+
+export interface ServiceViewState {
+  query: string;
+  inputFocused: boolean;
+}
+
 // ─── App State ──────────────────────────────────────────────────
 
 export interface AppState {
@@ -55,6 +66,8 @@ export interface AppState {
   installedScreen: InstalledState;
   settings: SettingsState;
   agentDetail: AgentDetailState;
+  portal: PortalState;
+  serviceView: ServiceViewState;
 }
 
 const INITIAL_SEARCH: SearchState = {
@@ -88,6 +101,9 @@ const INITIAL_AGENT_DETAIL: AgentDetailState = {
   buttonIndex: 0,
 };
 
+const INITIAL_PORTAL: PortalState = { selectedIndex: 0 };
+const INITIAL_SERVICE_VIEW: ServiceViewState = { query: "", inputFocused: true };
+
 const INITIAL_STATE: AppState = {
   screen: { name: "home" },
   history: [],
@@ -98,6 +114,8 @@ const INITIAL_STATE: AppState = {
   installedScreen: INITIAL_INSTALLED,
   settings: INITIAL_SETTINGS,
   agentDetail: INITIAL_AGENT_DETAIL,
+  portal: INITIAL_PORTAL,
+  serviceView: INITIAL_SERVICE_VIEW,
 };
 
 // ─── Actions ────────────────────────────────────────────────────
@@ -114,6 +132,8 @@ export type Action =
   | { type: "UPDATE_INSTALLED"; state: Partial<InstalledState> }
   | { type: "UPDATE_SETTINGS"; state: Partial<SettingsState> }
   | { type: "UPDATE_AGENT_DETAIL"; state: Partial<AgentDetailState> }
+  | { type: "UPDATE_PORTAL"; state: Partial<PortalState> }
+  | { type: "UPDATE_SERVICE_VIEW"; state: Partial<ServiceViewState> }
   | { type: "RESET_SEARCH" }
   | { type: "RESET_BROWSE" };
 
@@ -132,6 +152,8 @@ function reducer(state: AppState, action: Action): AppState {
         case "settings": resets.settings = INITIAL_SETTINGS; break;
         case "agent-detail": resets.agentDetail = INITIAL_AGENT_DETAIL; break;
         case "home": resets.home = INITIAL_HOME; break;
+        case "portal": resets.portal = INITIAL_PORTAL; break;
+        case "service": resets.serviceView = INITIAL_SERVICE_VIEW; break;
       }
       return {
         ...state,
@@ -204,6 +226,12 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         agentDetail: { ...state.agentDetail, ...action.state },
       };
+
+    case "UPDATE_PORTAL":
+      return { ...state, portal: { ...state.portal, ...action.state } };
+
+    case "UPDATE_SERVICE_VIEW":
+      return { ...state, serviceView: { ...state.serviceView, ...action.state } };
 
     case "RESET_SEARCH":
       return { ...state, search: INITIAL_SEARCH };

@@ -9,6 +9,8 @@ import { Search } from "./screens/Search.js";
 import { AgentDetail } from "./screens/AgentDetail.js";
 import { Installed } from "./screens/Installed.js";
 import { Settings } from "./screens/Settings.js";
+import { Portal } from "./screens/Portal.js";
+import { ServiceView } from "./screens/ServiceView.js";
 
 const ENABLE_MOUSE = "\x1b[?1000h\x1b[?1002h\x1b[?1006h";
 const DISABLE_MOUSE = "\x1b[?1006l\x1b[?1002l\x1b[?1000l";
@@ -19,7 +21,7 @@ function Router() {
   const { stdin } = useStdin();
   const scrollRef = useRef<ScrollViewRef>(null);
   const isHome = state.screen.name === "home";
-  const isSearch = state.screen.name === "search";
+  const isSearch = state.screen.name === "search" || state.screen.name === "service";
 
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
   useEffect(() => {
@@ -93,6 +95,10 @@ function Router() {
         )}
         {state.screen.name === "installed" && <Installed key="installed" />}
         {state.screen.name === "settings" && <Settings key="settings" />}
+        {state.screen.name === "portal" && <Portal key="portal" />}
+        {state.screen.name === "service" && (
+          <ServiceView key={`service-${state.screen.serviceId}`} serviceId={state.screen.serviceId} />
+        )}
       </ScrollView>
     </Box>
   );

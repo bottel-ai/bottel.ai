@@ -14,6 +14,8 @@ const requiredFiles = [
   "screens/AgentDetail.tsx",
   "screens/Installed.tsx",
   "screens/Settings.tsx",
+  "screens/Portal.tsx",
+  "screens/ServiceView.tsx",
 ];
 
 describe("source files exist", () => {
