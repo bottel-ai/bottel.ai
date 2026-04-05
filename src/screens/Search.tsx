@@ -128,8 +128,8 @@ export function Search() {
       {/* Google-style pagination logo — 3 color layers cycling */}
       {!loading && !error && results.length > 0 && (() => {
         const oos = "o".repeat(Math.min(totalPages, 10));
-        const word = `Bo${oos}tle`;
-        const layerColors = [colors.primary, colors.error, colors.warning];
+        const word = `B${oos}ttel`;
+        const layerColors = [colors.accent, colors.primary, colors.success];
         return (
           <Box justifyContent="center" marginTop={1}>
             {word.split("").map((ch, i) => (
