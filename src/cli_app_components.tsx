@@ -114,7 +114,7 @@ const LOGO_LINES: [string, string][] = [
 export function Logo() {
   const loggedIn = isLoggedIn();
   return (
-    <Box flexDirection="column" paddingTop={1} paddingBottom={1}>
+    <Box flexDirection="column" paddingTop={2} paddingBottom={1}>
       <Box justifyContent="flex-end" paddingX={1}>
         {loggedIn ? (
           <Text color={colors.success}>● {getShortFingerprint()}</Text>
@@ -129,7 +129,7 @@ export function Logo() {
         <Box marginTop={1}>
           <Text bold color={colors.primary}>The Bot CLI Internet Portal</Text>
         </Box>
-        <Text dimColor>Discover CLI apps and websites — built for bots.</Text>
+        <Text dimColor>Search apps and websites - built for bots.</Text>
       </Box>
     </Box>
   );

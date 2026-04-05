@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Box, useInput, useStdout, useStdin } from "ink";
+import { Box, Text, useInput, useStdout, useStdin } from "ink";
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import { Logo, StatusBar } from "./cli_app_components.js";
 import { StoreProvider, useStore } from "./cli_app_state.js";
@@ -86,8 +86,11 @@ function Router() {
   return (
     <Box flexDirection="column">
       <ScrollView ref={scrollRef} height={termHeight}>
-        {isHome && <Logo key="logo" />}
-        <StatusBar key="statusbar" />
+        {isHome ? <Logo key="logo" /> : (
+          <Box key="mini-logo" paddingX={1} marginBottom={1}>
+            <Text bold color="#54a0ff">bottel.ai</Text>
+          </Box>
+        )}
         {isHome && <Home key="home" />}
         {isSearch && <Search key="search" />}
         {state.screen.name === "agent-detail" && (
