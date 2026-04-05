@@ -80,7 +80,7 @@ export function Search() {
           <TextInput
             value={query}
             onChange={(v) => update({ query: v, selectedIndex: 0, page: 0 })}
-            placeholder="Search CLI apps and websites..."
+            placeholder="Search Web 4.0 apps and websites..."
             focus={inputFocused}
           />
         </Box>

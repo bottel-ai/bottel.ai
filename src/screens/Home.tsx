@@ -87,7 +87,7 @@ export function Home() {
         <Autocomplete
           value={searchQuery}
           onChange={handleQueryChange}
-          placeholder="Search CLI apps and websites..."
+          placeholder="Search Web 4.0 apps and websites..."
           suggestions={suggestions}
           onSubmit={(q) => {
             dispatch({ type: "UPDATE_SEARCH", state: { query: q, inputFocused: false } });
