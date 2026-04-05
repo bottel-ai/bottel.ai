@@ -203,6 +203,132 @@ app.delete("/apps/:slug", authMiddleware, async (c) => {
   return c.json({ ok: true });
 });
 
+// --- Chat endpoints ---
+
+// POST /chat/contacts — add contact
+app.post("/chat/contacts", authMiddleware, async (c) => {
+  const fingerprint = c.get("fingerprint");
+  const { contact, alias } = await c.req.json<{ contact: string; alias?: string }>();
+  if (!contact) return c.json({ error: "contact fingerprint required" }, 400);
+  await c.env.DB.prepare("INSERT OR IGNORE INTO contacts (owner, contact, alias) VALUES (?, ?, ?)")
+    .bind(fingerprint, contact, alias || "").run();
+  return c.json({ ok: true });
+});
+
+// GET /chat/contacts — list contacts
+app.get("/chat/contacts", authMiddleware, async (c) => {
+  const fingerprint = c.get("fingerprint");
+  const result = await c.env.DB.prepare("SELECT contact, alias, added_at FROM contacts WHERE owner = ? ORDER BY alias, contact")
+    .bind(fingerprint).all();
+  return c.json({ contacts: result.results });
+});
+
+// DELETE /chat/contacts/:contact — remove contact
+app.delete("/chat/contacts/:contact", authMiddleware, async (c) => {
+  const fingerprint = c.get("fingerprint");
+  const contact = c.req.param("contact");
+  await c.env.DB.prepare("DELETE FROM contacts WHERE owner = ? AND contact = ?")
+    .bind(fingerprint, contact).run();
+  return c.json({ ok: true });
+});
+
+// POST /chat/new — create chat
+app.post("/chat/new", authMiddleware, async (c) => {
+  const fingerprint = c.get("fingerprint");
+  const { members, name, type } = await c.req.json<{ members: string[]; name?: string; type?: string }>();
+  if (!members || members.length === 0) return c.json({ error: "members required" }, 400);
+
+  const chatId = crypto.randomUUID();
+  const chatType = type || (members.length === 1 ? "direct" : "group");
+
+  await c.env.DB.prepare("INSERT INTO chats (id, type, name, created_by) VALUES (?, ?, ?, ?)")
+    .bind(chatId, chatType, name || "", fingerprint).run();
+
+  // Add creator + all members
+  const allMembers = [fingerprint, ...members.filter(m => m !== fingerprint)];
+  for (const member of allMembers) {
+    await c.env.DB.prepare("INSERT OR IGNORE INTO chat_members (chat_id, member) VALUES (?, ?)")
+      .bind(chatId, member).run();
+  }
+
+  return c.json({ chat: { id: chatId, type: chatType, name: name || "", members: allMembers } });
+});
+
+// GET /chat/list — list user's chats
+app.get("/chat/list", authMiddleware, async (c) => {
+  const fingerprint = c.get("fingerprint");
+  const result = await c.env.DB.prepare(`
+    SELECT c.id, c.type, c.name, c.created_at,
+      (SELECT content FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
+      (SELECT sender FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_sender,
+      (SELECT COUNT(*) FROM chat_members WHERE chat_id = c.id) as member_count
+    FROM chats c
+    JOIN chat_members cm ON cm.chat_id = c.id
+    WHERE cm.member = ?
+    ORDER BY c.created_at DESC
+  `).bind(fingerprint).all();
+  return c.json({ chats: result.results });
+});
+
+// GET /chat/:id/messages — get messages
+app.get("/chat/:id/messages", authMiddleware, async (c) => {
+  const fingerprint = c.get("fingerprint");
+  const chatId = c.req.param("id")!;
+  const since = c.req.query("since");
+
+  // Verify membership
+  const member = await c.env.DB.prepare("SELECT 1 FROM chat_members WHERE chat_id = ? AND member = ?")
+    .bind(chatId, fingerprint).first();
+  if (!member) return c.json({ error: "Not a member of this chat" }, 403);
+
+  let sql = "SELECT id, sender, content, created_at FROM messages WHERE chat_id = ?";
+  const bindings: string[] = [chatId];
+  if (since) {
+    sql += " AND created_at > ?";
+    bindings.push(since);
+  }
+  sql += " ORDER BY created_at ASC LIMIT 100";
+
+  const result = await c.env.DB.prepare(sql).bind(...bindings).all();
+  return c.json({ messages: result.results });
+});
+
+// POST /chat/:id/messages — send message
+app.post("/chat/:id/messages", authMiddleware, async (c) => {
+  const fingerprint = c.get("fingerprint");
+  const chatId = c.req.param("id")!;
+  const { content } = await c.req.json<{ content: string }>();
+  if (!content) return c.json({ error: "content required" }, 400);
+
+  // Verify membership
+  const member = await c.env.DB.prepare("SELECT 1 FROM chat_members WHERE chat_id = ? AND member = ?")
+    .bind(chatId, fingerprint).first();
+  if (!member) return c.json({ error: "Not a member of this chat" }, 403);
+
+  const id = crypto.randomUUID();
+  await c.env.DB.prepare("INSERT INTO messages (id, chat_id, sender, content) VALUES (?, ?, ?, ?)")
+    .bind(id, chatId, fingerprint, content).run();
+
+  return c.json({ message: { id, chat_id: chatId, sender: fingerprint, content, created_at: new Date().toISOString() } });
+});
+
+// POST /chat/:id/members — add member to group
+app.post("/chat/:id/members", authMiddleware, async (c) => {
+  const fingerprint = c.get("fingerprint");
+  const chatId = c.req.param("id")!;
+  const { member } = await c.req.json<{ member: string }>();
+  if (!member) return c.json({ error: "member fingerprint required" }, 400);
+
+  // Verify sender is member
+  const existing = await c.env.DB.prepare("SELECT 1 FROM chat_members WHERE chat_id = ? AND member = ?")
+    .bind(chatId, fingerprint).first();
+  if (!existing) return c.json({ error: "Not a member of this chat" }, 403);
+
+  await c.env.DB.prepare("INSERT OR IGNORE INTO chat_members (chat_id, member) VALUES (?, ?)")
+    .bind(chatId, member).run();
+  return c.json({ ok: true });
+});
+
 // 404 handler
 app.notFound((c) => {
   return c.json({ error: "Not found" }, 404);

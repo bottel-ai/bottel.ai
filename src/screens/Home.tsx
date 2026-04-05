@@ -6,7 +6,7 @@ import { colors } from "../cli_app_theme.js";
 import { Autocomplete, HelpFooter, Dialog, type AutocompleteItem } from "../cli_app_components.js";
 
 const MENU_ITEMS = [
-  "Trending", "Submit", "My Apps", "Auth", "Installed", "Settings",
+  "Trending", "Chat", "Submit", "My Apps", "Auth", "Installed", "Settings",
 ];
 
 const FOOTER_ITEMS = ["About", "Terms", "Privacy", "Help"];
@@ -14,6 +14,7 @@ const FOOTER_ITEMS = ["About", "Terms", "Privacy", "Help"];
 const MENU_MAP: Record<string, string> = {
   "Search": "search",
   "Trending": "trending",
+  "Chat": "chat-list",
   "Submit": "submit",
   "My Apps": "my-apps",
   "Auth": "auth",

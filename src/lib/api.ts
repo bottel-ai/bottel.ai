@@ -127,3 +127,46 @@ export async function toggleInstall(appId: string, fingerprint: string): Promise
   });
   return installed;
 }
+
+// Chat
+export interface Contact { contact: string; alias: string; added_at: string; }
+export interface Chat { id: string; type: string; name: string; last_message?: string; last_sender?: string; member_count?: number; created_at: string; }
+export interface Message { id: string; sender: string; content: string; created_at: string; }
+
+export async function addContact(fingerprint: string, contact: string, alias: string): Promise<void> {
+  await request("/chat/contacts", { method: "POST", body: JSON.stringify({ contact, alias }), headers: { "X-Fingerprint": fingerprint } });
+}
+
+export async function getContacts(fingerprint: string): Promise<Contact[]> {
+  const { contacts } = await request<{ contacts: Contact[] }>("/chat/contacts", { headers: { "X-Fingerprint": fingerprint } });
+  return contacts;
+}
+
+export async function removeContact(fingerprint: string, contact: string): Promise<void> {
+  await request(`/chat/contacts/${encodeURIComponent(contact)}`, { method: "DELETE", headers: { "X-Fingerprint": fingerprint } });
+}
+
+export async function createChat(fingerprint: string, members: string[], name?: string, type?: string): Promise<Chat> {
+  const { chat } = await request<{ chat: Chat }>("/chat/new", { method: "POST", body: JSON.stringify({ members, name, type }), headers: { "X-Fingerprint": fingerprint } });
+  return chat;
+}
+
+export async function getChats(fingerprint: string): Promise<Chat[]> {
+  const { chats } = await request<{ chats: Chat[] }>("/chat/list", { headers: { "X-Fingerprint": fingerprint } });
+  return chats;
+}
+
+export async function getMessages(fingerprint: string, chatId: string, since?: string): Promise<Message[]> {
+  const params = since ? `?since=${encodeURIComponent(since)}` : "";
+  const { messages } = await request<{ messages: Message[] }>(`/chat/${chatId}/messages${params}`, { headers: { "X-Fingerprint": fingerprint } });
+  return messages;
+}
+
+export async function sendMessage(fingerprint: string, chatId: string, content: string): Promise<Message> {
+  const { message } = await request<{ message: Message }>(`/chat/${chatId}/messages`, { method: "POST", body: JSON.stringify({ content }), headers: { "X-Fingerprint": fingerprint } });
+  return message;
+}
+
+export async function addMember(fingerprint: string, chatId: string, member: string): Promise<void> {
+  await request(`/chat/${chatId}/members`, { method: "POST", body: JSON.stringify({ member }), headers: { "X-Fingerprint": fingerprint } });
+}

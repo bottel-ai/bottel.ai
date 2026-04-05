@@ -26,3 +26,38 @@ CREATE TABLE IF NOT EXISTS installs (
 
 CREATE INDEX IF NOT EXISTS idx_apps_category ON apps(category);
 CREATE INDEX IF NOT EXISTS idx_apps_slug ON apps(slug);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id TEXT PRIMARY KEY,
+  chat_id TEXT NOT NULL,
+  sender TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS contacts (
+  owner TEXT NOT NULL,
+  contact TEXT NOT NULL,
+  alias TEXT DEFAULT '',
+  added_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (owner, contact)
+);
+
+CREATE TABLE IF NOT EXISTS chats (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL DEFAULT 'direct',
+  name TEXT DEFAULT '',
+  created_by TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS chat_members (
+  chat_id TEXT NOT NULL,
+  member TEXT NOT NULL,
+  joined_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (chat_id, member)
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_contacts_owner ON contacts(owner);
+CREATE INDEX IF NOT EXISTS idx_chat_members_member ON chat_members(member);

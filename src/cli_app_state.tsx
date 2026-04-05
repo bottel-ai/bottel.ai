@@ -12,6 +12,9 @@ export type Screen =
   | { name: "submit" }
   | { name: "my-apps" }
   | { name: "trending" }
+  | { name: "chat-list" }
+  | { name: "chat-view"; chatId: string }
+  | { name: "add-contact" }
 ;
 
 // ─── Screen State (persisted across navigation) ─────────────────
@@ -55,6 +58,20 @@ export interface SubmitState {
   version: string;
 }
 
+export interface ChatListState {
+  selectedIndex: number;
+}
+
+export interface ChatViewState {
+  inputText: string;
+}
+
+export interface AddContactState {
+  step: number;
+  fingerprint: string;
+  alias: string;
+}
+
 // ─── App State ──────────────────────────────────────────────────
 
 export interface AppState {
@@ -69,6 +86,9 @@ export interface AppState {
   authScreen: AuthScreenState;
   submit: SubmitState;
   myApps: MyAppsState;
+  chatList: ChatListState;
+  chatView: ChatViewState;
+  addContact: AddContactState;
 }
 
 const INITIAL_SEARCH: SearchState = {
@@ -110,6 +130,20 @@ const INITIAL_SUBMIT: SubmitState = {
   version: "0.1.0",
 };
 
+const INITIAL_CHAT_LIST: ChatListState = {
+  selectedIndex: 0,
+};
+
+const INITIAL_CHAT_VIEW: ChatViewState = {
+  inputText: "",
+};
+
+const INITIAL_ADD_CONTACT: AddContactState = {
+  step: 0,
+  fingerprint: "",
+  alias: "",
+};
+
 const INITIAL_STATE: AppState = {
   screen: { name: "home" },
   history: [],
@@ -122,6 +156,9 @@ const INITIAL_STATE: AppState = {
   authScreen: INITIAL_AUTH_SCREEN,
   submit: INITIAL_SUBMIT,
   myApps: INITIAL_MY_APPS,
+  chatList: INITIAL_CHAT_LIST,
+  chatView: INITIAL_CHAT_VIEW,
+  addContact: INITIAL_ADD_CONTACT,
 };
 
 // ─── Actions ────────────────────────────────────────────────────
@@ -140,6 +177,9 @@ export type Action =
   | { type: "UPDATE_AUTH_SCREEN"; state: Partial<AuthScreenState> }
   | { type: "UPDATE_SUBMIT"; state: Partial<SubmitState> }
   | { type: "UPDATE_MY_APPS"; state: Partial<MyAppsState> }
+  | { type: "UPDATE_CHAT_LIST"; state: Partial<ChatListState> }
+  | { type: "UPDATE_CHAT_VIEW"; state: Partial<ChatViewState> }
+  | { type: "UPDATE_ADD_CONTACT"; state: Partial<AddContactState> }
   | { type: "RESET_SEARCH" };
 
 // ─── Reducer ────────────────────────────────────────────────────
@@ -159,6 +199,9 @@ function reducer(state: AppState, action: Action): AppState {
         case "auth": resets.authScreen = INITIAL_AUTH_SCREEN; break;
         case "submit": resets.submit = INITIAL_SUBMIT; break;
         case "my-apps": resets.myApps = INITIAL_MY_APPS; break;
+        case "chat-list": resets.chatList = INITIAL_CHAT_LIST; break;
+        case "chat-view": resets.chatView = INITIAL_CHAT_VIEW; break;
+        case "add-contact": resets.addContact = INITIAL_ADD_CONTACT; break;
       }
       return {
         ...state,
@@ -242,6 +285,24 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         myApps: { ...state.myApps, ...action.state },
+      };
+
+    case "UPDATE_CHAT_LIST":
+      return {
+        ...state,
+        chatList: { ...state.chatList, ...action.state },
+      };
+
+    case "UPDATE_CHAT_VIEW":
+      return {
+        ...state,
+        chatView: { ...state.chatView, ...action.state },
+      };
+
+    case "UPDATE_ADD_CONTACT":
+      return {
+        ...state,
+        addContact: { ...state.addContact, ...action.state },
       };
 
     case "RESET_SEARCH":

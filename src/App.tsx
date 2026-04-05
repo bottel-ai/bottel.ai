@@ -12,6 +12,9 @@ import { Auth } from "./screens/Auth.js";
 import { Submit } from "./screens/Submit.js";
 import { MyApps } from "./screens/MyApps.js";
 import { Trending } from "./screens/Trending.js";
+import { ChatList } from "./screens/ChatList.js";
+import { ChatView } from "./screens/ChatView.js";
+import { AddContact } from "./screens/AddContact.js";
 
 const ENABLE_MOUSE = "\x1b[?1000h\x1b[?1002h\x1b[?1006h";
 const DISABLE_MOUSE = "\x1b[?1006l\x1b[?1002l\x1b[?1000l";
@@ -23,7 +26,7 @@ function Router() {
   const scrollRef = useRef<ScrollViewRef>(null);
   const isHome = state.screen.name === "home";
   const isSearch = state.screen.name === "search";
-  const hasTextInput = ["search", "submit", "home", "auth", "my-apps"].includes(state.screen.name);
+  const hasTextInput = ["search", "submit", "home", "auth", "my-apps", "chat-view", "add-contact"].includes(state.screen.name);
 
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
   useEffect(() => {
@@ -106,6 +109,9 @@ function Router() {
         {state.screen.name === "submit" && <Submit key="submit" />}
         {state.screen.name === "my-apps" && <MyApps key="my-apps" />}
         {state.screen.name === "trending" && <Trending key="trending" />}
+        {state.screen.name === "chat-list" && <ChatList key="chat-list" />}
+        {state.screen.name === "chat-view" && <ChatView key={`chat-${state.screen.chatId}`} chatId={state.screen.chatId} />}
+        {state.screen.name === "add-contact" && <AddContact key="add-contact" />}
       </ScrollView>
     </Box>
   );
