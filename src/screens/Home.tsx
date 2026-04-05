@@ -78,7 +78,6 @@ export function Home() {
   const suggestions: AutocompleteItem[] = apps.map(a => ({
     id: a.id,
     label: a.name,
-    detail: `${a.installs.toLocaleString()} installs`,
   }));
 
   return (
@@ -94,7 +93,10 @@ export function Home() {
             dispatch({ type: "UPDATE_SEARCH", state: { query: q, inputFocused: false } });
             navigate({ name: "search" });
           }}
-          onSelect={(item) => navigate({ name: "agent-detail", agentId: item.id })}
+          onSelect={(item) => {
+            dispatch({ type: "UPDATE_SEARCH", state: { query: item.label, inputFocused: false } });
+            navigate({ name: "search" });
+          }}
           onExit={() => {
             setSearchFocused(false);
             dispatch({ type: "UPDATE_HOME", state: { selectedIndex: 0 } });
