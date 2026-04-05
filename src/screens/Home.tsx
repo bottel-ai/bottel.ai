@@ -148,7 +148,7 @@ export function Home() {
       {/* Autocomplete dropdown */}
       {searchFocused && showSuggestions && suggestions.length > 0 && (
         <Box justifyContent="center" marginBottom={0}>
-          <Box flexDirection="column" width={50} paddingX={2}>
+          <Box flexDirection="column" width={50} borderStyle="single" borderColor={colors.border} paddingX={1}>
             {suggestions.map((app, i) => {
               const isActive = i === suggestionIndex;
               return (
