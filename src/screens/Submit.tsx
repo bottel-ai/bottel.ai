@@ -255,14 +255,21 @@ export function Submit() {
   );
 
   allRows.push(
-    <Box key="input-row" paddingLeft={2}>
-      <Text>{field.label}: </Text>
-      <TextInput
-        value={field.value}
-        onChange={field.setter}
-        placeholder={field.placeholder}
-        focus={true}
-      />
+    <Box key="input-label" paddingLeft={2}>
+      <Text dimColor>{field.label}</Text>
+    </Box>,
+  );
+
+  allRows.push(
+    <Box key="input-row" paddingLeft={2} marginBottom={1}>
+      <Box borderStyle="round" borderColor={colors.primary} paddingX={1} width={Math.min(50, 80)}>
+        <TextInput
+          value={field.value}
+          onChange={field.setter}
+          placeholder={field.placeholder}
+          focus={true}
+        />
+      </Box>
     </Box>,
   );
 
