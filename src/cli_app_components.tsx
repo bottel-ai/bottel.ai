@@ -105,7 +105,7 @@ const LOGO_LINES: [string, string][] = [
 export function Logo() {
   const loggedIn = isLoggedIn();
   return (
-    <Box flexDirection="column" paddingTop={2} paddingBottom={1}>
+    <Box flexDirection="column" paddingBottom={1}>
       <Box justifyContent="flex-end" paddingX={1}>
         {loggedIn ? (
           <Text color={colors.success}>● {getShortFingerprint()}</Text>
@@ -113,7 +113,7 @@ export function Logo() {
           <Text dimColor>○ not logged in</Text>
         )}
       </Box>
-      <Box flexDirection="column" alignItems="center">
+      <Box flexDirection="column" alignItems="center" marginTop={2}>
         {LOGO_LINES.map(([line, color], i) => (
           <Text key={`logo-${i}`} color={color} bold>{line}</Text>
         ))}
