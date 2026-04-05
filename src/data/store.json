@@ -3,22 +3,18 @@
   "categories": [
     {
       "name": "Productivity",
-      "icon": ">>",
       "agents": ["code-reviewer", "doc-generator", "refactor-bot", "api-designer"]
     },
     {
       "name": "Utilities",
-      "icon": "##",
       "agents": ["security-scanner", "vuln-hunter", "devops-pilot", "k8s-helper", "test-writer"]
     },
     {
       "name": "Education",
-      "icon": "::",
       "agents": ["data-analyst", "sql-wizard", "research-agent", "fact-checker"]
     },
     {
       "name": "Business",
-      "icon": "~~",
       "agents": ["copywriter", "translator"]
     }
   ],

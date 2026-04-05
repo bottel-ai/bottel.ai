@@ -133,7 +133,7 @@ export function Browse() {
       <Box key={`cat-${cat.name}`}>
         <Cursor active={isActive} />
         <Text bold={isActive || isExpanded} color={isActive ? colors.primary : undefined}>
-          {isExpanded ? "\u25BC" : "\u25B6"} {cat.icon} {cat.name}
+          {isExpanded ? "\u25BC" : "\u25B6"} {cat.name}
         </Text>
         <Text dimColor> ({cat.agents.length})</Text>
       </Box>

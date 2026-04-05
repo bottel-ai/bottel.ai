@@ -265,7 +265,7 @@ export function Home() {
                   {isActive ? "\u276F " : "  "}
                 </Text>
                 <Text color={isActive ? colors.primary : undefined} bold={isActive}>
-                  {cat.icon} {cat.name}
+                  {cat.name}
                 </Text>
                 <Text dimColor={!isActive} color={isActive ? colors.primary : undefined}>
                   {" "}({cat.agents.length})
