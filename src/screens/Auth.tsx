@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { useStore } from "../cli_app_state.js";
@@ -80,7 +80,6 @@ export function Auth() {
       return;
     }
 
-    // menu mode
     if (key.escape) {
       goBack();
       return;
@@ -154,7 +153,6 @@ export function Auth() {
   allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Auth"]} />);
   allRows.push(<ScreenHeader key="header" title="Auth" />);
 
-  // Status line
   if (loggedIn && auth) {
     const shortFingerprint = `bottel_${auth.fingerprint.replace("SHA256:", "").substring(0, 8)}...`;
     allRows.push(
@@ -211,7 +209,6 @@ export function Auth() {
     );
     allRows.push(<HelpFooter key="footer" text="Esc/Enter back to menu" />);
   } else {
-    // Menu items
     menuItems.forEach((item, i) => {
       const isSelected = i === selectedIndex;
       allRows.push(

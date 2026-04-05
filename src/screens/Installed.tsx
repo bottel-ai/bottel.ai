@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Box, Text, useInput } from "ink";
 import { type App, getApps } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
@@ -66,10 +66,7 @@ export function Installed() {
 
   const allRows: React.ReactNode[] = [];
 
-  // Breadcrumb
   allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Installed"]} />);
-
-  // Header
   allRows.push(<ScreenHeader key="header" title={`Installed Apps (${installedAgents.length})`} />);
 
   if (installedAgents.length === 0) {
@@ -104,7 +101,6 @@ export function Installed() {
     });
   }
 
-  // Footer
   allRows.push(<HelpFooter key="footer" text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select" />);
 
   return (

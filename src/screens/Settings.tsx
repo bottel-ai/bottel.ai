@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { useStore } from "../cli_app_state.js";
 import { colors, boxStyle } from "../cli_app_theme.js";
@@ -47,16 +47,9 @@ export function Settings() {
 
   const allRows: React.ReactNode[] = [];
 
-  // Breadcrumb
   allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Settings"]} />);
-
-  // Header
   allRows.push(<ScreenHeader key="header" title="Settings" />);
 
-  // Track focused row
-  const firstMenuRow = allRows.length;
-
-  // Menu items
   MENU_ITEMS.forEach((item, i) => {
     const isSelected = i === selectedIndex;
     allRows.push(
@@ -70,7 +63,6 @@ export function Settings() {
     );
   });
 
-  // Message (non-about)
   if (message && message !== "about") {
     allRows.push(
       <Box key="message" marginTop={1} paddingLeft={2}>
@@ -79,10 +71,8 @@ export function Settings() {
     );
   }
 
-  // Footer
   allRows.push(<HelpFooter key="footer" text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select" />);
 
-  // About box (if shown)
   if (message === "about") {
     allRows.push(
       <Box key="about-header" marginTop={1} {...boxStyle.section} paddingX={2} paddingY={1} flexDirection="column">
@@ -97,8 +87,6 @@ export function Settings() {
       </Box>
     );
   }
-
-  const focusedRowIndex = firstMenuRow + selectedIndex;
 
   return (
     <Box flexDirection="column" paddingX={1}>

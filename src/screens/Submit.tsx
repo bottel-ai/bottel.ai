@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import Conf from "conf";
@@ -72,7 +72,6 @@ export function Submit() {
       return;
     }
 
-    // Confirm step (step 5)
     if (step === 5) {
       if (key.escape) {
         update({ step: 4 });
@@ -88,11 +87,9 @@ export function Submit() {
       }
       if (key.return) {
         if (confirmIndex === 1) {
-          // Cancel
           goBack();
           return;
         }
-        // Submit
         const existing = submissionStore.get("submissions");
         const submission: Submission = {
           name,
@@ -110,7 +107,6 @@ export function Submit() {
       return;
     }
 
-    // Category step (step 3) - arrow select
     if (step === 3) {
       if (key.escape) {
         update({ step: 2 });
@@ -135,7 +131,6 @@ export function Submit() {
       return;
     }
 
-    // Text input steps (0, 1, 2, 4)
     if (key.escape) {
       if (step === 0) {
         goBack();
@@ -147,7 +142,6 @@ export function Submit() {
 
     if (key.return) {
       if (step === 0) {
-        // Auto-generate slug from name
         const autoSlug = slugify(name);
         update({ step: 1, slug: autoSlug });
       } else if (step === 1) {
@@ -201,7 +195,6 @@ export function Submit() {
     );
   }
 
-  // Confirm step
   if (step === 5) {
     const shortFp = getShortFingerprint();
 
@@ -254,7 +247,6 @@ export function Submit() {
     );
   }
 
-  // Category step
   if (step === 3) {
     allRows.push(
       <Box key="step-label" paddingLeft={2} marginBottom={1}>
@@ -285,7 +277,6 @@ export function Submit() {
     );
   }
 
-  // Text input steps (0, 1, 2, 4)
   const fieldMap: Record<number, { label: string; value: string; setter: (v: string) => void; placeholder: string }> = {
     0: {
       label: "Name",

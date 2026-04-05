@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { type App, getApp } from "../lib/api.js";
@@ -86,10 +86,8 @@ export function AgentDetail({ agentId }: { agentId: string }) {
 
   const allRows: React.ReactNode[] = [];
 
-  // Breadcrumb
   allRows.push(<Breadcrumb key="breadcrumb" path={["Home", agent.category, agent.name]} />);
 
-  // Header box
   allRows.push(
     <Box key="header" {...boxStyle.header} paddingX={1} marginY={1}>
       <Box flexGrow={1}>
@@ -100,13 +98,9 @@ export function AgentDetail({ agentId }: { agentId: string }) {
     </Box>
   );
 
-  // Author
   allRows.push(<Text key="author" dimColor>by {agent.author}</Text>);
-
-  // Blank line
   allRows.push(<Text key="blank1">{""}</Text>);
 
-  // Rating/stats row
   allRows.push(
     <Box key="stats" gap={2}>
       <Text color={colors.warning}>{formatStars(agent.rating)} {agent.rating.toFixed(1)}</Text>
@@ -116,36 +110,20 @@ export function AgentDetail({ agentId }: { agentId: string }) {
     </Box>
   );
 
-  // Blank line
   allRows.push(<Text key="blank2">{""}</Text>);
-
-  // Short description
   allRows.push(<Text key="short-desc">{agent.description}</Text>);
-
-  // Blank line
   allRows.push(<Text key="blank3">{""}</Text>);
-
-  // Separator
   allRows.push(<Separator key="sep1" />);
-
-  // Blank line
   allRows.push(<Text key="blank4">{""}</Text>);
 
-  // Long description lines
   descLines.forEach((line, i) => {
     allRows.push(<Text key={`desc-${i}`}>{line}</Text>);
   });
 
-  // Blank line
   allRows.push(<Text key="blank5">{""}</Text>);
-
-  // Separator
   allRows.push(<Separator key="sep2" />);
-
-  // Blank line
   allRows.push(<Text key="blank6">{""}</Text>);
 
-  // Capabilities
   allRows.push(
     <Box key="capabilities" gap={1}>
       <Text>Capabilities: </Text>
@@ -155,18 +133,12 @@ export function AgentDetail({ agentId }: { agentId: string }) {
     </Box>
   );
 
-  // Blank line
   allRows.push(<Text key="blank7">{""}</Text>);
-
-  // Metadata
   allRows.push(
     <Text key="metadata" dimColor>Category: <Text color={colors.secondary} underline>{agent.category}</Text></Text>
   );
-
-  // Blank line
   allRows.push(<Text key="blank8">{""}</Text>);
 
-  // Buttons row
   allRows.push(
     <Box key="buttons" gap={2}>
       {installStatus === "installing" ? (
@@ -193,7 +165,6 @@ export function AgentDetail({ agentId }: { agentId: string }) {
     </Box>
   );
 
-  // Footer
   allRows.push(<HelpFooter key="footer" text="Esc back \u00b7 \u2190\u2192 nav \u00b7 Enter select" />);
 
   return (

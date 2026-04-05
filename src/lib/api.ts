@@ -97,14 +97,14 @@ export async function submitApp(data: any, fingerprint: string): Promise<App> {
   const { app } = await request<{ app: RawApp }>("/apps", {
     method: "POST",
     body: JSON.stringify(data),
-    headers: { "X-Fingerprint": fingerprint, "X-Signature": "todo" },
+    headers: { "X-Fingerprint": fingerprint, "X-Signature": "" },
   });
   return mapApp(app);
 }
 
 export async function getUserInstalls(fingerprint: string): Promise<App[]> {
   const { installs } = await request<{ installs: RawApp[] }>("/user/installs", {
-    headers: { "X-Fingerprint": fingerprint, "X-Signature": "todo" },
+    headers: { "X-Fingerprint": fingerprint, "X-Signature": "" },
   });
   return installs.map(mapApp);
 }
@@ -112,7 +112,7 @@ export async function getUserInstalls(fingerprint: string): Promise<App[]> {
 export async function toggleInstall(appId: string, fingerprint: string): Promise<boolean> {
   const { installed } = await request<{ installed: boolean }>(`/user/installs/${appId}`, {
     method: "POST",
-    headers: { "X-Fingerprint": fingerprint, "X-Signature": "todo" },
+    headers: { "X-Fingerprint": fingerprint, "X-Signature": "" },
   });
   return installed;
 }

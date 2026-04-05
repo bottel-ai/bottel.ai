@@ -29,10 +29,7 @@ export const columns = {
 
 export const boxStyle = {
   header: { borderStyle: "double" as const, borderColor: colors.border },
-  card: { borderStyle: "round" as const },
-  cardActive: { borderStyle: "round" as const, borderColor: colors.primary },
   section: { borderStyle: "single" as const, borderColor: colors.border },
-  footer: { borderStyle: "single" as const, borderColor: colors.dimBorder },
 } as const;
 
 // ─── Text Formatters ────────────────────────────────────────────

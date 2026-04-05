@@ -120,8 +120,6 @@ src/
 ├── cli_app_state.tsx        # State engine (useReducer + context, 8 screen states)
 ├── cli_app_theme.tsx        # Theme (colors, column widths, box styles, formatters)
 ├── cli_app_components.tsx   # Reusable components (Logo, StatusBar, Cursor, etc.)
-├── components/
-│   └── AgentCard.tsx        # App card (compact + full modes)
 ├── screens/
 │   ├── Home.tsx             # Store front (menu, featured, trending, categories)
 │   ├── Browse.tsx           # Browse by category
@@ -134,16 +132,11 @@ src/
 ├── lib/
 │   ├── api.ts               # API client (7 endpoints, snake_case → camelCase mapping)
 │   └── auth.ts              # Ed25519 key pair auth (generate, import, persist via conf)
-├── data/
-│   └── store.json           # Sample store data (fallback)
 └── __tests__/
     ├── app.test.ts           # App component tests
     ├── auth.test.ts          # Auth module tests
-    ├── bot-usage.test.ts     # Bot usage scenario tests
     ├── cli-app-state.test.ts # State reducer tests
-    ├── fullscreen.test.ts    # Fullscreen buffer tests
-    ├── navigation.test.ts    # Navigation flow tests
-    └── store-data.test.ts    # Store data tests
+    └── fullscreen.test.ts    # Fullscreen buffer tests
 
 backend/
 ├── src/
@@ -286,7 +279,7 @@ BOTTEL_API_URL=http://localhost:8787 npm run dev
 ### Tests
 
 ```bash
-npm test             # vitest run (84 tests across 7 files)
+npm test             # vitest run (36 tests across 4 files)
 ```
 
 ### Type Check
@@ -305,10 +298,7 @@ npx tsc --noEmit
 | React | React | 19.x |
 | Text Input | ink-text-input | 6.x |
 | Spinner | ink-spinner | 5.x |
-| Select Input | ink-select-input | 6.x |
-| Table | ink-table | 3.x |
 | Persistent Config | conf | 15.x |
-| CLI Runner | pastel | 4.x |
 | Dev Runner | tsx | 4.x |
 | Test Runner | vitest | 4.x |
 | Backend Framework | Hono | 4.x |

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Box, Text, useInput, useApp, useStdout } from "ink";
 import { type App, getApps, getCategories } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
@@ -16,7 +16,6 @@ const MENU_ITEMS = [
   { label: "Exit", value: "exit", description: "Quit bottel" },
 ];
 
-// Each navigable item in the flat list
 type NavItem =
   | { section: "menu"; index: number }
   | { section: "featured"; index: number }
@@ -55,11 +54,9 @@ export function Home() {
     return () => { cancelled = true; };
   }, []);
 
-  // Featured = first 3 apps, Trending = first 5
   const featuredAgents = apps.slice(0, 3);
   const trendingAgents = apps.slice(0, 5);
 
-  // Build flat navigable list
   const navItems = useMemo((): NavItem[] => {
     const items: NavItem[] = [];
     for (let i = 0; i < MENU_ITEMS.length; i++) {
@@ -93,7 +90,6 @@ export function Home() {
       return;
     }
 
-    // Enter
     if (key.return) {
       if (!current) return;
       if (current.section === "menu") {
@@ -120,12 +116,10 @@ export function Home() {
       return;
     }
 
-    // Up
     if (key.upArrow) {
       dispatch({ type: "UPDATE_HOME", state: { selectedIndex: Math.max(0, selectedIndex - 1) } });
     }
 
-    // Down
     if (key.downArrow) {
       dispatch({ type: "UPDATE_HOME", state: { selectedIndex: Math.min(navItems.length - 1, selectedIndex + 1) } });
     }
@@ -150,19 +144,16 @@ export function Home() {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      {/* Compact logo header when terminal is small */}
       {compact && (
         <Box marginBottom={1} flexDirection="column">
           <CompactLogo />
         </Box>
       )}
 
-      {/* Header */}
       <Box marginBottom={compact ? 0 : 1}>
         <Text dimColor>{totalAgents} apps available</Text>
       </Box>
 
-      {/* Menu */}
       <Box flexDirection="column" marginBottom={1}>
         <Text bold color={activeSection === "menu" ? colors.primary : undefined}>
           {activeSection === "menu" ? "▶ " : "  "}Menu
@@ -187,10 +178,8 @@ export function Home() {
         </Box>
       </Box>
 
-      {/* Separator */}
       <Separator />
 
-      {/* Featured Agents */}
       <Box marginBottom={1} flexDirection="column">
         <Text bold color={activeSection === "featured" ? colors.primary : undefined}>
           {activeSection === "featured" ? "▶ " : "  "}Featured Agents
@@ -238,10 +227,8 @@ export function Home() {
         )}
       </Box>
 
-      {/* Separator */}
       <Separator />
 
-      {/* Trending */}
       <Box marginBottom={1} flexDirection="column">
         <Text bold color={activeSection === "trending" ? colors.primary : undefined}>
           {activeSection === "trending" ? "▶ " : "  "}Trending
@@ -263,10 +250,8 @@ export function Home() {
         </Box>
       </Box>
 
-      {/* Separator */}
       <Separator />
 
-      {/* Categories - vertical list */}
       <Box flexDirection="column">
         <Text bold color={activeSection === "categories" ? colors.primary : undefined}>
           {activeSection === "categories" ? "▶ " : "  "}Categories
@@ -291,7 +276,6 @@ export function Home() {
         </Box>
       </Box>
 
-      {/* Help */}
       <HelpFooter text="Esc back · ↑↓ nav · Enter select · / search · q quit" />
     </Box>
   );

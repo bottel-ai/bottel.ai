@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import { type App, getApps, getCategories } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
@@ -17,7 +17,6 @@ export function Browse() {
   const [agentsLoading, setAgentsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch categories on mount
   useEffect(() => {
     getCategories()
       .then(setCategories)
@@ -25,7 +24,6 @@ export function Browse() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Fetch agents when a category is expanded
   useEffect(() => {
     if (expandedCategory == null || categories.length === 0) {
       setCategoryAgents([]);
@@ -63,7 +61,6 @@ export function Browse() {
     }
 
     if (!inAgents) {
-      // Navigating categories
       if (key.upArrow) {
         update({ categoryIndex: Math.max(0, categoryIndex - 1) });
       }
@@ -80,7 +77,6 @@ export function Browse() {
       return;
     }
 
-    // Navigating agents
     if (key.upArrow) {
       if (agentIndex <= 0) {
         update({ inAgents: false });
@@ -127,22 +123,18 @@ export function Browse() {
 
   const allRows: React.ReactNode[] = [];
 
-  // Row 0: breadcrumb
   allRows.push(<Breadcrumb key="breadcrumb" path={breadcrumbPath} />);
 
-  // Row 1: header
   allRows.push(
     <Box key="header" marginBottom={1}>
       <Text bold color={colors.primary}>Browse Categories</Text>
     </Box>
   );
 
-  // Category rows (with expanded agents as sub-rows)
   categories.forEach((cat, i) => {
     const isActive = i === categoryIndex && !inAgents;
     const isExpanded = expandedCategory === i;
 
-    // Category header row
     allRows.push(
       <Box key={`cat-${cat.name}`}>
         <Cursor active={isActive} />
@@ -153,7 +145,6 @@ export function Browse() {
       </Box>
     );
 
-    // Expanded agent sub-rows
     if (isExpanded) {
       if (agentsLoading) {
         allRows.push(
@@ -198,7 +189,6 @@ export function Browse() {
     }
   });
 
-  // Footer
   allRows.push(
     <HelpFooter key="footer" text={`Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter expand/select${totalAgentPages > 1 && inAgents ? " \u00b7 \u2190\u2192 pages" : ""}`} />
   );

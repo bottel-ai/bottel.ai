@@ -60,11 +60,8 @@
 | React | React | 19.x |
 | Text Input | ink-text-input | 6.x |
 | Spinner | ink-spinner | 5.x |
-| Select Input | ink-select-input | 6.x |
-| Table | ink-table | 3.x |
 | Scrolling | ink-scroll-view | 0.3.x |
 | Persistent Config | conf | 15.x |
-| CLI Runner | pastel | 4.x |
 | Dev Runner | tsx | 4.x |
 | Build | tsc | - |
 | Test Runner | vitest | 4.x |
@@ -538,18 +535,15 @@ npx tsc --noEmit
 ## Testing
 
 - **Framework:** vitest 4.x
-- **Test count:** 84 tests across 7 files
+- **Test count:** 36 tests across 4 files
 - **Run:** `npm test` (alias for `vitest run`)
 
 | Test File | Coverage |
 |-----------|----------|
 | `app.test.ts` | App component rendering |
 | `auth.test.ts` | Key generation, import, persistence |
-| `bot-usage.test.ts` | End-to-end bot usage scenarios |
 | `cli-app-state.test.ts` | State reducer, navigation, actions |
 | `fullscreen.test.ts` | Alternate screen buffer behavior |
-| `navigation.test.ts` | Screen navigation flows |
-| `store-data.test.ts` | Store data format validation |
 
 ## Keyboard Shortcuts
 
@@ -596,13 +590,20 @@ npx tsc --noEmit
 - Scaffold packages: cli_app_scaffold, cli_web_scaffold
 - Fullscreen alternate screen buffer with SGR mouse tracking
 - ScrollView-based scrolling via ink-scroll-view
-- 84 tests across 7 test files (vitest)
+- 36 tests across 4 test files (vitest)
+
+### v0.1.1 -- Cleanup (2026-04-04)
+
+- Removed AgentCard component (inlined into screens)
+- Removed store.json fallback data (all data from remote API)
+- Removed unused dependencies: ink-select-input, ink-table, pastel
+- Removed obsolete test files (bot-usage, navigation, store-data)
+- Updated tests to reflect deleted files
 
 ### v0.1.0 -- Initial Scaffold (2026-04-04)
 
 - Project setup: TypeScript, ink, React
-- Core components: Logo, StatusBar, AgentCard
+- Core components: Logo, StatusBar
 - Screens: Home (featured/trending/categories), Browse, Search
-- Sample data: 15 agents across 6 categories
 - Alternate screen buffer for fullscreen experience
 - Rainbow ASCII logo with gradient bar

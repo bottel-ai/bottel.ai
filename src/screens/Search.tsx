@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { type App, getApps } from "../lib/api.js";
@@ -16,7 +16,6 @@ export function Search() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch apps when query changes
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -55,14 +54,12 @@ export function Search() {
     }
 
     if (inputFocused) {
-      // Only down arrow leaves the input
       if (key.downArrow && results.length > 0) {
         update({ inputFocused: false, selectedIndex: 0 });
       }
       return;
     }
 
-    // In results
     if (key.upArrow) {
       if (selectedIndex <= 0) {
         update({ inputFocused: true });
@@ -91,7 +88,6 @@ export function Search() {
       return;
     }
 
-    // Typing while in results: switch back to input
     if (input && !key.ctrl && !key.meta) {
       update({ inputFocused: true, query: query + input, selectedIndex: 0, page: 0 });
       return;
@@ -104,17 +100,14 @@ export function Search() {
 
   const allRows: React.ReactNode[] = [];
 
-  // Row 0: breadcrumb
   allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Search"]} />);
 
-  // Row 1: header
   allRows.push(
     <Box key="header" marginBottom={1}>
       <Text bold color={colors.primary}>Search Agents</Text>
     </Box>
   );
 
-  // Row 2: search input
   allRows.push(
     <Box key="search-input" marginBottom={1}>
       <Text color={inputFocused ? colors.primary : undefined}>{"\u276f "}</Text>
@@ -127,7 +120,6 @@ export function Search() {
     </Box>
   );
 
-  // Row 3: result count
   allRows.push(
     <Box key="result-count" marginBottom={1}>
       <Text dimColor>
@@ -142,7 +134,6 @@ export function Search() {
     </Box>
   );
 
-  // Row 4: separator
   allRows.push(<Separator key="separator" />);
 
   if (error) {
@@ -194,7 +185,6 @@ export function Search() {
     });
   }
 
-  // Row: help footer
   allRows.push(
     <HelpFooter key="footer" text={`Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter select${totalPages > 1 ? " \u00b7 \u2190\u2192 pages" : ""}`} />
   );
