@@ -109,7 +109,7 @@ export function Home() {
           <TextInput
             value={searchQuery}
             onChange={setSearchQuery}
-            placeholder="Search apps and services..."
+            placeholder="Search CLI apps and websites..."
             focus={searchFocused}
           />
         </Box>
