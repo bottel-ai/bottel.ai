@@ -47,7 +47,7 @@ export function Breadcrumb({ path }: { path: string[] }) {
 /** Keyboard shortcut help text at screen bottom */
 export function HelpFooter({ text }: { text: string }) {
   return (
-    <Box marginTop={1}>
+    <Box marginTop={1} justifyContent="center">
       <Text dimColor>{text}</Text>
     </Box>
   );
