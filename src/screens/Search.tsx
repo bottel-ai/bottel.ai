@@ -125,6 +125,19 @@ export function Search() {
         );
       })}
 
+      {/* Google-style pagination logo */}
+      {!loading && !error && results.length > 0 && (
+        <Box justifyContent="center" marginTop={1}>
+          <Text color={colors.primary} bold>B</Text>
+          <Text color={colors.error} bold>o</Text>
+          <Text color={colors.warning} bold>{"o".repeat(Math.min(totalPages, 10))}</Text>
+          <Text color={colors.primary} bold>t</Text>
+          <Text color={colors.success} bold>l</Text>
+          <Text color={colors.error} bold>e</Text>
+          {totalPages > 1 && <Text dimColor>  Page {currentPage + 1} of {totalPages}</Text>}
+        </Box>
+      )}
+
       <HelpFooter text={`Esc back · ↑↓ nav · Enter select${totalPages > 1 ? " · ←→ pages" : ""}`} />
     </Box>
   );
