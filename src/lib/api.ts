@@ -1,4 +1,4 @@
-const API_URL = process.env.BOTTEL_API_URL || "http://localhost:8787";
+const API_URL = process.env.BOTTEL_API_URL || "https://bottel-api.cenconq.workers.dev";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {

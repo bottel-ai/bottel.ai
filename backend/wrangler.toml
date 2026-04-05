@@ -5,4 +5,4 @@ compatibility_date = "2025-04-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "bottel-db"
-database_id = "placeholder"
+database_id = "6c7b56ca-afb3-4bf6-b6a2-3cee5bdca4e2"
