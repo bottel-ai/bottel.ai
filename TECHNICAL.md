@@ -14,9 +14,9 @@
 ├──────────────────────────────────────────────────────────────┤
 │                     State Engine                             │
 │                (src/cli_app_state.tsx)                        │
-│  useReducer + Context, 8 screen states, history stack        │
+│  useReducer + Context, 7 screen states, history stack        │
 ├────────┬────────┬────────┬────────┬────────┬────────┬───────┤
-│  Home  │ Browse │ Search │ Detail │  Auth  │ Submit │ More  │
+│  Home  │ Search │ Detail │  Auth  │ Submit │  More  │       │
 ├────────┴────────┴────────┴────────┴────────┴────────┴───────┤
 │                  Reusable Components                         │
 │  Logo, StatusBar, Cursor, Breadcrumb, Rating, HelpFooter    │
@@ -28,7 +28,7 @@
 ├──────────────────────────────────────────────────────────────┤
 │                      API Client                              │
 │                   (src/lib/api.ts)                            │
-│  7 endpoints, snake_case → camelCase mapping                 │
+│  6 endpoints, snake_case → camelCase mapping                 │
 ├──────────────────────────────────────────────────────────────┤
 │                    Auth Module                                │
 │                  (src/lib/auth.ts)                            │
@@ -39,7 +39,7 @@
 ┌──────────────────────────────────────────────────────────────┐
 │                  Cloudflare Workers API                       │
 │                  (backend/src/index.ts)                       │
-│  Hono framework, CORS, auth middleware, 7 routes             │
+│  Hono framework, CORS, auth middleware, 6 routes             │
 ├──────────────────────────┬───────────────────────────────────┤
                            │ D1 bindings
                            ▼
@@ -93,7 +93,6 @@ Centralized state management using React `useReducer` + Context.
 ```typescript
 type Screen =
   | { name: "home" }
-  | { name: "browse" }
   | { name: "search" }
   | { name: "agent-detail"; agentId: string }
   | { name: "installed" }
@@ -107,15 +106,14 @@ type Screen =
 | Slice | Fields |
 |-------|--------|
 | `home` | `selectedIndex` |
-| `browse` | `categoryIndex`, `expandedCategory`, `agentIndex`, `agentPage`, `inAgents` |
 | `search` | `query`, `selectedIndex`, `page`, `inputFocused` |
 | `agentDetail` | `buttonIndex` |
 | `installedScreen` | `selectedIndex` |
 | `settings` | `selectedIndex` |
 | `authScreen` | `selectedIndex` |
-| `submit` | `step`, `name`, `slug`, `description`, `category`, `version` |
+| `submit` | `step`, `name`, `slug`, `description`, `version` |
 
-**Actions** (14 types):
+**Actions** (12 types):
 
 | Action | Description |
 |--------|-------------|
@@ -125,7 +123,6 @@ type Screen =
 | `INSTALL_AGENT` | Add agent ID to installed set |
 | `UNINSTALL_AGENT` | Remove agent ID from installed set |
 | `UPDATE_SEARCH` | Partial update to search state |
-| `UPDATE_BROWSE` | Partial update to browse state |
 | `UPDATE_HOME` | Partial update to home state |
 | `UPDATE_INSTALLED` | Partial update to installed screen state |
 | `UPDATE_SETTINGS` | Partial update to settings state |
@@ -133,7 +130,6 @@ type Screen =
 | `UPDATE_AUTH_SCREEN` | Partial update to auth screen state |
 | `UPDATE_SUBMIT` | Partial update to submit state |
 | `RESET_SEARCH` | Reset search state to initial |
-| `RESET_BROWSE` | Reset browse state to initial |
 
 Navigation behavior: `NAVIGATE` resets the target screen's state slice. `GO_BACK` preserves state (no reset).
 
@@ -173,7 +169,7 @@ Navigation behavior: `NAVIGATE` resets the target screen's state slice. `GO_BACK
 | Component | Description |
 |-----------|-------------|
 | `Cursor` | Arrow indicator (`❯`) for list items |
-| `Breadcrumb` | Navigation trail (Home > Browse > Category) |
+| `Breadcrumb` | Navigation trail (Home > Search) |
 | `HelpFooter` | Dim keyboard shortcut help text |
 | `Rating` | Star rating with optional numeric value |
 | `InstallCount` | Auto-formatted install count (45.2k) |
@@ -188,14 +184,13 @@ Navigation behavior: `NAVIGATE` resets the target screen's state slice. `GO_BACK
 
 | Screen | File | Description |
 |--------|------|-------------|
-| Home | `Home.tsx` | Store front with menu (8 items), featured agents (cards), trending (ranked list), categories. Fetches from API on mount. Flat navigable list across all sections. |
-| Browse | `Browse.tsx` | Browse apps by category with expandable sections |
+| Home | `Home.tsx` | Store front with menu (7 items), featured agents (cards), trending (ranked list). Fetches from API on mount. Flat navigable list across all sections. |
 | Search | `Search.tsx` | Text input + live results from API (`?q=query`) |
 | AgentDetail | `AgentDetail.tsx` | Full app detail view (stats, description, capabilities, install button) |
 | Installed | `Installed.tsx` | User's installed apps list |
 | Settings | `Settings.tsx` | User preferences |
 | Auth | `Auth.tsx` | Key management: generate key pair, import key, show full key, regenerate, logout |
-| Submit | `Submit.tsx` | 6-step form: name, slug (auto-generated), description, category (picker), version, confirm. Requires auth. Saves via `conf`. |
+| Submit | `Submit.tsx` | 5-step form: name, slug (auto-generated), description, version, confirm. Requires auth. Saves via `conf`. |
 
 ## Backend
 
@@ -255,7 +250,7 @@ Cloudflare Workers app built with Hono. Features:
 - `idx_apps_slug` on `apps(slug)`
 - `idx_installs_user` on `installs(user_fingerprint)`
 
-### API Endpoints (7)
+### API Endpoints (6)
 
 #### `GET /` -- Health check
 
@@ -265,12 +260,12 @@ No auth. Returns service name, version, and status.
 { "name": "bottel.ai", "version": "0.1.0", "status": "ok" }
 ```
 
-#### `GET /apps` -- List/search/filter apps
+#### `GET /apps` -- List/search apps
 
-No auth. Query params: `q` (search name/description), `category` (exact match). Results ordered by installs descending.
+No auth. Query params: `q` (search name/description). Results ordered by installs descending.
 
 ```
-GET /apps?q=code&category=Development
+GET /apps?q=code
 ```
 
 ```json
@@ -285,14 +280,6 @@ No auth. Returns 404 if not found.
 { "app": { "id": "...", "name": "...", "slug": "...", ... } }
 ```
 
-#### `GET /categories` -- List categories with counts
-
-No auth. Aggregates from apps table.
-
-```json
-{ "categories": [{ "name": "Development", "count": 5 }] }
-```
-
 #### `POST /register` -- Register public key
 
 No auth. Body: `{ fingerprint, publicKey }`. Uses `INSERT OR IGNORE` (idempotent).
@@ -303,7 +290,7 @@ No auth. Body: `{ fingerprint, publicKey }`. Uses `INSERT OR IGNORE` (idempotent
 
 #### `POST /apps` -- Submit new app
 
-Requires auth (`X-Fingerprint`, `X-Signature`). Body: `{ name, slug, description, category, version, longDescription?, capabilities? }`. Author is set to the fingerprint. Public key stored with the app.
+Requires auth (`X-Fingerprint`, `X-Signature`). Body: `{ name, slug, description, version, longDescription?, capabilities? }`. Author is set to the fingerprint. Public key stored with the app.
 
 ```json
 { "app": { "id": "...", "name": "...", ... } }
@@ -384,7 +371,7 @@ Extracted state management pattern. Provides:
 
 - `Screen` union type for screen-based navigation
 - `AppState` with per-screen state slices
-- `Action` union with `NAVIGATE`, `GO_BACK`, `GO_HOME`, per-screen updates, install/uninstall
+- `Action` union (12 types) with `NAVIGATE`, `GO_BACK`, `GO_HOME`, per-screen updates, install/uninstall
 - `StoreProvider` React component wrapping `useReducer`
 - `useStore()` hook returning `{ state, dispatch, navigate, goBack, goHome }`
 - History stack: forward navigation resets target state, back navigation preserves it
@@ -535,7 +522,7 @@ npx tsc --noEmit
 ## Testing
 
 - **Framework:** vitest 4.x
-- **Test count:** 36 tests across 4 files
+- **Test count:** 35 tests across 4 files
 - **Run:** `npm test` (alias for `vitest run`)
 
 | Test File | Coverage |
@@ -578,11 +565,11 @@ npx tsc --noEmit
 
 ### v0.2.0 -- Backend + Auth + Submit (2026-04-05)
 
-- Cloudflare Workers backend with Hono (7 API endpoints)
+- Cloudflare Workers backend with Hono (6 API endpoints)
 - Cloudflare D1 database (3 tables: apps, users, installs)
 - Ed25519 key pair authentication (generate, import, persist)
 - Auth screen (generate key, import key, show key, regenerate, logout)
-- Submit screen (6-step form: name, slug, description, category, version, confirm)
+- Submit screen (5-step form: name, slug, description, version, confirm)
 - API client with snake_case to camelCase mapping
 - Auth middleware with fingerprint/signature headers
 - Install/uninstall toggle with server-side tracking
@@ -590,7 +577,17 @@ npx tsc --noEmit
 - Scaffold packages: cli_app_scaffold, cli_web_scaffold
 - Fullscreen alternate screen buffer with SGR mouse tracking
 - ScrollView-based scrolling via ink-scroll-view
-- 36 tests across 4 test files (vitest)
+- 35 tests across 4 test files (vitest)
+
+### v0.2.1 -- Remove Browse/Categories (2026-04-04)
+
+- Removed Browse screen and category-based navigation
+- Removed GET /categories endpoint
+- Removed ?category= filter from GET /apps
+- Removed category step from Submit form (now 5 steps)
+- Removed BrowseState, UPDATE_BROWSE, and RESET_BROWSE actions
+- Screen count reduced from 8 to 7
+- Endpoint count reduced from 7 to 6
 
 ### v0.1.1 -- Cleanup (2026-04-04)
 

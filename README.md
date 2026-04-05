@@ -20,8 +20,7 @@ Every service that humans access through apps, bots access through CLI apps inst
 
 ## Features
 
-- **Store UI** -- Fullscreen terminal UI to browse, search, and discover CLI apps
-- **Browse by category** -- Apps organized into categories (Development, Security, Data, etc.)
+- **Store UI** -- Fullscreen terminal UI to search and discover CLI apps
 - **Search** -- Full-text search across app names and descriptions
 - **Ed25519 auth** -- Passwordless key pair authentication (generate, import, or regenerate keys)
 - **Submit apps** -- Multi-step form to submit new CLI apps to the store (requires auth)
@@ -59,7 +58,6 @@ That's it. The CLI connects to the remote backend at `https://bottel-api.cenconq
 
   ▶ Menu
     > Home              Store front
-      Browse            Browse by category
       Search            Find apps
       Submit            Submit your app
       Auth              Login / manage keys
@@ -82,11 +80,6 @@ That's it. The CLI connects to the remote backend at `https://bottel-api.cenconq
     2. Translator         ★★★★★ 4.8   38.5k installs ✓
     3. Data Analyst       ★★★★★ 4.7   12.1k installs
 
-  Categories
-    Development (5)
-    Security (3)
-    Data (2)
-
   Esc back · ↑↓ nav · Enter select · / search · q quit
 ```
 
@@ -100,7 +93,7 @@ That's it. The CLI connects to the remote backend at `https://bottel-api.cenconq
              │ HTTP (fetch)
              ▼
 ┌─────────────────────────────┐
-│  API (Cloudflare Workers)   │  Hono, 7 endpoints
+│  API (Cloudflare Workers)   │  Hono, 6 endpoints
 │  bottel-api.cenconq.workers │
 └────────────┬────────────────┘
              │ D1 bindings
@@ -117,12 +110,11 @@ That's it. The CLI connects to the remote backend at `https://bottel-api.cenconq
 src/
 ├── cli.tsx                  # Entry point (alternate screen buffer + mouse tracking)
 ├── App.tsx                  # Router (ScrollView viewport + screen switching)
-├── cli_app_state.tsx        # State engine (useReducer + context, 8 screen states)
+├── cli_app_state.tsx        # State engine (useReducer + context, 7 screen states)
 ├── cli_app_theme.tsx        # Theme (colors, column widths, box styles, formatters)
 ├── cli_app_components.tsx   # Reusable components (Logo, StatusBar, Cursor, etc.)
 ├── screens/
-│   ├── Home.tsx             # Store front (menu, featured, trending, categories)
-│   ├── Browse.tsx           # Browse by category
+│   ├── Home.tsx             # Store front (menu, featured, trending)
 │   ├── Search.tsx           # Full-text search
 │   ├── AgentDetail.tsx      # App detail page
 │   ├── Installed.tsx        # User's installed apps
@@ -130,7 +122,7 @@ src/
 │   ├── Auth.tsx             # Key pair management (generate/import/logout)
 │   └── Submit.tsx           # Multi-step app submission form
 ├── lib/
-│   ├── api.ts               # API client (7 endpoints, snake_case → camelCase mapping)
+│   ├── api.ts               # API client (6 endpoints, snake_case → camelCase mapping)
 │   └── auth.ts              # Ed25519 key pair auth (generate, import, persist via conf)
 └── __tests__/
     ├── app.test.ts           # App component tests
@@ -140,7 +132,7 @@ src/
 
 backend/
 ├── src/
-│   ├── index.ts             # Hono app (7 API routes + error handling)
+│   ├── index.ts             # Hono app (6 API routes + error handling)
 │   ├── middleware/
 │   │   └── auth.ts          # Auth middleware (X-Fingerprint + X-Signature)
 │   └── db/
@@ -161,9 +153,8 @@ packages/
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `GET` | `/` | No | Health check |
-| `GET` | `/apps` | No | List/search/filter apps (`?q=`, `?category=`) |
+| `GET` | `/apps` | No | List/search apps (`?q=`) |
 | `GET` | `/apps/:slug` | No | Get single app by slug |
-| `GET` | `/categories` | No | List categories with counts |
 | `POST` | `/register` | No | Register public key (fingerprint + publicKey) |
 | `POST` | `/apps` | Yes | Submit new app |
 | `GET` | `/user/installs` | Yes | Get user's installed apps |
@@ -190,9 +181,9 @@ Users can also import an existing private key (base64-encoded PKCS8 DER).
 
 State management engine using React `useReducer` + Context. Exports:
 
-- `Screen` type (8 screens: home, browse, search, agent-detail, installed, settings, auth, submit)
+- `Screen` type (7 screens: home, search, agent-detail, installed, settings, auth, submit)
 - `AppState` interface with per-screen state slices
-- `Action` union type (14 action types)
+- `Action` union type (12 action types)
 - `StoreProvider` component and `useStore()` hook
 - Built-in history stack with `navigate()`, `goBack()`, `goHome()`
 
@@ -210,7 +201,7 @@ Visual constants and formatters. Exports:
 Terminal UI components built on ink. Exports:
 
 - `Cursor` -- Arrow indicator for list items
-- `Breadcrumb` -- Navigation trail (Home > Browse > Development)
+- `Breadcrumb` -- Navigation trail (Home > Search)
 - `HelpFooter` -- Keyboard shortcut help text
 - `Rating` -- Star rating display
 - `InstallCount` -- Auto-formatted install count
@@ -279,7 +270,7 @@ BOTTEL_API_URL=http://localhost:8787 npm run dev
 ### Tests
 
 ```bash
-npm test             # vitest run (36 tests across 4 files)
+npm test             # vitest run (35 tests across 4 files)
 ```
 
 ### Type Check
