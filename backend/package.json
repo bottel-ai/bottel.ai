@@ -1,0 +1,19 @@
+{
+  "name": "bottel-api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 execute bottel-db --local --file=./src/db/schema.sql",
+    "db:seed": "wrangler d1 execute bottel-db --local --file=./src/db/seed.sql"
+  },
+  "dependencies": {
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250401.0",
+    "wrangler": "^4.0.0",
+    "typescript": "^6.0.2"
+  }
+}

@@ -1,0 +1,207 @@
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { authMiddleware } from "./middleware/auth.js";
+
+interface Env { DB: D1Database; }
+
+const app = new Hono<{ Bindings: Env; Variables: { fingerprint: string; publicKey: string } }>();
+
+app.use("*", cors());
+
+// Health check
+app.get("/", (c) => c.json({ name: "bottel.ai", version: "0.1.0", status: "ok" }));
+
+// GET /apps — list/search/filter apps
+app.get("/apps", async (c) => {
+  const q = c.req.query("q");
+  const category = c.req.query("category");
+
+  let sql = "SELECT * FROM apps";
+  const conditions: string[] = [];
+  const bindings: string[] = [];
+
+  if (q) {
+    conditions.push("(name LIKE ? OR description LIKE ?)");
+    bindings.push(`%${q}%`, `%${q}%`);
+  }
+
+  if (category) {
+    conditions.push("category = ?");
+    bindings.push(category);
+  }
+
+  if (conditions.length > 0) {
+    sql += " WHERE " + conditions.join(" AND ");
+  }
+
+  sql += " ORDER BY installs DESC";
+
+  const stmt = c.env.DB.prepare(sql);
+  const result = bindings.length > 0
+    ? await stmt.bind(...bindings).all()
+    : await stmt.all();
+
+  const apps = (result.results ?? []).map((app) => ({
+    ...app,
+    capabilities: JSON.parse((app.capabilities as string) || "[]"),
+  }));
+
+  return c.json({ apps });
+});
+
+// GET /apps/:slug — single app
+app.get("/apps/:slug", async (c) => {
+  const slug = c.req.param("slug");
+
+  const app = await c.env.DB.prepare("SELECT * FROM apps WHERE slug = ?")
+    .bind(slug).first();
+
+  if (!app) {
+    return c.json({ error: "App not found" }, 404);
+  }
+
+  return c.json({
+    app: {
+      ...app,
+      capabilities: JSON.parse((app.capabilities as string) || "[]"),
+    },
+  });
+});
+
+// GET /categories — list categories with counts
+app.get("/categories", async (c) => {
+  const result = await c.env.DB.prepare(
+    "SELECT category, COUNT(*) as count FROM apps GROUP BY category"
+  ).all();
+
+  const categories = (result.results ?? []).map((row) => ({
+    name: row.category as string,
+    count: row.count as number,
+  }));
+
+  return c.json({ categories });
+});
+
+// POST /register — register public key (no auth required)
+app.post("/register", async (c) => {
+  const body = await c.req.json<{ fingerprint: string; publicKey: string }>();
+
+  if (!body.fingerprint || !body.publicKey) {
+    return c.json({ error: "fingerprint and publicKey are required" }, 400);
+  }
+
+  await c.env.DB.prepare(
+    "INSERT OR IGNORE INTO users (fingerprint, public_key) VALUES (?, ?)"
+  ).bind(body.fingerprint, body.publicKey).run();
+
+  return c.json({ ok: true });
+});
+
+// POST /apps — submit new app (requires auth)
+app.post("/apps", authMiddleware, async (c) => {
+  const fingerprint = c.get("fingerprint");
+  const publicKey = c.get("publicKey");
+
+  const body = await c.req.json<{
+    name: string;
+    slug: string;
+    description: string;
+    category: string;
+    version: string;
+    longDescription?: string;
+    capabilities?: string[];
+  }>();
+
+  if (!body.name || !body.slug || !body.description || !body.category || !body.version) {
+    return c.json({ error: "name, slug, description, category, and version are required" }, 400);
+  }
+
+  const id = crypto.randomUUID();
+
+  await c.env.DB.prepare(
+    `INSERT INTO apps (id, name, slug, description, long_description, category, author, version, capabilities, public_key)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    id,
+    body.name,
+    body.slug,
+    body.description,
+    body.longDescription ?? "",
+    body.category,
+    fingerprint,
+    body.version,
+    JSON.stringify(body.capabilities ?? []),
+    publicKey
+  ).run();
+
+  const app = await c.env.DB.prepare("SELECT * FROM apps WHERE id = ?")
+    .bind(id).first();
+
+  return c.json({
+    app: {
+      ...app,
+      capabilities: JSON.parse((app?.capabilities as string) || "[]"),
+    },
+  });
+});
+
+// GET /user/installs — get user's installed apps (requires auth)
+app.get("/user/installs", authMiddleware, async (c) => {
+  const fingerprint = c.get("fingerprint");
+
+  const result = await c.env.DB.prepare(
+    `SELECT apps.* FROM apps
+     INNER JOIN installs ON installs.app_id = apps.id
+     WHERE installs.user_fingerprint = ?`
+  ).bind(fingerprint).all();
+
+  const installs = (result.results ?? []).map((app) => ({
+    ...app,
+    capabilities: JSON.parse((app.capabilities as string) || "[]"),
+  }));
+
+  return c.json({ installs });
+});
+
+// POST /user/installs/:appId — toggle install (requires auth)
+app.post("/user/installs/:appId", authMiddleware, async (c) => {
+  const fingerprint = c.get("fingerprint");
+  const appId = c.req.param("appId");
+
+  const existing = await c.env.DB.prepare(
+    "SELECT 1 FROM installs WHERE user_fingerprint = ? AND app_id = ?"
+  ).bind(fingerprint, appId).first();
+
+  if (existing) {
+    // Uninstall
+    await c.env.DB.batch([
+      c.env.DB.prepare("DELETE FROM installs WHERE user_fingerprint = ? AND app_id = ?")
+        .bind(fingerprint, appId),
+      c.env.DB.prepare("UPDATE apps SET installs = installs - 1 WHERE id = ?")
+        .bind(appId),
+    ]);
+    return c.json({ installed: false });
+  } else {
+    // Install
+    await c.env.DB.batch([
+      c.env.DB.prepare("INSERT INTO installs (user_fingerprint, app_id) VALUES (?, ?)")
+        .bind(fingerprint, appId),
+      c.env.DB.prepare("UPDATE apps SET installs = installs + 1 WHERE id = ?")
+        .bind(appId),
+    ]);
+    return c.json({ installed: true });
+  }
+});
+
+// 404 handler
+app.notFound((c) => {
+  return c.json({ error: "Not found" }, 404);
+});
+
+// Error handler
+app.onError((err, c) => {
+  console.error("Unhandled error:", err);
+  return c.json({ error: "Internal server error" }, 500);
+});
+
+export default app;
