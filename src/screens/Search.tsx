@@ -72,7 +72,9 @@ export function Search() {
   return (
     <Box flexDirection="column" paddingX={1}>
       <Box marginBottom={1} gap={2} alignItems="center">
-        <Text bold color="#54a0ff">bottel.ai</Text>
+        <Box>{"bottel.ai".split("").map((ch, i) => (
+          <Text key={i} bold color={[colors.error, colors.warning, colors.primary][i % 3]}>{ch}</Text>
+        ))}</Box>
         <Box borderStyle="round" borderColor={inputFocused ? colors.primary : colors.border} paddingX={2} flexGrow={1}>
           <Text color={inputFocused ? colors.primary : undefined}>🔍 </Text>
           <TextInput
@@ -130,7 +132,7 @@ export function Search() {
       {!loading && !error && results.length > 0 && (() => {
         const oos = "o".repeat(Math.min(totalPages, 10));
         const word = `B${oos}ttel`;
-        const layerColors = [colors.accent, colors.primary, colors.success];
+        const layerColors = [colors.error, colors.warning, colors.primary];
         return (
           <Box justifyContent="center" marginTop={1}>
             {word.split("").map((ch, i) => (

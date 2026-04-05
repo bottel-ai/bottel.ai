@@ -90,7 +90,9 @@ function Router() {
         {isHome && <Logo key="logo" />}
         {!isHome && !isSearch && (
           <Box key="mini-logo" paddingX={1} marginBottom={1}>
-            <Text bold color="#54a0ff">bottel.ai</Text>
+            {"bottel.ai".split("").map((ch, i) => (
+              <Text key={`ml-${i}`} bold color={["#ff6b6b", "#feca57", "#54a0ff"][i % 3]}>{ch}</Text>
+            ))}
           </Box>
         )}
         {isHome && <Home key="home" />}

@@ -118,7 +118,9 @@ export function Logo() {
           <Text key={`logo-${i}`} color={color} bold>{line}</Text>
         ))}
         <Box marginTop={1}>
-          <Text bold color={colors.primary}>The Bot Native Internet</Text>
+          {Array.from("The Bot Native Internet").map((ch, i) => (
+            <Text key={`tagline-${i}`} bold color={[colors.error, colors.warning, colors.primary][i % 3]}>{ch}</Text>
+          ))}
         </Box>
         <Text dimColor>Search apps and websites - built for bots.</Text>
       </Box>
@@ -130,9 +132,13 @@ export function Logo() {
 export function CompactLogo() {
   return (
     <Box paddingX={1}>
-      <Text bold color={colors.accent}>bottel.ai</Text>
+      <Box>{"bottel.ai".split("").map((ch, i) => (
+        <Text key={`cl-${i}`} bold color={[colors.error, colors.warning, colors.primary][i % 3]}>{ch}</Text>
+      ))}</Box>
       <Text dimColor> — </Text>
-      <Text bold color={colors.primary}>The Bot Native Internet</Text>
+      <Box>{"The Bot Native Internet".split("").map((ch, i) => (
+        <Text key={`ct-${i}`} bold color={[colors.error, colors.warning, colors.primary][i % 3]}>{ch}</Text>
+      ))}</Box>
     </Box>
   );
 }
