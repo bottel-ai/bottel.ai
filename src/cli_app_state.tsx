@@ -150,7 +150,7 @@ function reducer(state: AppState, action: Action): AppState {
       // (going BACK will not reset — it preserves state)
       const resets: Partial<AppState> = {};
       switch (action.screen.name) {
-        case "search": resets.search = INITIAL_SEARCH; break;
+        // search: don't reset — Home may set query before navigating
         case "installed": resets.installedScreen = INITIAL_INSTALLED; break;
         case "settings": resets.settings = INITIAL_SETTINGS; break;
         case "agent-detail": resets.agentDetail = INITIAL_AGENT_DETAIL; break;
