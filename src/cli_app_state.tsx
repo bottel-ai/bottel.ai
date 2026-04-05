@@ -9,6 +9,8 @@ export type Screen =
   | { name: "agent-detail"; agentId: string }
   | { name: "installed" }
   | { name: "settings" }
+  | { name: "auth" }
+  | { name: "submit" }
 ;
 
 // ─── Screen State (persisted across navigation) ─────────────────
@@ -44,6 +46,19 @@ export interface AgentDetailState {
   buttonIndex: number;
 }
 
+export interface AuthScreenState {
+  selectedIndex: number;
+}
+
+export interface SubmitState {
+  step: number;  // 0=name, 1=slug, 2=description, 3=category, 4=version, 5=confirm
+  name: string;
+  slug: string;
+  description: string;
+  category: string;
+  version: string;
+}
+
 // ─── App State ──────────────────────────────────────────────────
 
 export interface AppState {
@@ -56,6 +71,8 @@ export interface AppState {
   installedScreen: InstalledState;
   settings: SettingsState;
   agentDetail: AgentDetailState;
+  authScreen: AuthScreenState;
+  submit: SubmitState;
 }
 
 const INITIAL_SEARCH: SearchState = {
@@ -89,6 +106,19 @@ const INITIAL_AGENT_DETAIL: AgentDetailState = {
   buttonIndex: 0,
 };
 
+const INITIAL_AUTH_SCREEN: AuthScreenState = {
+  selectedIndex: 0,
+};
+
+const INITIAL_SUBMIT: SubmitState = {
+  step: 0,
+  name: "",
+  slug: "",
+  description: "",
+  category: "Development",
+  version: "0.1.0",
+};
+
 const INITIAL_STATE: AppState = {
   screen: { name: "home" },
   history: [],
@@ -99,6 +129,8 @@ const INITIAL_STATE: AppState = {
   installedScreen: INITIAL_INSTALLED,
   settings: INITIAL_SETTINGS,
   agentDetail: INITIAL_AGENT_DETAIL,
+  authScreen: INITIAL_AUTH_SCREEN,
+  submit: INITIAL_SUBMIT,
 };
 
 // ─── Actions ────────────────────────────────────────────────────
@@ -115,6 +147,8 @@ export type Action =
   | { type: "UPDATE_INSTALLED"; state: Partial<InstalledState> }
   | { type: "UPDATE_SETTINGS"; state: Partial<SettingsState> }
   | { type: "UPDATE_AGENT_DETAIL"; state: Partial<AgentDetailState> }
+  | { type: "UPDATE_AUTH_SCREEN"; state: Partial<AuthScreenState> }
+  | { type: "UPDATE_SUBMIT"; state: Partial<SubmitState> }
   | { type: "RESET_SEARCH" }
   | { type: "RESET_BROWSE" };
 
@@ -133,6 +167,8 @@ function reducer(state: AppState, action: Action): AppState {
         case "settings": resets.settings = INITIAL_SETTINGS; break;
         case "agent-detail": resets.agentDetail = INITIAL_AGENT_DETAIL; break;
         case "home": resets.home = INITIAL_HOME; break;
+        case "auth": resets.authScreen = INITIAL_AUTH_SCREEN; break;
+        case "submit": resets.submit = INITIAL_SUBMIT; break;
       }
       return {
         ...state,
@@ -204,6 +240,18 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         agentDetail: { ...state.agentDetail, ...action.state },
+      };
+
+    case "UPDATE_AUTH_SCREEN":
+      return {
+        ...state,
+        authScreen: { ...state.authScreen, ...action.state },
+      };
+
+    case "UPDATE_SUBMIT":
+      return {
+        ...state,
+        submit: { ...state.submit, ...action.state },
       };
 
     case "RESET_SEARCH":

@@ -9,6 +9,8 @@ import { Search } from "./screens/Search.js";
 import { AgentDetail } from "./screens/AgentDetail.js";
 import { Installed } from "./screens/Installed.js";
 import { Settings } from "./screens/Settings.js";
+import { Auth } from "./screens/Auth.js";
+import { Submit } from "./screens/Submit.js";
 
 const ENABLE_MOUSE = "\x1b[?1000h\x1b[?1002h\x1b[?1006h";
 const DISABLE_MOUSE = "\x1b[?1006l\x1b[?1002l\x1b[?1000l";
@@ -20,6 +22,7 @@ function Router() {
   const scrollRef = useRef<ScrollViewRef>(null);
   const isHome = state.screen.name === "home";
   const isSearch = state.screen.name === "search";
+  const hasTextInput = state.screen.name === "search" || state.screen.name === "submit";
 
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
   useEffect(() => {
@@ -41,12 +44,12 @@ function Router() {
   // Disable mouse tracking on search screen
   useEffect(() => {
     if (!stdout) return;
-    stdout.write(isSearch ? DISABLE_MOUSE : ENABLE_MOUSE);
-  }, [isSearch, stdout]);
+    stdout.write(hasTextInput ? DISABLE_MOUSE : ENABLE_MOUSE);
+  }, [hasTextInput, stdout]);
 
   // Mouse wheel — scroll viewport only (no cursor movement)
   useEffect(() => {
-    if (!stdin || isSearch) return;
+    if (!stdin || hasTextInput) return;
     const onData = (data: Buffer) => {
       const str = data.toString();
       const matches = str.matchAll(/\x1b\[<(\d+);\d+;\d+[Mm]/g);
@@ -66,7 +69,7 @@ function Router() {
     };
     stdin.on("data", onData);
     return () => { stdin.off("data", onData); };
-  }, [stdin, isSearch]);
+  }, [stdin, hasTextInput]);
 
   // Arrow keys: scroll viewport 1 line when cursor moves
   // PageUp/PageDown: jump 10 lines
@@ -93,6 +96,8 @@ function Router() {
         )}
         {state.screen.name === "installed" && <Installed key="installed" />}
         {state.screen.name === "settings" && <Settings key="settings" />}
+        {state.screen.name === "auth" && <Auth key="auth" />}
+        {state.screen.name === "submit" && <Submit key="submit" />}
       </ScrollView>
     </Box>
   );

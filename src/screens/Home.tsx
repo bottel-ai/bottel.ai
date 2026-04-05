@@ -21,6 +21,8 @@ const MENU_ITEMS = [
   { label: "Home", value: "home", description: "Store front" },
   { label: "Browse", value: "browse", description: "Browse by category" },
   { label: "Search", value: "search", description: "Find apps" },
+  { label: "Submit", value: "submit", description: "Submit your app" },
+  { label: "Auth", value: "auth", description: "Login / manage keys" },
   { label: "Installed", value: "installed", description: "Your apps" },
   { label: "Settings", value: "settings", description: "Preferences" },
   { label: "Exit", value: "exit", description: "Quit bottel" },
@@ -101,6 +103,8 @@ export function Home() {
           case "home": break;
           case "browse": navigate({ name: "browse" }); break;
           case "search": navigate({ name: "search" }); break;
+          case "submit": navigate({ name: "submit" }); break;
+          case "auth": navigate({ name: "auth" }); break;
           case "installed": navigate({ name: "installed" }); break;
           case "settings": navigate({ name: "settings" }); break;
           case "exit": exit(); break;

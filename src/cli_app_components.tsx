@@ -10,6 +10,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { colors, columns, boxStyle, formatStars, formatInstalls } from "./cli_app_theme.js";
+import { isLoggedIn, getShortFingerprint } from "./lib/auth.js";
 
 // ─── Navigation ─────────────────────────────────────────────
 
@@ -139,15 +140,20 @@ export function CompactLogo() {
   );
 }
 
-/** Status bar showing app name and install count */
-export function StatusBar({ installedCount = 3 }: { installedCount?: number }) {
+/** Status bar showing app name and auth status */
+export function StatusBar() {
+  const loggedIn = isLoggedIn();
   return (
     <Box borderStyle="single" borderColor={colors.border} paddingX={1} marginBottom={1}>
       <Box flexGrow={1}>
         <Text bold color={colors.accent}>bottel.ai</Text>
       </Box>
       <Box>
-        <Text dimColor>{installedCount} installed</Text>
+        {loggedIn ? (
+          <Text color={colors.success}>● {getShortFingerprint()}</Text>
+        ) : (
+          <Text dimColor>○ not logged in</Text>
+        )}
       </Box>
     </Box>
   );
