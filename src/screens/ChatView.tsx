@@ -3,21 +3,29 @@ import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { useStore } from "../cli_app_state.js";
 import { colors } from "../cli_app_theme.js";
-import { Breadcrumb, HelpFooter } from "../cli_app_components.js";
-import { isLoggedIn, getAuth } from "../lib/auth.js";
+import { HelpFooter } from "../cli_app_components.js";
+import { getAuth } from "../lib/auth.js";
 import { getMessages, sendMessage, type Message } from "../lib/api.js";
 
 function formatTime(iso: string): string {
   try {
-    const d = new Date(iso);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return "??:??";
-  }
+    const d = new Date(iso + "Z");
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  } catch { return ""; }
 }
 
-function shortenFp(fp: string): string {
-  return fp.length > 12 ? fp.slice(0, 12) + "..." : fp;
+function formatTimestamp(iso: string): string {
+  try {
+    const d = new Date(iso + "Z");
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch { return ""; }
 }
 
 export function ChatView({ chatId }: { chatId: string }) {
@@ -28,28 +36,25 @@ export function ChatView({ chatId }: { chatId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   const auth = getAuth();
-  const fingerprint = auth?.fingerprint ?? "";
+  const fp = auth?.fingerprint ?? "";
 
-  // Fetch messages on mount
   useEffect(() => {
-    if (!fingerprint) return;
-    getMessages(fingerprint, chatId)
-      .then((msgs) => setMessages(msgs))
+    if (!fp) return;
+    getMessages(fp, chatId)
+      .then(setMessages)
       .catch((err: Error) => setError(err.message));
-  }, [fingerprint, chatId]);
+  }, [fp, chatId]);
 
-  // Poll for new messages every 2 seconds
   useEffect(() => {
-    if (!fingerprint) return;
+    if (!fp) return;
     const interval = setInterval(() => {
-      const lastMsg = messages.length > 0 ? messages[messages.length - 1] : undefined;
-      const since = lastMsg?.created_at;
-      getMessages(fingerprint, chatId, since)
+      const last = messages[messages.length - 1];
+      getMessages(fp, chatId, last?.created_at)
         .then((newMsgs) => {
           if (newMsgs.length > 0) {
-            setMessages((prev) => {
-              const existingIds = new Set(prev.map((m) => m.id));
-              const fresh = newMsgs.filter((m) => !existingIds.has(m.id));
+            setMessages(prev => {
+              const ids = new Set(prev.map(m => m.id));
+              const fresh = newMsgs.filter(m => !ids.has(m.id));
               return fresh.length > 0 ? [...prev, ...fresh] : prev;
             });
           }
@@ -57,124 +62,90 @@ export function ChatView({ chatId }: { chatId: string }) {
         .catch(() => {});
     }, 2000);
     return () => clearInterval(interval);
-  }, [fingerprint, chatId, messages]);
+  }, [fp, chatId, messages]);
 
   useInput((_input, key) => {
-    if (key.escape) {
-      goBack();
-      return;
-    }
-
+    if (key.escape) { goBack(); return; }
     if (key.return && inputText.trim() && !sending) {
       setSending(true);
       setError(null);
       const text = inputText.trim();
       dispatch({ type: "UPDATE_CHAT_VIEW", state: { inputText: "" } });
-      sendMessage(fingerprint, chatId, text)
-        .then((msg) => {
-          setMessages((prev) => [...prev, msg]);
-        })
+      sendMessage(fp, chatId, text)
+        .then(msg => setMessages(prev => [...prev, msg]))
         .catch((err: Error) => setError(err.message))
         .finally(() => setSending(false));
-      return;
     }
   }, { isActive: true });
 
+  // Group consecutive messages from same sender
+  const grouped: { sender: string; senderName: string; isMe: boolean; msgs: { content: string; time: string }[] }[] = [];
+  for (const msg of messages) {
+    const isMe = msg.sender === fp;
+    const senderName = isMe ? "You" : (msg.sender_name || msg.sender.slice(0, 8));
+    const last = grouped[grouped.length - 1];
+    if (last && last.sender === msg.sender) {
+      last.msgs.push({ content: msg.content, time: formatTimestamp(msg.created_at) });
+    } else {
+      grouped.push({ sender: msg.sender, senderName, isMe, msgs: [{ content: msg.content, time: formatTimestamp(msg.created_at) }] });
+    }
+  }
+
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Breadcrumb path={["Home", "Chat", chatId.slice(0, 8)]} />
-
-      {/* Chat header */}
-      <Box
-        borderStyle="single"
-        borderColor={colors.border}
-        paddingX={1}
-        marginBottom={1}
-      >
-        <Text bold color={colors.primary}>Chat with {chatId.slice(0, 12)}...</Text>
+      {/* Header bar */}
+      <Box borderStyle="single" borderColor={colors.border} paddingX={1} marginBottom={1}>
+        <Box flexGrow={1}>
+          <Text bold color={colors.primary}># {chatId.slice(0, 8)}</Text>
+        </Box>
+        <Text dimColor>Esc back</Text>
       </Box>
 
-      {error && (
-        <Box paddingLeft={2}>
-          <Text color={colors.error}>Error: {error}</Text>
+      {error && <Text color={colors.error}>  Error: {error}</Text>}
+
+      {/* Messages */}
+      {messages.length === 0 && (
+        <Box paddingX={2} marginBottom={1}>
+          <Text dimColor>No messages yet. Start the conversation!</Text>
         </Box>
       )}
 
-      {/* Messages area */}
-      <Box
-        flexDirection="column"
-        borderStyle="single"
-        borderColor={colors.border}
-        paddingX={1}
-        paddingY={1}
-        marginBottom={1}
-        minHeight={6}
-      >
-        {messages.length === 0 && (
-          <Text dimColor>No messages yet. Say hello!</Text>
-        )}
-        {messages.map((msg) => {
-          const isMe = msg.sender === fingerprint;
-          const senderLabel = isMe ? "You" : (msg.sender_name || shortenFp(msg.sender));
-          const time = formatTime(msg.created_at);
-
-          if (isMe) {
-            // Right-aligned own messages
-            return (
-              <Box key={msg.id} flexDirection="column" marginBottom={1} alignItems="flex-end">
-                <Box>
-                  <Text color={colors.success} bold>{senderLabel}</Text>
-                  <Text dimColor>  {time}</Text>
-                </Box>
-                <Box
-                  borderStyle="round"
-                  borderColor={colors.success}
-                  paddingX={1}
-                >
-                  <Text>{msg.content}</Text>
-                </Box>
-              </Box>
-            );
-          }
-
-          // Left-aligned other messages
-          return (
-            <Box key={msg.id} flexDirection="column" marginBottom={1} alignItems="flex-start">
-              <Box>
-                <Text color={colors.secondary} bold>{senderLabel}</Text>
-                <Text dimColor>  {time}</Text>
-              </Box>
-              <Box
-                borderStyle="round"
-                borderColor={colors.secondary}
-                paddingX={1}
-              >
-                <Text>{msg.content}</Text>
-              </Box>
+      {grouped.map((group, gi) => (
+        <Box key={`g-${gi}`} flexDirection="column" paddingX={1} marginBottom={1}>
+          {/* Sender header */}
+          <Box>
+            <Text bold color={group.isMe ? colors.success : colors.secondary}>
+              {group.senderName}
+            </Text>
+            <Text dimColor>  {group.msgs[0]?.time}</Text>
+          </Box>
+          {/* Messages from this sender */}
+          {group.msgs.map((m, mi) => (
+            <Box key={`m-${gi}-${mi}`} paddingLeft={2}>
+              <Text>{m.content}</Text>
             </Box>
-          );
-        })}
+          ))}
+        </Box>
+      ))}
+
+      {/* Divider */}
+      <Box paddingX={1}>
+        <Text dimColor>{"─".repeat(50)}</Text>
       </Box>
 
-      {/* Input box */}
-      <Box paddingLeft={2}>
-        <Box borderStyle="round" borderColor={colors.primary} paddingX={1} width={50}>
+      {/* Input */}
+      <Box paddingX={1} marginTop={0}>
+        <Box borderStyle="round" borderColor={sending ? colors.warning : colors.primary} paddingX={1} flexGrow={1}>
           <TextInput
             value={inputText}
-            onChange={(v) => dispatch({ type: "UPDATE_CHAT_VIEW", state: { inputText: v } })}
-            placeholder="Type a message..."
+            onChange={v => dispatch({ type: "UPDATE_CHAT_VIEW", state: { inputText: v } })}
+            placeholder={sending ? "Sending..." : "Type a message..."}
             focus={true}
           />
         </Box>
       </Box>
 
-      {sending && (
-        <Box paddingLeft={2}>
-          <Text dimColor>Sending...</Text>
-        </Box>
-      )}
-
-      <HelpFooter text="Enter send \u00b7 Esc back" />
+      <HelpFooter text="Enter send · Esc back" />
     </Box>
   );
 }
