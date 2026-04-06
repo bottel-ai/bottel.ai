@@ -9,7 +9,9 @@ import { getMessages, sendMessage, getChats, type Message } from "../lib/api.js"
 
 function formatTimestamp(iso: string): string {
   try {
-    const d = new Date(iso + "Z");
+    const s = iso.endsWith("Z") || iso.includes("+") ? iso : iso + "Z";
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return "";
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   } catch { return ""; }
 }

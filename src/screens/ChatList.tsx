@@ -13,7 +13,9 @@ function truncate(s: string, n: number) { return s.length > n ? s.slice(0, n) + 
 
 function timeAgo(iso: string): string {
   try {
-    const d = new Date(iso + "Z");
+    const s = iso.endsWith("Z") || iso.includes("+") ? iso : iso + "Z";
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return "";
     const mins = Math.floor((Date.now() - d.getTime()) / 60000);
     if (mins < 1) return "now";
     if (mins < 60) return `${mins}m`;
