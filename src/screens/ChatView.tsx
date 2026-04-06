@@ -45,7 +45,7 @@ export function ChatView({ chatId }: { chatId: string }) {
     getChats(fp).then(chats => {
       const chat = chats.find(c => c.id === chatId);
       if (chat) {
-        setContactName((chat as any).last_sender_name || chat.name || chatId.slice(0, 8));
+        setContactName((chat as any).other_name || chat.name || "");
       }
     }).catch(() => {});
   }, [fp, chatId]);
