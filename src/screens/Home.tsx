@@ -4,10 +4,7 @@ import { type App, getApps } from "../lib/api.js";
 import { useStore } from "../cli_app_state.js";
 import { colors } from "../cli_app_theme.js";
 import { Autocomplete, HelpFooter, Dialog, type AutocompleteItem } from "../cli_app_components.js";
-
-const MENU_ITEMS = [
-  "Trending", "Chat", "Social", "Submit", "My Apps", "Auth", "Installed", "Settings",
-];
+import { isLoggedIn } from "../lib/auth.js";
 
 const FOOTER_ITEMS = ["About", "Terms", "Privacy", "Help"];
 
@@ -17,9 +14,8 @@ const MENU_MAP: Record<string, string> = {
   "Chat": "chat-list",
   "Social": "social",
   "Submit": "submit",
-  "My Apps": "my-apps",
-  "Auth": "auth",
-  "Installed": "installed",
+  "Account": "auth",
+  "Register": "auth",
   "Settings": "settings",
 };
 
@@ -29,27 +25,29 @@ export function Home() {
   const { state, dispatch, navigate } = useStore();
   const { exit } = useApp();
   const selectedIndex = state.home.selectedIndex;
+  const loggedIn = isLoggedIn();
+  const MENU_ITEMS = ["Trending", "Chat", "Social", "Submit", loggedIn ? "Account" : "Register", "Settings"];
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(true);
   const [apps, setApps] = useState<App[]>([]);
   const [dialogContent, setDialogContent] = useState<{ title: string; body: string[] } | null>(null);
 
-  // Fetch suggestions as user types
+  // Fetch suggestions as user types (debounced, min 2 chars)
   useEffect(() => {
     if (!searchQuery.trim()) {
       setApps([]);
       return;
     }
     let cancelled = false;
-    getApps(searchQuery.trim())
-      .then((results) => {
-        if (!cancelled) {
-          setApps(results.slice(0, MAX_SUGGESTIONS));
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
+    const timeout = setTimeout(() => {
+      getApps(searchQuery.trim())
+        .then((results) => {
+          if (!cancelled) setApps(results.slice(0, MAX_SUGGESTIONS));
+        })
+        .catch(() => {});
+    }, 300);
+    return () => { cancelled = true; clearTimeout(timeout); };
   }, [searchQuery]);
 
   useInput((input, key) => {
@@ -186,7 +184,7 @@ export function Home() {
         <Autocomplete
           value={searchQuery}
           onChange={handleQueryChange}
-          placeholder="Search Web 4.0 apps and websites..."
+          placeholder="Search bot native apps and MCP..."
           suggestions={suggestions}
           onSubmit={(q) => {
             dispatch({ type: "UPDATE_SEARCH", state: { query: q, inputFocused: false } });

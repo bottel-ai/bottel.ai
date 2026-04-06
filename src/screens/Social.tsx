@@ -7,7 +7,7 @@ import { Breadcrumb, Cursor, HelpFooter } from "../cli_app_components.js";
 import { isLoggedIn, getAuth, getShortFingerprint } from "../lib/auth.js";
 import {
   getFeed, getUserPosts, createPost, getFollowing, getFollowers, getProfile,
-  searchProfiles, followUser, unfollowUser,
+  searchProfiles,
   type Post, type FollowEntry, type Profile,
 } from "../lib/api.js";
 
@@ -34,7 +34,7 @@ function truncate(s: string, n: number) { return s.length > n ? s.slice(0, n) + 
 
 export function Social() {
   const { state, dispatch, goBack, navigate } = useStore();
-  const { selectedIndex, feedIndex, view, composing, composeText } = state.social;
+  const { selectedIndex, feedIndex, view, composing, composeText, searchQuery, searchIndex } = state.social;
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [following, setFollowing] = useState<FollowEntry[]>([]);
@@ -43,11 +43,8 @@ export function Social() {
   const [error, setError] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string>("");
   const [panel, setPanel] = useState<"left" | "right">("right");
-  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
-  const [searchIndex, setSearchIndex] = useState(0);
   const [followedSet, setFollowedSet] = useState<Set<string>>(new Set());
-  const [confirmBot, setConfirmBot] = useState<Profile | null>(null);
 
   const loggedIn = isLoggedIn();
   const auth = getAuth();
@@ -81,7 +78,6 @@ export function Social() {
       searchProfiles(searchQuery.trim())
         .then(results => {
           setSearchResults(results.filter(p => p.fingerprint !== fp));
-          setSearchIndex(0);
         })
         .catch(() => setSearchResults([]));
     }, 300);
@@ -119,6 +115,7 @@ export function Social() {
   useEffect(() => {
     if (view === "feed" || view === "my-posts") loadFeed();
     else if (view === "following" || view === "followers") loadFollowList();
+    else setLoading(false);
   }, [view, loadFeed, loadFollowList]);
 
   const handlePost = useCallback(() => {
@@ -142,26 +139,6 @@ export function Social() {
     }
   };
 
-  const handleFollowToggle = useCallback((bot: Profile) => {
-    const targetFp = bot.fingerprint;
-    if (followedSet.has(targetFp)) {
-      unfollowUser(fp, targetFp)
-        .then(() => {
-          setFollowedSet(prev => { const s = new Set(prev); s.delete(targetFp); return s; });
-          setFollowing(prev => prev.filter(f => f.fingerprint !== targetFp));
-          setConfirmBot(null);
-        })
-        .catch((err: Error) => { setError(err.message); setConfirmBot(null); });
-    } else {
-      followUser(fp, targetFp)
-        .then(() => {
-          setFollowedSet(prev => new Set(prev).add(targetFp));
-          setFollowing(prev => [...prev, { fingerprint: targetFp, name: bot.name, created_at: new Date().toISOString() }]);
-          setConfirmBot(null);
-        })
-        .catch((err: Error) => { setError(err.message); setConfirmBot(null); });
-    }
-  }, [fp, followedSet]);
 
   useInput((input, key) => {
     if (!loggedIn) { if (key.escape) goBack(); return; }
@@ -180,13 +157,16 @@ export function Social() {
       return;
     }
 
-    if (confirmBot) {
-      if (input === "y") { handleFollowToggle(confirmBot); }
-      else { setConfirmBot(null); }
+    if (key.escape) {
+      if (view !== "feed") {
+        // Go back to feed view first
+        dispatch({ type: "UPDATE_SOCIAL", state: { view: "feed", feedIndex: -1 } });
+        setPanel("left");
+        return;
+      }
+      goBack();
       return;
     }
-
-    if (key.escape) { goBack(); return; }
 
     // Tab switches between sections (loops)
     if (key.tab) {
@@ -234,7 +214,7 @@ export function Social() {
         const newView = viewForIndex(selectedIndex);
         dispatch({ type: "UPDATE_SOCIAL", state: { view: newView, feedIndex: 0 } });
         setPanel("right");
-        if (newView === "find") { setSearchQuery(""); setSearchResults([]); setSearchIndex(0); }
+        if (newView === "find") { dispatch({ type: "UPDATE_SOCIAL", state: { searchQuery: "", searchIndex: 0 } }); setSearchResults([]); }
         return;
       }
     }
@@ -280,24 +260,23 @@ export function Social() {
           }
         }
         if (key.return && list.length > 0 && list[feedIndex]) {
-          const entry = list[feedIndex];
-          setConfirmBot({ fingerprint: entry.fingerprint, name: entry.name || "Unknown", bio: "", online: false });
+          navigate({ name: "bot-profile", fingerprint: list[feedIndex].fingerprint });
           return;
         }
       }
       if (view === "find") {
         if (searchResults.length > 0) {
           if (key.upArrow) {
-            setSearchIndex(prev => (prev - 1 + searchResults.length) % searchResults.length);
+            dispatch({ type: "UPDATE_SOCIAL", state: { searchIndex: (searchIndex - 1 + searchResults.length) % searchResults.length } });
             return;
           }
           if (key.downArrow) {
-            setSearchIndex(prev => (prev + 1) % searchResults.length);
+            dispatch({ type: "UPDATE_SOCIAL", state: { searchIndex: (searchIndex + 1) % searchResults.length } });
             return;
           }
         }
-        if (key.return && searchResults.length > 0) {
-          setConfirmBot(searchResults[searchIndex] ?? null);
+        if (key.return && searchResults.length > 0 && searchResults[searchIndex]) {
+          navigate({ name: "bot-profile", fingerprint: searchResults[searchIndex].fingerprint });
           return;
         }
       }
@@ -321,7 +300,7 @@ export function Social() {
     return (
       <Box flexDirection="column" paddingX={1}>
         <Breadcrumb path={["Home", "Social"]} />
-        <Text color={colors.error}>You must be logged in. Go to Auth first.</Text>
+        <Text color={colors.error}>You must be logged in.</Text>
         <HelpFooter text="Esc back" />
       </Box>
     );
@@ -455,9 +434,9 @@ export function Social() {
           <Text color={colors.accent}>🔍 </Text>
           <TextInput
             value={searchQuery}
-            onChange={setSearchQuery}
+            onChange={(v: string) => dispatch({ type: "UPDATE_SOCIAL", state: { searchQuery: v } })}
             placeholder="Search bots..."
-            focus={panel === "right" && view === "find" && !confirmBot}
+            focus={panel === "right" && view === "find"}
           />
         </Box>
 
@@ -488,7 +467,7 @@ export function Social() {
       </Box>
     );
   } else {
-    // Following / Followers list
+    // Following / Followers list — card style matching search results
     const list = view === "following" ? following : followers;
     if (list.length === 0) {
       rightContent = (
@@ -501,13 +480,17 @@ export function Social() {
         <Box flexDirection="column">
           {list.map((entry, i) => {
             const isSelected = panel === "right" && feedIndex === i;
+            const isFollowedEntry = followedSet.has(entry.fingerprint);
             return (
-              <Box key={entry.fingerprint} paddingX={1}>
-                <Cursor active={isSelected} />
-                <Text bold={isSelected} color={isSelected ? colors.primary : undefined}>
-                  {entry.name || "Unknown"}
-                </Text>
-                <Text dimColor>  #{entry.fingerprint.replace("SHA256:", "").slice(0, 8)}</Text>
+              <Box key={entry.fingerprint} flexDirection="column" borderStyle="single" borderColor={isSelected ? colors.primary : colors.border} paddingX={1} marginBottom={0} flexGrow={1}>
+                <Box>
+                  <Text bold color={isSelected ? colors.primary : "#fff"}>{entry.name || "Unknown"}</Text>
+                  <Box flexGrow={1} />
+                  <Text color={isFollowedEntry ? colors.success : colors.secondary}>
+                    {isFollowedEntry ? "✓ Following" : "Follower"}
+                  </Text>
+                </Box>
+                <Text color={colors.secondary}>#{entry.fingerprint.replace("SHA256:", "").slice(0, 16)}</Text>
               </Box>
             );
           })}
@@ -525,28 +508,16 @@ export function Social() {
     helpText = "Type to search · ↑↓ nav · Enter select · Esc back";
   }
 
-  if (confirmBot) {
-    const isFollowed = followedSet.has(confirmBot.fingerprint);
-    return (
-      <Box flexDirection="column" paddingX={1} alignItems="center" marginTop={2}>
-        <Box flexDirection="column" borderStyle="double" borderColor={colors.primary} paddingX={3} paddingY={1} width={50}>
-          <Box justifyContent="center" marginBottom={1}>
-            <Text bold color={colors.primary}>{isFollowed ? "Unfollow Bot?" : "Follow Bot?"}</Text>
-          </Box>
-          <Box justifyContent="center"><Text bold color="#fff">{confirmBot.name}</Text></Box>
-          <Box justifyContent="center"><Text color={colors.secondary}>#{confirmBot.fingerprint.replace("SHA256:", "").slice(0, 20)}</Text></Box>
-          {confirmBot.bio && <Box justifyContent="center"><Text color="#999">{confirmBot.bio}</Text></Box>}
-          <Box justifyContent="center" marginTop={1}>
-            <Text color={colors.warning}>{isFollowed ? "Unfollow this bot?" : "Follow this bot?"} (y/n)</Text>
-          </Box>
-        </Box>
-      </Box>
-    );
-  }
-
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Breadcrumb path={["Home", "Social"]} />
+      <Breadcrumb path={
+        view === "feed" ? ["Home", "Social"] :
+        view === "my-posts" ? ["Home", "Social", "My Posts"] :
+        view === "following" ? ["Home", "Social", "Following"] :
+        view === "followers" ? ["Home", "Social", "Followers"] :
+        view === "find" ? ["Home", "Social", "Find Bot"] :
+        ["Home", "Social"]
+      } />
 
       <Box flexDirection="row" flexGrow={1}>
         {/* Left Panel */}

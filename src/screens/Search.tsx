@@ -15,19 +15,24 @@ export function Search() {
   const termWidth = stdout?.columns ?? 80;
 
   const [results, setResults] = useState<App[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchedTerm, setSearchedTerm] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
+  const doSearch = (term: string) => {
     setLoading(true);
     setError(null);
-    getApps(query.trim() || undefined)
-      .then((apps) => { if (!cancelled) setResults(apps); })
-      .catch((err) => { if (!cancelled) setError(String(err)); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [query]);
+    setSearchedTerm(term.trim());
+    getApps(term.trim() || undefined)
+      .then((apps) => setResults(apps))
+      .catch((err) => setError(String(err)))
+      .finally(() => setLoading(false));
+  };
+
+  // Load on mount — search with query or list all
+  useEffect(() => {
+    doSearch(query);
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
@@ -44,6 +49,7 @@ export function Search() {
       return;
     }
     if (inputFocused) {
+      if (key.return) { doSearch(query); update({ inputFocused: false, selectedIndex: 0 }); return; }
       if ((key.downArrow || key.tab) && results.length > 0) update({ inputFocused: false, selectedIndex: 0 });
       return;
     }
@@ -90,7 +96,7 @@ export function Search() {
           <TextInput
             value={query}
             onChange={(v) => update({ query: v, selectedIndex: 0, page: 0 })}
-            placeholder="Search Web 4.0 apps and websites..."
+            placeholder="Search bot native apps and MCP..."
             focus={inputFocused}
           />
         </Box>
@@ -99,8 +105,11 @@ export function Search() {
       <Box marginBottom={1}>
         <Text dimColor>
           {loading ? "Searching..." :
-            `About ${results.length} result${results.length !== 1 ? "s" : ""}${query.trim() ? ` for "${query}"` : ""}` +
-            (totalPages > 1 ? `  ·  Page ${currentPage + 1} of ${totalPages}` : "")
+            searchedTerm
+              ? `About ${results.length} result${results.length !== 1 ? "s" : ""} for "${searchedTerm}"` +
+                (totalPages > 1 ? `  ·  Page ${currentPage + 1} of ${totalPages}` : "")
+              : `${results.length} app${results.length !== 1 ? "s" : ""} · sorted by downloads` +
+                (totalPages > 1 ? `  ·  Page ${currentPage + 1} of ${totalPages}` : "")
           }
         </Text>
       </Box>
@@ -126,7 +135,11 @@ export function Search() {
               {agent.verified && <Text color={colors.success}> ✓</Text>}
             </Box>
             <Box paddingLeft={3}>
-              <Text color="#2ed573">{truncate(`bottel.ai/apps/${agent.slug}`, maxTextWidth)}</Text>
+              {agent.mcpUrl ? (
+                <Text color="#ff9ff3">[MCP] {truncate(agent.mcpUrl, maxTextWidth - 6)}</Text>
+              ) : (
+                <Text color="#2ed573">{truncate(`bottel.ai/apps/${agent.slug}`, maxTextWidth)}</Text>
+              )}
             </Box>
             <Box paddingLeft={3}>
               <Text>{truncate(agent.description, maxTextWidth)}</Text>
@@ -153,7 +166,7 @@ export function Search() {
         );
       })()}
 
-      <HelpFooter text={`Esc back · ↑↓ nav · Tab section · Enter select${totalPages > 1 ? " · ←→ pages" : ""}`} />
+      <HelpFooter text={inputFocused ? "Enter search · ↑↓/Tab results · Esc back" : `↑↓ nav · Tab search · Enter select${totalPages > 1 ? " · ←→ pages" : ""} · Esc back`} />
     </Box>
   );
 }

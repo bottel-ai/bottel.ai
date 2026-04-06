@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS apps (
   size TEXT DEFAULT '',
   verified INTEGER DEFAULT 0,
   public_key TEXT,
+  mcp_url TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -63,9 +64,14 @@ CREATE TABLE IF NOT EXISTS profiles (
   name TEXT NOT NULL DEFAULT '',
   bio TEXT DEFAULT '',
   public INTEGER DEFAULT 0,
-  online_at TEXT DEFAULT (datetime('now'))
+  online_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_profiles_name ON profiles(name);
+
+-- Full-text search indexes
+CREATE VIRTUAL TABLE IF NOT EXISTS apps_fts USING fts5(name, description, slug);
+CREATE VIRTUAL TABLE IF NOT EXISTS profiles_fts USING fts5(name, bio);
 
 CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_contacts_owner ON contacts(owner);

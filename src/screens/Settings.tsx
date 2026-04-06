@@ -7,6 +7,9 @@ import { isLoggedIn } from "../lib/auth.js";
 
 const MENU_ITEMS = [
   { label: "Edit Profile", description: "Change name, bio, visibility" },
+  { label: "Auth", description: "Keys, login, logout" },
+  { label: "My Apps", description: "Manage your submitted apps" },
+  { label: "Installed", description: "View installed apps" },
   { label: "About", description: "About bottel.ai" },
   { label: "Back", description: "Return to home" },
 ];
@@ -38,6 +41,19 @@ export function Settings() {
           } else {
             setMessage("You must be logged in first. Go to Auth.");
           }
+          break;
+        case "Auth":
+          navigate({ name: "auth" });
+          break;
+        case "My Apps":
+          if (isLoggedIn()) {
+            navigate({ name: "my-apps" });
+          } else {
+            setMessage("You must be logged in first. Go to Auth.");
+          }
+          break;
+        case "Installed":
+          navigate({ name: "installed" });
           break;
         case "About":
           setMessage("about");

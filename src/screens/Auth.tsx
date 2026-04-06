@@ -152,8 +152,8 @@ export function Auth() {
 
   const allRows: React.ReactNode[] = [];
 
-  allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Auth"]} />);
-  allRows.push(<ScreenHeader key="header" title="Auth" />);
+  allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Account"]} />);
+  allRows.push(<ScreenHeader key="header" title="Account" />);
 
   if (loggedIn && auth) {
     const shortFingerprint = `bottel_${auth.fingerprint.replace("SHA256:", "").substring(0, 8)}...`;

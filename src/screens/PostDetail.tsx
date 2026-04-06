@@ -37,7 +37,7 @@ type Row =
   | { type: "comment-delete"; comment: Comment };
 
 export function PostDetail({ postId }: { postId: string }) {
-  const { state, dispatch, goBack } = useStore();
+  const { state, dispatch, goBack, navigate } = useStore();
   const { selectedIndex, composing, composeText } = state.postDetail;
 
   const [post, setPost] = useState<Post | null>(null);
@@ -145,8 +145,12 @@ export function PostDetail({ postId }: { postId: string }) {
       } else if (row.type === "post-edit" && post) {
         setEditingId("post");
         setEditText(post.content);
+      } else if (row.type === "post" && post) {
+        navigate({ name: "bot-profile", fingerprint: post.author });
       } else if (row.type === "post-delete") {
         setConfirmDelete({ type: "post", id: row.postId });
+      } else if (row.type === "comment") {
+        navigate({ name: "bot-profile", fingerprint: row.comment.author });
       } else if (row.type === "comment-edit") {
         setEditingId(row.comment.id);
         setEditText(row.comment.content);

@@ -11,38 +11,40 @@ app.use("*", cors());
 // Health check
 app.get("/", (c) => c.json({ name: "bottel.ai", version: "0.1.0", status: "ok" }));
 
-// GET /apps — list/search/filter apps
+// GET /apps — list/search/filter apps (FTS5 powered)
 app.get("/apps", async (c) => {
   const q = c.req.query("q");
   const author = c.req.query("author");
 
-  let sql = "SELECT * FROM apps";
-  const conditions: string[] = [];
-  const bindings: string[] = [];
+  let result;
 
-  if (q) {
-    conditions.push("(name LIKE ? OR description LIKE ?)");
-    bindings.push(`%${q}%`, `%${q}%`);
+  if (q && !author) {
+    // FTS5 search with prefix matching and BM25 ranking
+    const ftsQuery = q.split(/\s+/).filter(Boolean).map(w => `"${w}"*`).join(" ");
+    result = await c.env.DB.prepare(
+      `SELECT a.*, bm25(apps_fts) as rank
+       FROM apps_fts fts
+       JOIN apps a ON a.rowid = fts.rowid
+       WHERE apps_fts MATCH ?
+       ORDER BY rank
+       LIMIT 50`
+    ).bind(ftsQuery).all();
+  } else {
+    // Filter by author or list all
+    let sql = "SELECT * FROM apps";
+    const bindings: string[] = [];
+    if (author) {
+      sql += " WHERE public_key = ?";
+      bindings.push(author);
+    }
+    sql += " ORDER BY installs DESC LIMIT 50";
+    const stmt = c.env.DB.prepare(sql);
+    result = bindings.length > 0 ? await stmt.bind(...bindings).all() : await stmt.all();
   }
 
-  if (author) {
-    conditions.push("public_key = ?");
-    bindings.push(author);
-  }
-
-  if (conditions.length > 0) {
-    sql += " WHERE " + conditions.join(" AND ");
-  }
-
-  sql += " ORDER BY installs DESC";
-
-  const stmt = c.env.DB.prepare(sql);
-  const result = bindings.length > 0
-    ? await stmt.bind(...bindings).all()
-    : await stmt.all();
-
-  const apps = (result.results ?? []).map((app) => ({
+  const apps = (result.results ?? []).map((app: any) => ({
     ...app,
+    rank: undefined,
     capabilities: JSON.parse((app.capabilities as string) || "[]"),
   }));
 
@@ -53,8 +55,11 @@ app.get("/apps", async (c) => {
 app.get("/apps/:slug", async (c) => {
   const slug = c.req.param("slug");
 
-  const app = await c.env.DB.prepare("SELECT * FROM apps WHERE slug = ?")
-    .bind(slug).first();
+  const app = await c.env.DB.prepare(
+    `SELECT a.*, p.name as author_name FROM apps a
+     LEFT JOIN profiles p ON p.fingerprint = a.public_key
+     WHERE a.slug = ?`
+  ).bind(slug).first();
 
   if (!app) {
     return c.json({ error: "App not found" }, 404);
@@ -80,6 +85,7 @@ app.post("/apps", authMiddleware, async (c) => {
     version: string;
     longDescription?: string;
     capabilities?: string[];
+    mcpUrl?: string;
   }>();
 
   if (!body.name || !body.slug || !body.description || !body.category || !body.version) {
@@ -89,8 +95,8 @@ app.post("/apps", authMiddleware, async (c) => {
   const id = crypto.randomUUID();
 
   await c.env.DB.prepare(
-    `INSERT INTO apps (id, name, slug, description, long_description, category, author, version, capabilities, public_key)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO apps (id, name, slug, description, long_description, category, author, version, capabilities, public_key, mcp_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     id,
     body.name,
@@ -101,8 +107,16 @@ app.post("/apps", authMiddleware, async (c) => {
     fingerprint,
     body.version,
     JSON.stringify(body.capabilities ?? []),
-    fingerprint
+    fingerprint,
+    body.mcpUrl ?? ""
   ).run();
+
+  // Sync FTS index
+  const inserted = await c.env.DB.prepare("SELECT rowid FROM apps WHERE id = ?").bind(id).first<{ rowid: number }>();
+  if (inserted) {
+    await c.env.DB.prepare("INSERT INTO apps_fts(rowid, name, description, slug) VALUES (?, ?, ?, ?)")
+      .bind(inserted.rowid, body.name, body.description, body.slug).run();
+  }
 
   const app = await c.env.DB.prepare("SELECT * FROM apps WHERE id = ?")
     .bind(id).first();
@@ -121,7 +135,7 @@ app.get("/user/installs", authMiddleware, async (c) => {
 
   const result = await c.env.DB.prepare(
     `SELECT apps.* FROM apps
-     INNER JOIN installs ON installs.app_id = apps.id
+     INNER JOIN installs ON installs.app_id = apps.slug
      WHERE installs.user_fingerprint = ?`
   ).bind(fingerprint).all();
 
@@ -138,25 +152,27 @@ app.post("/user/installs/:appId", authMiddleware, async (c) => {
   const fingerprint = c.get("fingerprint");
   const appId = c.req.param("appId");
 
+  // Anti-wash: only count installs from profiles older than 24 hours
+  const profile = await c.env.DB.prepare(
+    "SELECT 1 FROM profiles WHERE fingerprint = ? AND created_at <= datetime('now', '-24 hours')"
+  ).bind(fingerprint).first();
+  if (!profile) return c.json({ error: "Account must be at least 24 hours old to install apps" }, 403);
+
   const existing = await c.env.DB.prepare(
     "SELECT 1 FROM installs WHERE user_fingerprint = ? AND app_id = ?"
   ).bind(fingerprint, appId).first();
 
   if (existing) {
-    // Uninstall
-    await c.env.DB.batch([
-      c.env.DB.prepare("DELETE FROM installs WHERE user_fingerprint = ? AND app_id = ?")
-        .bind(fingerprint, appId),
-      c.env.DB.prepare("UPDATE apps SET installs = installs - 1 WHERE id = ?")
-        .bind(appId),
-    ]);
+    // Uninstall — remove from user's list but don't decrement counter
+    await c.env.DB.prepare("DELETE FROM installs WHERE user_fingerprint = ? AND app_id = ?")
+      .bind(fingerprint, appId).run();
     return c.json({ installed: false });
   } else {
     // Install
     await c.env.DB.batch([
       c.env.DB.prepare("INSERT INTO installs (user_fingerprint, app_id) VALUES (?, ?)")
         .bind(fingerprint, appId),
-      c.env.DB.prepare("UPDATE apps SET installs = installs + 1 WHERE id = ?")
+      c.env.DB.prepare("UPDATE apps SET installs = installs + 1 WHERE slug = ?")
         .bind(appId),
     ]);
     return c.json({ installed: true });
@@ -187,6 +203,15 @@ app.put("/apps/:slug", authMiddleware, async (c) => {
   await c.env.DB.prepare(`UPDATE apps SET ${updates.join(", ")} WHERE slug = ? AND public_key = ?`)
     .bind(...values, slug, fingerprint).run();
 
+  // Sync FTS index
+  const row = await c.env.DB.prepare("SELECT rowid, name, description, slug FROM apps WHERE slug = ?").bind(slug).first<{ rowid: number; name: string; description: string; slug: string }>();
+  if (row) {
+    await c.env.DB.batch([
+      c.env.DB.prepare("INSERT INTO apps_fts(apps_fts, rowid, name, description, slug) VALUES ('delete', ?, ?, ?, ?)").bind(row.rowid, (existing as any).name, (existing as any).description, slug),
+      c.env.DB.prepare("INSERT INTO apps_fts(rowid, name, description, slug) VALUES (?, ?, ?, ?)").bind(row.rowid, row.name, row.description, row.slug),
+    ]);
+  }
+
   const updated = await c.env.DB.prepare("SELECT * FROM apps WHERE slug = ?").bind(slug).first();
   return c.json({ app: { ...updated, capabilities: JSON.parse((updated as any).capabilities || "[]"), verified: !!(updated as any).verified } });
 });
@@ -196,10 +221,16 @@ app.delete("/apps/:slug", authMiddleware, async (c) => {
   const slug = c.req.param("slug");
   const fingerprint = c.get("fingerprint");
 
-  const result = await c.env.DB.prepare("DELETE FROM apps WHERE slug = ? AND public_key = ?")
-    .bind(slug, fingerprint).run();
+  // Get rowid before delete for FTS cleanup
+  const row = await c.env.DB.prepare("SELECT rowid, name, description FROM apps WHERE slug = ? AND public_key = ?")
+    .bind(slug, fingerprint).first<{ rowid: number; name: string; description: string }>();
+  if (!row) return c.json({ error: "App not found or not owned by you" }, 404);
 
-  if (result.meta.changes === 0) return c.json({ error: "App not found or not owned by you" }, 404);
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT INTO apps_fts(apps_fts, rowid, name, description, slug) VALUES ('delete', ?, ?, ?, ?)").bind(row.rowid, row.name, row.description, slug),
+    c.env.DB.prepare("DELETE FROM apps WHERE slug = ? AND public_key = ?").bind(slug, fingerprint),
+  ]);
+
   return c.json({ ok: true });
 });
 
@@ -210,22 +241,48 @@ app.post("/profiles", authMiddleware, async (c) => {
   const fp = c.get("fingerprint");
   const { name, bio, public: isPublic } = await c.req.json<{ name: string; bio?: string; public?: boolean }>();
   if (!name) return c.json({ error: "name required" }, 400);
+  // Check if profile exists for FTS sync
+  const existing = await c.env.DB.prepare("SELECT rowid, name, bio FROM profiles WHERE fingerprint = ?").bind(fp).first<{ rowid: number; name: string; bio: string }>();
+
   await c.env.DB.prepare(
-    "INSERT INTO profiles (fingerprint, name, bio, public) VALUES (?, ?, ?, ?) ON CONFLICT(fingerprint) DO UPDATE SET name=?, bio=?, public=?"
+    "INSERT INTO profiles (fingerprint, name, bio, public, created_at) VALUES (?, ?, ?, ?, datetime('now')) ON CONFLICT(fingerprint) DO UPDATE SET name=?, bio=?, public=?"
   ).bind(fp, name, bio || "", isPublic ? 1 : 0, name, bio || "", isPublic ? 1 : 0).run();
+
+  // Sync FTS index
+  const row = await c.env.DB.prepare("SELECT rowid FROM profiles WHERE fingerprint = ?").bind(fp).first<{ rowid: number }>();
+  if (row) {
+    const batch = [];
+    if (existing) {
+      batch.push(c.env.DB.prepare("INSERT INTO profiles_fts(profiles_fts, rowid, name, bio) VALUES ('delete', ?, ?, ?)").bind(existing.rowid, existing.name, existing.bio));
+    }
+    batch.push(c.env.DB.prepare("INSERT INTO profiles_fts(rowid, name, bio) VALUES (?, ?, ?)").bind(row.rowid, name, bio || ""));
+    await c.env.DB.batch(batch);
+  }
+
   return c.json({ ok: true });
 });
 
-// GET /profiles — search public profiles
+// GET /profiles — search public profiles (FTS5 powered)
 app.get("/profiles", async (c) => {
   const q = c.req.query("q");
-  let sql = "SELECT fingerprint, name, bio, online_at FROM profiles WHERE public = 1";
-  const bindings: string[] = [];
-  if (q) { sql += " AND name LIKE ?"; bindings.push(`%${q}%`); }
-  sql += " ORDER BY name LIMIT 20";
-  const result = bindings.length > 0
-    ? await c.env.DB.prepare(sql).bind(...bindings).all()
-    : await c.env.DB.prepare(sql).all();
+  let result;
+
+  if (q) {
+    const ftsQuery = q.split(/\s+/).filter(Boolean).map(w => `"${w}"*`).join(" ");
+    result = await c.env.DB.prepare(
+      `SELECT p.fingerprint, p.name, p.bio, p.online_at
+       FROM profiles_fts fts
+       JOIN profiles p ON p.rowid = fts.rowid
+       WHERE profiles_fts MATCH ? AND p.public = 1
+       ORDER BY bm25(profiles_fts)
+       LIMIT 20`
+    ).bind(ftsQuery).all();
+  } else {
+    result = await c.env.DB.prepare(
+      "SELECT fingerprint, name, bio, online_at FROM profiles WHERE public = 1 ORDER BY name LIMIT 20"
+    ).all();
+  }
+
   const now = Date.now();
   const profiles = (result.results ?? []).map((p: any) => ({
     fingerprint: p.fingerprint,
@@ -439,7 +496,8 @@ app.get("/social/feed", authMiddleware, async (c) => {
   const placeholders = allAuthors.map(() => "?").join(", ");
 
   const result = await c.env.DB.prepare(
-    `SELECT p.id, p.author, p.content, p.created_at, pr.name as author_name
+    `SELECT p.id, p.author, p.content, p.created_at, pr.name as author_name,
+       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comment_count
      FROM posts p
      LEFT JOIN profiles pr ON pr.fingerprint = p.author
      WHERE p.author IN (${placeholders})
@@ -635,7 +693,8 @@ app.get("/social/profile/:fp", async (c) => {
 
   // Get posts
   const postsResult = await c.env.DB.prepare(
-    `SELECT p.id, p.author, p.content, p.created_at, pr.name as author_name
+    `SELECT p.id, p.author, p.content, p.created_at, pr.name as author_name,
+       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comment_count
      FROM posts p
      LEFT JOIN profiles pr ON pr.fingerprint = p.author
      WHERE p.author = ?

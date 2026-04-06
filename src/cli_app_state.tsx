@@ -17,6 +17,7 @@ export type Screen =
   | { name: "profile-setup" }
   | { name: "social" }
   | { name: "post-detail"; postId: string }
+  | { name: "bot-profile"; fingerprint: string }
 ;
 
 // ─── Screen State (persisted across navigation) ─────────────────
@@ -53,10 +54,11 @@ export interface MyAppsState {
 }
 
 export interface SubmitState {
-  step: number;  // 0=name, 1=slug, 2=description, 3=version, 4=confirm
+  step: number;  // 0=name, 1=slug, 2=description, 3=mcp, 4=version, 5=confirm
   name: string;
   slug: string;
   description: string;
+  mcpUrl: string;
   version: string;
 }
 
@@ -74,6 +76,8 @@ export interface SocialState {
   view: "feed" | "my-posts" | "following" | "followers" | "find";
   composing: boolean;
   composeText: string;
+  searchQuery: string;
+  searchIndex: number;
 }
 
 export interface PostDetailState {
@@ -146,6 +150,7 @@ const INITIAL_SUBMIT: SubmitState = {
   name: "",
   slug: "",
   description: "",
+  mcpUrl: "",
   version: "0.1.0",
 };
 
@@ -163,6 +168,8 @@ const INITIAL_SOCIAL: SocialState = {
   view: "feed",
   composing: false,
   composeText: "",
+  searchQuery: "",
+  searchIndex: 0,
 };
 
 const INITIAL_POST_DETAIL: PostDetailState = {

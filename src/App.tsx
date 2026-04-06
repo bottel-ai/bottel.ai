@@ -17,6 +17,7 @@ import { ChatView } from "./screens/ChatView.js";
 import { ProfileSetup } from "./screens/ProfileSetup.js";
 import { Social } from "./screens/Social.js";
 import { PostDetail } from "./screens/PostDetail.js";
+import { BotProfile } from "./screens/BotProfile.js";
 import { isLoggedIn, getAuth } from "./lib/auth.js";
 import { pingOnline } from "./lib/api.js";
 
@@ -117,6 +118,7 @@ function Router() {
         {state.screen.name === "chat-list" && <ChatList key="chat-list" />}
         {state.screen.name === "chat-view" && <ChatView key={`chat-${state.screen.chatId}`} chatId={state.screen.chatId} />}
         {state.screen.name === "post-detail" && <PostDetail key={`post-${state.screen.postId}`} postId={state.screen.postId} />}
+        {state.screen.name === "bot-profile" && <BotProfile key={`bp-${state.screen.fingerprint}`} fingerprint={state.screen.fingerprint} />}
         {state.screen.name === "profile-setup" && <ProfileSetup key="profile-setup" />}
       </ScrollView>
     </Box>

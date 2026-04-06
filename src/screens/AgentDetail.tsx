@@ -16,7 +16,6 @@ export function AgentDetail({ agentId }: { agentId: string }) {
   const [agent, setAgent] = useState<App | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -34,6 +33,7 @@ export function AgentDetail({ agentId }: { agentId: string }) {
   }, [agentId]);
 
   const isInstalled = state.installed.has(agentId);
+  const isMcp = !!(agent?.mcpUrl);
 
   useEffect(() => {
     if (installStatus === "installing") {
@@ -53,7 +53,7 @@ export function AgentDetail({ agentId }: { agentId: string }) {
     if (key.leftArrow || key.upArrow) dispatch({ type: "UPDATE_AGENT_DETAIL", state: { buttonIndex: (buttonIndex - 1 + 2) % 2 } });
     if (key.rightArrow || key.downArrow || key.tab) dispatch({ type: "UPDATE_AGENT_DETAIL", state: { buttonIndex: (buttonIndex + 1) % 2 } });
     if (key.return && installStatus === "idle") {
-      if (buttonIndex === 0) {
+      if (buttonIndex === 0 && !isMcp) {
         if (isInstalled) {
           dispatch({ type: "UNINSTALL_AGENT", agentId });
         } else {
@@ -86,10 +86,10 @@ export function AgentDetail({ agentId }: { agentId: string }) {
 
   const allRows: React.ReactNode[] = [];
 
-  allRows.push(<Breadcrumb key="breadcrumb" path={["Home", agent.category, agent.name]} />);
+  allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Apps", agent.name]} />);
 
   allRows.push(
-    <Box key="header" {...boxStyle.header} paddingX={1} marginY={1} flexGrow={1}>
+    <Box key="header" {...boxStyle.header} paddingX={1} marginBottom={1} flexGrow={1}>
       <Box flexGrow={1}>
         <Text bold color={colors.primary}>{agent.name}</Text>
         <Text dimColor>  v{agent.version}</Text>
@@ -98,69 +98,101 @@ export function AgentDetail({ agentId }: { agentId: string }) {
     </Box>
   );
 
-  allRows.push(<Text key="author" dimColor>by {agent.author}</Text>);
-  allRows.push(<Text key="blank1">{""}</Text>);
-
   allRows.push(
-    <Box key="stats" gap={2}>
+    <Box key="author" marginBottom={0}>
+      <Text color="#2ed573">by {agent.authorName || agent.author.replace("SHA256:", "").slice(0, 12)}</Text>
+      {agent.authorName && <Text dimColor>  #{agent.author.replace("SHA256:", "").slice(0, 8)}</Text>}
+    </Box>
+  );
+  allRows.push(
+    <Box key="installs" marginBottom={1}>
       <Text dimColor>{formatNumber(agent.installs)} installs</Text>
     </Box>
   );
 
-  allRows.push(<Text key="blank2">{""}</Text>);
-  allRows.push(<Text key="short-desc">{agent.description}</Text>);
-  allRows.push(<Text key="blank3">{""}</Text>);
-  allRows.push(<Separator key="sep1" />);
-  allRows.push(<Text key="blank4">{""}</Text>);
+  allRows.push(<Box key="short-desc" marginBottom={1}><Text>{agent.description}</Text></Box>);
 
-  descLines.forEach((line, i) => {
-    allRows.push(<Text key={`desc-${i}`}>{line}</Text>);
-  });
+  if (descLines.some(l => l.trim())) {
+    allRows.push(<Separator key="sep1" />);
+    descLines.forEach((line, i) => {
+      if (line.trim()) allRows.push(<Text key={`desc-${i}`}>{line}</Text>);
+    });
+    allRows.push(<Box key="desc-spacer" marginBottom={1} />);
+  }
 
-  allRows.push(<Text key="blank5">{""}</Text>);
-  allRows.push(<Separator key="sep2" />);
-  allRows.push(<Text key="blank6">{""}</Text>);
+  if (agent.capabilities.length > 0) {
+    allRows.push(
+      <Box key="capabilities" gap={1} marginBottom={1}>
+        <Text dimColor>Capabilities:</Text>
+        {agent.capabilities.map((cap) => (
+          <Text key={cap} color={colors.secondary}>[{cap}]</Text>
+        ))}
+      </Box>
+    );
+  }
 
-  allRows.push(
-    <Box key="capabilities" gap={1}>
-      <Text>Capabilities: </Text>
-      {agent.capabilities.map((cap) => (
-        <Text key={cap} color={colors.secondary}>[{cap}]</Text>
-      ))}
-    </Box>
-  );
-
-  allRows.push(<Text key="blank7">{""}</Text>);
-  allRows.push(
-    <Text key="metadata" dimColor>Category: <Text color={colors.secondary} underline>{agent.category}</Text></Text>
-  );
-  allRows.push(<Text key="blank8">{""}</Text>);
-
-  allRows.push(
-    <Box key="buttons" gap={2}>
-      {installStatus === "installing" ? (
-        <Text color={colors.warning}><Spinner type="dots" /> Installing...</Text>
-      ) : (
+  if (isMcp) {
+    allRows.push(
+      <Box key="mcp-label" marginBottom={1}>
+        <Text bold color={colors.accent}>MCP Service</Text>
+      </Box>
+    );
+    allRows.push(
+      <Box key="mcp-url" borderStyle="single" borderColor={colors.primary} paddingX={1} flexGrow={1} marginBottom={1}>
+        <Text dimColor>Endpoint: </Text>
+        <Text color={colors.primary} bold>{agent.mcpUrl}</Text>
+      </Box>
+    );
+    allRows.push(
+      <Box key="mcp-hint" marginBottom={1}>
+        <Text dimColor>Connect via: mcp connect {agent.mcpUrl}</Text>
+      </Box>
+    );
+    allRows.push(
+      <Box key="buttons" gap={2}>
         <Text
           bold={buttonIndex === 0}
-          color={buttonIndex === 0 ? (isInstalled ? "red" : colors.primary) : undefined}
+          color={buttonIndex === 0 ? colors.primary : undefined}
           dimColor={buttonIndex !== 0}
         >
-          [ {isInstalled ? "Uninstall" : "Install"} ]
+          [ Copy URL ]
         </Text>
-      )}
-      <Text
-        bold={buttonIndex === 1}
-        color={buttonIndex === 1 ? colors.primary : undefined}
-        dimColor={buttonIndex !== 1}
-      >
-        [ Back ]
-      </Text>
-      {isInstalled && installStatus === "idle" && (
-        <Text color={colors.success}>Installed {"\u2713"}</Text>
-      )}
-    </Box>
-  );
+        <Text
+          bold={buttonIndex === 1}
+          color={buttonIndex === 1 ? colors.primary : undefined}
+          dimColor={buttonIndex !== 1}
+        >
+          [ Back ]
+        </Text>
+      </Box>
+    );
+  } else {
+    allRows.push(
+      <Box key="buttons" gap={2}>
+        {installStatus === "installing" ? (
+          <Text color={colors.warning}><Spinner type="dots" /> Installing...</Text>
+        ) : (
+          <Text
+            bold={buttonIndex === 0}
+            color={buttonIndex === 0 ? (isInstalled ? "red" : colors.primary) : undefined}
+            dimColor={buttonIndex !== 0}
+          >
+            [ {isInstalled ? "Uninstall" : "Install"} ]
+          </Text>
+        )}
+        <Text
+          bold={buttonIndex === 1}
+          color={buttonIndex === 1 ? colors.primary : undefined}
+          dimColor={buttonIndex !== 1}
+        >
+          [ Back ]
+        </Text>
+        {isInstalled && installStatus === "idle" && (
+          <Text color={colors.success}>Installed {"\u2713"}</Text>
+        )}
+      </Box>
+    );
+  }
 
   allRows.push(<HelpFooter key="footer" text="Esc back · ←→ nav · Tab toggle · Enter select" />);
 

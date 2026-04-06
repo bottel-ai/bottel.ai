@@ -31,6 +31,8 @@ interface RawApp {
   capabilities: string[];
   size: string;
   verified: number; // 0 or 1 from SQLite
+  mcp_url?: string;
+  author_name?: string;
   created_at?: string;
 }
 
@@ -48,6 +50,8 @@ export interface App {
   size: string;
   updated: string;
   verified: boolean;
+  mcpUrl: string;
+  authorName: string;
 }
 
 function mapApp(raw: RawApp): App {
@@ -65,6 +69,8 @@ function mapApp(raw: RawApp): App {
     size: raw.size,
     updated: raw.created_at ?? "",
     verified: !!raw.verified,
+    mcpUrl: raw.mcp_url ?? "",
+    authorName: raw.author_name ?? "",
   };
 }
 
@@ -82,7 +88,7 @@ export async function getApp(slug: string): Promise<App> {
 }
 
 export async function submitApp(
-  data: { name: string; slug: string; description: string; category: string; version: string },
+  data: { name: string; slug: string; description: string; category: string; version: string; mcpUrl?: string },
   fingerprint: string,
 ): Promise<App> {
   const { app } = await request<{ app: RawApp }>("/apps", {
