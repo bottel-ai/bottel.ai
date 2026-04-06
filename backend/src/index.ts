@@ -293,18 +293,30 @@ app.delete("/chat/contacts/:contact", authMiddleware, async (c) => {
   return c.json({ ok: true });
 });
 
-// POST /chat/new — create direct chat
+// POST /chat/new — create or find existing direct chat
 app.post("/chat/new", authMiddleware, async (c) => {
   const fingerprint = c.get("fingerprint");
   const { contact } = await c.req.json<{ contact: string }>();
   if (!contact) return c.json({ error: "contact fingerprint required" }, 400);
 
-  const chatId = crypto.randomUUID();
+  // Check if a direct chat already exists between these two users
+  const existing = await c.env.DB.prepare(`
+    SELECT c.id FROM chats c
+    JOIN chat_members cm1 ON cm1.chat_id = c.id AND cm1.member = ?
+    JOIN chat_members cm2 ON cm2.chat_id = c.id AND cm2.member = ?
+    WHERE c.type = 'direct'
+    LIMIT 1
+  `).bind(fingerprint, contact).first<{ id: string }>();
 
+  if (existing) {
+    return c.json({ chat: { id: existing.id, type: "direct", name: "", members: [fingerprint, contact] } });
+  }
+
+  // Create new chat
+  const chatId = crypto.randomUUID();
   await c.env.DB.prepare("INSERT INTO chats (id, type, name, created_by) VALUES (?, ?, ?, ?)")
     .bind(chatId, "direct", "", fingerprint).run();
 
-  // Add creator + contact
   const allMembers = [fingerprint, ...(contact !== fingerprint ? [contact] : [])];
   for (const member of allMembers) {
     await c.env.DB.prepare("INSERT OR IGNORE INTO chat_members (chat_id, member) VALUES (?, ?)")

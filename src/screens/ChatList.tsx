@@ -24,13 +24,12 @@ function timeAgo(iso: string): string {
 }
 
 interface ConversationEntry {
-  id: string;           // chat id or contact fingerprint
+  id: string;
   name: string;
-  online: boolean;
   lastMessage?: string;
-  lastTime?: string;    // ISO string for sorting
-  chatId?: string;      // existing chat id, if any
-  contactFp: string;    // fingerprint of the other person
+  lastTime?: string;
+  chatId?: string;
+  contactFp: string;
 }
 
 export function ChatList() {
@@ -80,56 +79,21 @@ export function ChatList() {
     return () => clearTimeout(timeout);
   }, [searchQuery, fp]);
 
-  // Build unified conversation list
-  const conversations: ConversationEntry[] = [];
-  const seenContacts = new Set<string>();
-
-  // Add chats with their info
-  for (const ch of chats) {
-    // Find the contact for this chat
-    const contact = contacts.find(c => {
-      // For direct chats, match by contact fingerprint
-      return true; // We'll match later
-    });
-    conversations.push({
+  // Only show chats that have messages
+  const conversations: ConversationEntry[] = chats
+    .filter(ch => ch.last_message)
+    .map(ch => ({
       id: ch.id,
       name: ch.name || (ch as any).last_sender_name || "Chat",
-      online: false,
       lastMessage: ch.last_message,
       lastTime: ch.created_at,
       chatId: ch.id,
       contactFp: (ch as any).last_sender || "",
+    }))
+    .sort((a, b) => {
+      if (a.lastTime && b.lastTime) return new Date(b.lastTime + "Z").getTime() - new Date(a.lastTime + "Z").getTime();
+      return 0;
     });
-  }
-
-  // Add contacts that don't have chats yet
-  for (const c of contacts) {
-    const hasChat = chats.some(ch => {
-      // We can't easily match contacts to chats without member info
-      // but we include all contacts — duplicates are OK since they show different info
-      return false;
-    });
-    if (!hasChat) {
-      const name = c.profile_name || c.alias || c.contact.slice(0, 12);
-      if (!seenContacts.has(c.contact)) {
-        seenContacts.add(c.contact);
-        conversations.push({
-          id: `contact-${c.contact}`,
-          name,
-          online: c.online === true,
-          contactFp: c.contact,
-        });
-      }
-    }
-  }
-
-  // Sort by last message time (most recent first), contacts without messages at bottom
-  conversations.sort((a, b) => {
-    if (a.lastTime && b.lastTime) return new Date(b.lastTime + "Z").getTime() - new Date(a.lastTime + "Z").getTime();
-    if (a.lastTime) return -1;
-    if (b.lastTime) return 1;
-    return a.name.localeCompare(b.name);
-  });
 
   const totalItems = conversations.length;
 
@@ -217,15 +181,11 @@ export function ChatList() {
           {conversations.map((entry, i) => {
             const isSelected = !searchFocused && selectedIndex === i;
             return (
-              <Box key={entry.id} flexDirection="column">
+              <Box key={entry.id} flexDirection="column" marginBottom={1}>
                 <Box>
                   <Text color={isSelected ? colors.primary : undefined}>
-                    {isSelected ? "\u276f " : "  "}
+                    {isSelected ? "❯ " : "  "}
                   </Text>
-                  <Text color={entry.online ? colors.success : colors.border}>
-                    {entry.online ? "\u25cf" : "\u25cb"}
-                  </Text>
-                  <Text> </Text>
                   <Text color={isSelected ? colors.primary : undefined} bold={isSelected}>
                     {entry.name}
                   </Text>
@@ -235,8 +195,8 @@ export function ChatList() {
                   )}
                 </Box>
                 {entry.lastMessage && (
-                  <Box paddingLeft={5}>
-                    <Text dimColor>{truncate(entry.lastMessage, 40)}</Text>
+                  <Box paddingLeft={4}>
+                    <Text dimColor>{truncate(entry.lastMessage, 45)}</Text>
                   </Box>
                 )}
               </Box>
