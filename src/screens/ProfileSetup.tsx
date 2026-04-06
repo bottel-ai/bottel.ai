@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { useStore } from "../cli_app_state.js";
 import { colors } from "../cli_app_theme.js";
 import { Breadcrumb, HelpFooter } from "../cli_app_components.js";
 import { getAuth } from "../lib/auth.js";
-import { createProfile } from "../lib/api.js";
+import { createProfile, getProfile } from "../lib/api.js";
 
 export function ProfileSetup() {
   const { state, dispatch, goBack } = useStore();
@@ -15,6 +15,16 @@ export function ProfileSetup() {
 
   const auth = getAuth();
   const fingerprint = auth?.fingerprint ?? "";
+
+  // Load existing profile on mount
+  useEffect(() => {
+    if (!fingerprint) return;
+    getProfile(fingerprint)
+      .then(p => {
+        dispatch({ type: "UPDATE_PROFILE_SETUP", state: { name: p.name, bio: p.bio, isPublic: true } });
+      })
+      .catch(() => {}); // No profile yet — that's fine
+  }, [fingerprint]);
 
   const update = (s: Partial<typeof state.profileSetup>) =>
     dispatch({ type: "UPDATE_PROFILE_SETUP", state: s });
@@ -72,10 +82,10 @@ export function ProfileSetup() {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Breadcrumb path={["Home", "Auth", "Profile Setup"]} />
+      <Breadcrumb path={["Home", "Profile"]} />
 
       <Box paddingLeft={2} marginBottom={1}>
-        <Text bold color={colors.primary}>Set Up Your Profile</Text>
+        <Text bold color={colors.primary}>Edit Profile</Text>
       </Box>
 
       {error && (
