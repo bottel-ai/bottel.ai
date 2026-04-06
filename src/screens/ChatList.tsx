@@ -132,7 +132,7 @@ export function ChatList() {
       dispatch({ type: "UPDATE_CHAT_LIST", state: { selectedIndex: selectedIndex - 1 } });
       return;
     }
-    if (key.downArrow) {
+    if (key.downArrow || key.tab) {
       dispatch({ type: "UPDATE_CHAT_LIST", state: { selectedIndex: Math.min(totalItems - 1, selectedIndex + 1) } });
       return;
     }

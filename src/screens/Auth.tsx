@@ -91,7 +91,7 @@ export function Auth() {
       });
       setMessage(null);
     }
-    if (key.downArrow) {
+    if (key.downArrow || key.tab) {
       dispatch({
         type: "UPDATE_AUTH_SCREEN",
         state: { selectedIndex: Math.min(menuItems.length - 1, selectedIndex + 1) },

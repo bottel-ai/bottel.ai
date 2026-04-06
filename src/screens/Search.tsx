@@ -44,7 +44,7 @@ export function Search() {
       return;
     }
     if (inputFocused) {
-      if (key.downArrow && results.length > 0) update({ inputFocused: false, selectedIndex: 0 });
+      if (key.downArrow || key.tab && results.length > 0) update({ inputFocused: false, selectedIndex: 0 });
       return;
     }
     if (key.upArrow) {
@@ -52,7 +52,7 @@ export function Search() {
       else update({ selectedIndex: selectedIndex - 1 });
       return;
     }
-    if (key.downArrow) { update({ selectedIndex: Math.min(pagedResults.length - 1, selectedIndex + 1) }); return; }
+    if (key.downArrow || key.tab) { update({ selectedIndex: Math.min(pagedResults.length - 1, selectedIndex + 1) }); return; }
     if (key.leftArrow && currentPage > 0) { update({ page: currentPage - 1, selectedIndex: 0 }); return; }
     if (key.rightArrow && currentPage < totalPages - 1) { update({ page: currentPage + 1, selectedIndex: 0 }); return; }
     if (key.return) {

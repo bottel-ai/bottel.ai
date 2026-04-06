@@ -20,7 +20,7 @@ export function Trending() {
   useInput((_input, key) => {
     if (key.escape) { goBack(); return; }
     if (key.upArrow) setSelectedIndex((i) => Math.max(0, i - 1));
-    if (key.downArrow) setSelectedIndex((i) => Math.min(apps.length - 1, i + 1));
+    if (key.downArrow || key.tab) setSelectedIndex((i) => Math.min(apps.length - 1, i + 1));
     if (key.return && apps[selectedIndex]) {
       navigate({ name: "agent-detail", agentId: apps[selectedIndex].id });
     }

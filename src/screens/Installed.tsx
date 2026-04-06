@@ -40,7 +40,7 @@ export function Installed() {
     if (key.upArrow) {
       dispatch({ type: "UPDATE_INSTALLED", state: { selectedIndex: Math.max(0, selectedIndex - 1) } });
     }
-    if (key.downArrow) {
+    if (key.downArrow || key.tab) {
       dispatch({ type: "UPDATE_INSTALLED", state: { selectedIndex: Math.min(installedAgents.length - 1, selectedIndex + 1) } });
     }
     if (key.return && installedAgents.length > 0 && installedAgents[selectedIndex]) {

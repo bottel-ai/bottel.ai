@@ -155,7 +155,7 @@ export function MyApps() {
       return;
     }
 
-    if (key.downArrow) {
+    if (key.downArrow || key.tab) {
       dispatch({ type: "UPDATE_MY_APPS", state: { selectedIndex: Math.min(apps.length - 1, selectedIndex + 1) } });
       return;
     }

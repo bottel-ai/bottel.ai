@@ -25,7 +25,7 @@ export function Settings() {
       dispatch({ type: "UPDATE_SETTINGS", state: { selectedIndex: Math.max(0, selectedIndex - 1) } });
       setMessage(null);
     }
-    if (key.downArrow) {
+    if (key.downArrow || key.tab) {
       dispatch({ type: "UPDATE_SETTINGS", state: { selectedIndex: Math.min(MENU_ITEMS.length - 1, selectedIndex + 1) } });
       setMessage(null);
     }

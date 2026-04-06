@@ -62,7 +62,7 @@ export function Home() {
         else dispatch({ type: "UPDATE_HOME", state: { selectedIndex: selectedIndex - 1 } });
         return;
       }
-      if (key.downArrow) {
+      if (key.downArrow || key.tab) {
         const totalNav = MENU_ITEMS.length + FOOTER_ITEMS.length;
         dispatch({ type: "UPDATE_HOME", state: { selectedIndex: Math.min(totalNav - 1, selectedIndex + 1) } });
         return;
