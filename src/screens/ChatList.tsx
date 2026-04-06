@@ -204,12 +204,12 @@ export function ChatList() {
           {conversations.map((entry, i) => {
             const isSelected = !searchFocused && selectedIndex === i;
             return (
-              <Box key={entry.id} flexDirection="column" marginBottom={1}>
+              <Box key={entry.id} flexDirection="column">
                 <Box>
                   <Text color={isSelected ? colors.primary : undefined}>
                     {isSelected ? "❯ " : "  "}
                   </Text>
-                  <Text color={isSelected ? colors.primary : undefined} bold={isSelected}>
+                  <Text color={isSelected ? colors.primary : "#fff"} bold>
                     {entry.name}
                   </Text>
                   <Box flexGrow={1} />
@@ -218,13 +218,16 @@ export function ChatList() {
                   )}
                 </Box>
                 <Box paddingLeft={4}>
-                  <Text dimColor>{shortKey(entry.contactFp)}</Text>
+                  <Text color={colors.secondary}>{shortKey(entry.contactFp)}</Text>
                 </Box>
                 {entry.lastMessage && (
                   <Box paddingLeft={4}>
-                    <Text dimColor>{truncate(entry.lastMessage, 45)}</Text>
+                    <Text color="#999">{truncate(entry.lastMessage, 45)}</Text>
                   </Box>
                 )}
+                <Box paddingLeft={2} marginTop={0}>
+                  <Text dimColor>{"─".repeat(45)}</Text>
+                </Box>
               </Box>
             );
           })}

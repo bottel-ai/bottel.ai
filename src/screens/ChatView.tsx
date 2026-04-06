@@ -125,12 +125,8 @@ export function ChatView({ chatId }: { chatId: string }) {
     <Box flexDirection="column" paddingX={1}>
       {/* Header */}
       <Box borderStyle="single" borderColor={colors.border} paddingX={1} marginBottom={1} flexDirection="column">
-        <Text bold color={colors.primary}>{displayName}</Text>
-        {shortFp && <Text dimColor>{shortFp}</Text>}
-        <Text> </Text>
-        <Text color={contactOnline ? colors.success : colors.border}>
-          {contactOnline ? "\u25cf" : "\u25cb"}
-        </Text>
+        <Text bold color="#fff">{displayName}</Text>
+        {shortFp && <Text color={colors.secondary}>{shortFp}</Text>}
       </Box>
 
       {error && <Text color={colors.error}>  Error: {error}</Text>}
@@ -145,19 +141,27 @@ export function ChatView({ chatId }: { chatId: string }) {
       {grouped.map((group, gi) => {
         const prev = gi > 0 ? grouped[gi - 1] : null;
         const gap = prev ? group.rawTime - prev.rawTime : Infinity;
-        const showTime = gap > 300000; // 5 minutes
+        const showTime = gap > 300000;
+        const showDivider = gi > 0 && group.sender !== prev?.sender;
 
         return (
-          <Box key={`g-${gi}`} flexDirection="column" paddingX={1} marginBottom={0}>
+          <Box key={`g-${gi}`} flexDirection="column" paddingX={1}>
+            {showDivider && (
+              <Box><Text dimColor>{"─".repeat(40)}</Text></Box>
+            )}
+            {showTime && (
+              <Box justifyContent="center" marginBottom={0}>
+                <Text dimColor>── {group.time} ──</Text>
+              </Box>
+            )}
             <Box>
-              <Text bold color={group.isMe ? colors.success : colors.secondary}>
+              <Text bold color={group.isMe ? colors.success : colors.primary}>
                 {group.senderName}
               </Text>
-              {showTime && <Text dimColor> · {group.time}</Text>}
             </Box>
             {group.msgs.map((content, mi) => (
               <Box key={`m-${gi}-${mi}`} paddingLeft={2}>
-                <Text>{content}</Text>
+                <Text color="#e0e0e0">{content}</Text>
               </Box>
             ))}
             <Box height={1} />
