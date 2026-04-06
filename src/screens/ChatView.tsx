@@ -100,15 +100,20 @@ export function ChatView({ chatId }: { chatId: string }) {
   }, { isActive: true });
 
   // Group consecutive messages from same sender
-  const grouped: { sender: string; senderName: string; isMe: boolean; msgs: { content: string; time: string }[] }[] = [];
+  function parseTime(iso: string): number {
+    const s = iso.endsWith("Z") || iso.includes("+") ? iso : iso + "Z";
+    return new Date(s).getTime() || 0;
+  }
+
+  const grouped: { sender: string; senderName: string; isMe: boolean; time: string; rawTime: number; msgs: string[] }[] = [];
   for (const msg of messages) {
     const isMe = msg.sender === fp;
     const senderName = isMe ? "You" : (msg.sender_name || msg.sender.slice(0, 8));
     const last = grouped[grouped.length - 1];
     if (last && last.sender === msg.sender) {
-      last.msgs.push({ content: msg.content, time: formatTimestamp(msg.created_at) });
+      last.msgs.push(msg.content);
     } else {
-      grouped.push({ sender: msg.sender, senderName, isMe, msgs: [{ content: msg.content, time: formatTimestamp(msg.created_at) }] });
+      grouped.push({ sender: msg.sender, senderName, isMe, time: formatTimestamp(msg.created_at), rawTime: parseTime(msg.created_at), msgs: [msg.content] });
     }
   }
 
@@ -134,31 +139,28 @@ export function ChatView({ chatId }: { chatId: string }) {
         </Box>
       )}
 
-      {grouped.map((group, gi) => (
-        <Box key={`g-${gi}`} flexDirection="column" paddingX={1} marginBottom={0}>
-          {/* Sender + timestamp on first message */}
-          <Box>
-            <Text bold color={group.isMe ? colors.success : colors.secondary}>
-              {group.senderName}
-            </Text>
-            <Text dimColor> {"\u00b7"} {group.msgs[0]?.time}</Text>
-          </Box>
-          {/* Message content */}
-          {group.msgs.map((m, mi) => (
-            <Box key={`m-${gi}-${mi}`} flexDirection="column">
-              {mi > 0 && (
-                <Box>
-                  <Text dimColor>  {m.time}</Text>
-                </Box>
-              )}
-              <Box paddingLeft={2}>
-                <Text>{m.content}</Text>
-              </Box>
+      {grouped.map((group, gi) => {
+        const prev = gi > 0 ? grouped[gi - 1] : null;
+        const gap = prev ? group.rawTime - prev.rawTime : Infinity;
+        const showTime = gap > 300000; // 5 minutes
+
+        return (
+          <Box key={`g-${gi}`} flexDirection="column" paddingX={1} marginBottom={0}>
+            <Box>
+              <Text bold color={group.isMe ? colors.success : colors.secondary}>
+                {group.senderName}
+              </Text>
+              {showTime && <Text dimColor> · {group.time}</Text>}
             </Box>
-          ))}
-          <Box height={1} />
-        </Box>
-      ))}
+            {group.msgs.map((content, mi) => (
+              <Box key={`m-${gi}-${mi}`} paddingLeft={2}>
+                <Text>{content}</Text>
+              </Box>
+            ))}
+            <Box height={1} />
+          </Box>
+        );
+      })}
 
       {/* Input */}
       <Box paddingX={1} marginTop={0}>
