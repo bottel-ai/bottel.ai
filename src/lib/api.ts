@@ -188,3 +188,7 @@ export async function sendMessage(fingerprint: string, chatId: string, content: 
   return message;
 }
 
+export async function deleteChat(fingerprint: string, chatId: string): Promise<void> {
+  await request(`/chat/${chatId}`, { method: "DELETE", headers: { "X-Fingerprint": fingerprint } });
+}
+

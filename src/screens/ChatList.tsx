@@ -5,11 +5,16 @@ import { colors } from "../cli_app_theme.js";
 import { Autocomplete, HelpFooter, type AutocompleteItem } from "../cli_app_components.js";
 import { isLoggedIn, getAuth } from "../lib/auth.js";
 import {
-  getContacts, getChats, addContact, createChat, searchProfiles,
+  getContacts, getChats, addContact, createChat, deleteChat, searchProfiles,
   type Contact, type Chat, type Profile,
 } from "../lib/api.js";
 
 function truncate(s: string, n: number) { return s.length > n ? s.slice(0, n) + "..." : s; }
+function shortKey(fp: string): string {
+  const clean = fp.replace("SHA256:", "");
+  if (clean.length <= 20) return clean;
+  return clean.slice(0, 10) + "..." + clean.slice(-10);
+}
 
 function timeAgo(iso: string): string {
   try {
@@ -40,6 +45,7 @@ export function ChatList() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -122,6 +128,16 @@ export function ChatList() {
     if (!loggedIn) { if (key.escape) goBack(); return; }
     if (searchFocused) return; // Autocomplete handles its own input
 
+    if (confirmDelete) {
+      if (input === "y") {
+        deleteChat(fp, confirmDelete)
+          .then(() => setChats(prev => prev.filter(c => c.id !== confirmDelete)))
+          .catch((err: Error) => setError(err.message))
+          .finally(() => setConfirmDelete(null));
+      } else { setConfirmDelete(null); }
+      return;
+    }
+
     if (key.escape) { goBack(); return; }
 
     if (input === "/") { setSearchFocused(true); return; }
@@ -133,6 +149,11 @@ export function ChatList() {
     }
     if (key.downArrow || key.tab) {
       dispatch({ type: "UPDATE_CHAT_LIST", state: { selectedIndex: Math.min(totalItems - 1, selectedIndex + 1) } });
+      return;
+    }
+
+    if (input === "d" && totalItems > 0 && conversations[selectedIndex]?.chatId) {
+      setConfirmDelete(conversations[selectedIndex]!.chatId!);
       return;
     }
 
@@ -196,6 +217,9 @@ export function ChatList() {
                     <Text dimColor>{timeAgo(entry.lastTime)}</Text>
                   )}
                 </Box>
+                <Box paddingLeft={4}>
+                  <Text dimColor>{shortKey(entry.contactFp)}</Text>
+                </Box>
                 {entry.lastMessage && (
                   <Box paddingLeft={4}>
                     <Text dimColor>{truncate(entry.lastMessage, 45)}</Text>
@@ -204,6 +228,12 @@ export function ChatList() {
               </Box>
             );
           })}
+
+          {confirmDelete && (
+            <Box marginTop={1} paddingX={1}>
+              <Text color={colors.warning}>Delete this chat and all messages? (y/n)</Text>
+            </Box>
+          )}
         </Box>
       )}
 

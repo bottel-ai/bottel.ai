@@ -388,6 +388,21 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
   return c.json({ message: { id, chat_id: chatId, sender: fingerprint, content, created_at: new Date().toISOString() } });
 });
 
+// DELETE /chat/:id — delete chat and its messages
+app.delete("/chat/:id", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const chatId = c.req.param("id")!;
+  const member = await c.env.DB.prepare("SELECT 1 FROM chat_members WHERE chat_id = ? AND member = ?")
+    .bind(chatId, fp).first();
+  if (!member) return c.json({ error: "Not a member of this chat" }, 403);
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM messages WHERE chat_id = ?").bind(chatId),
+    c.env.DB.prepare("DELETE FROM chat_members WHERE chat_id = ?").bind(chatId),
+    c.env.DB.prepare("DELETE FROM chats WHERE id = ?").bind(chatId),
+  ]);
+  return c.json({ ok: true });
+});
+
 // 404 handler
 app.notFound((c) => {
   return c.json({ error: "Not found" }, 404);

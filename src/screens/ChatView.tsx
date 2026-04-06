@@ -118,12 +118,15 @@ export function ChatView({ chatId }: { chatId: string }) {
   }
 
   const displayName = contactName || chatId.slice(0, 8);
+  const otherFp = messages.find(m => m.sender !== fp)?.sender || "";
+  const shortFp = otherFp ? (otherFp.length > 20 ? otherFp.replace("SHA256:", "").slice(0, 10) + "..." + otherFp.replace("SHA256:", "").slice(-10) : otherFp) : "";
 
   return (
     <Box flexDirection="column" paddingX={1}>
       {/* Header */}
-      <Box borderStyle="single" borderColor={colors.border} paddingX={1} marginBottom={1}>
+      <Box borderStyle="single" borderColor={colors.border} paddingX={1} marginBottom={1} flexDirection="column">
         <Text bold color={colors.primary}>{displayName}</Text>
+        {shortFp && <Text dimColor>{shortFp}</Text>}
         <Text> </Text>
         <Text color={contactOnline ? colors.success : colors.border}>
           {contactOnline ? "\u25cf" : "\u25cb"}
