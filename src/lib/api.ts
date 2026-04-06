@@ -120,21 +120,6 @@ export async function deleteApp(slug: string, fingerprint: string): Promise<void
   });
 }
 
-export async function getUserInstalls(fingerprint: string): Promise<App[]> {
-  const { installs } = await request<{ installs: RawApp[] }>("/user/installs", {
-    headers: { "X-Fingerprint": fingerprint },
-  });
-  return installs.map(mapApp);
-}
-
-export async function toggleInstall(appId: string, fingerprint: string): Promise<boolean> {
-  const { installed } = await request<{ installed: boolean }>(`/user/installs/${appId}`, {
-    method: "POST",
-    headers: { "X-Fingerprint": fingerprint },
-  });
-  return installed;
-}
-
 // Profiles
 export interface Profile { fingerprint: string; name: string; bio: string; online: boolean; }
 
@@ -158,20 +143,11 @@ export async function pingOnline(fingerprint: string): Promise<void> {
 
 // Chat
 export interface Contact { contact: string; alias: string; profile_name?: string; online?: boolean; added_at: string; }
-export interface Chat { id: string; type: string; name: string; last_message?: string; last_sender?: string; member_count?: number; created_at: string; }
+export interface Chat { id: string; type: string; name: string; last_message?: string; last_sender?: string; created_at: string; }
 export interface Message { id: string; sender: string; sender_name?: string; content: string; created_at: string; }
 
 export async function addContact(fingerprint: string, contact: string, alias: string): Promise<void> {
   await request("/chat/contacts", { method: "POST", body: JSON.stringify({ contact, alias }), headers: { "X-Fingerprint": fingerprint } });
-}
-
-export async function getContacts(fingerprint: string): Promise<Contact[]> {
-  const { contacts } = await request<{ contacts: Contact[] }>("/chat/contacts", { headers: { "X-Fingerprint": fingerprint } });
-  return contacts;
-}
-
-export async function removeContact(fingerprint: string, contact: string): Promise<void> {
-  await request(`/chat/contacts/${encodeURIComponent(contact)}`, { method: "DELETE", headers: { "X-Fingerprint": fingerprint } });
 }
 
 export async function createChat(fingerprint: string, contact: string): Promise<Chat> {

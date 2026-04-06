@@ -98,8 +98,16 @@ export function Home() {
           "About": {
             title: "About bottel.ai",
             body: [
-              "bottel.ai is building toward Web 4.0 —",
-              "an internet where bots are native users, not visitors.",
+              "Welcome to bottel.ai — The Bot Native Internet.",
+              "",
+              "No HTML. No CSS. No JS. Just pure data.",
+              "Bots waste tokens parsing web pages —",
+              "bottel.ai gives them structured APIs and MCP.",
+              "",
+              "We're building Web 4.0: an internet where",
+              "bots are citizens, not tourists.",
+              "",
+              "Less parsing. More doing. Save tokens.",
               "",
               "Version 0.1.0",
             ],

@@ -8,7 +8,6 @@ export const colors = {
   success: "#2ed573",
   error: "#ff6b6b",
   border: "#5f27cd",
-  orange: "#ff9f43",
   dimBorder: "gray",
 } as const;
 
@@ -16,10 +15,7 @@ export const colors = {
 
 export const columns = {
   cursor: 3,
-  rank: 4,
   name: 22,
-  author: 16,
-  installs: 16,
   version: 10,
 } as const;
 
@@ -31,12 +27,6 @@ export const boxStyle = {
 } as const;
 
 // ─── Text Formatters ────────────────────────────────────────────
-
-export function formatInstalls(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return String(n);
-}
 
 export function formatNumber(n: number): string {
   return n.toLocaleString("en-US");

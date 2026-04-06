@@ -5,8 +5,8 @@ import { colors } from "../cli_app_theme.js";
 import { Autocomplete, Breadcrumb, ScreenHeader, HelpFooter, type AutocompleteItem } from "../cli_app_components.js";
 import { isLoggedIn, getAuth } from "../lib/auth.js";
 import {
-  getContacts, getChats, addContact, createChat, deleteChat, searchProfiles,
-  type Contact, type Chat, type Profile,
+  getChats, addContact, createChat, deleteChat, searchProfiles,
+  type Chat, type Profile,
 } from "../lib/api.js";
 
 function truncate(s: string, n: number) { return s.length > n ? s.slice(0, n) + "..." : s; }
@@ -42,7 +42,6 @@ interface ConversationEntry {
 export function ChatList() {
   const { state, dispatch, navigate, goBack } = useStore();
   const { selectedIndex } = state.chatList;
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -59,8 +58,8 @@ export function ChatList() {
   useEffect(() => {
     if (!loggedIn) return;
     setLoading(true);
-    Promise.all([getContacts(fp), getChats(fp)])
-      .then(([c, ch]) => { setContacts(c); setChats(ch); })
+    getChats(fp)
+      .then((ch) => { setChats(ch); })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, [loggedIn, fp]);

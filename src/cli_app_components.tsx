@@ -10,7 +10,7 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { colors, columns, boxStyle, formatInstalls } from "./cli_app_theme.js";
+import { colors, columns, boxStyle } from "./cli_app_theme.js";
 import { isLoggedIn, getShortFingerprint } from "./lib/auth.js";
 
 // ─── Navigation ─────────────────────────────────────────────
@@ -52,24 +52,6 @@ export function HelpFooter({ text }: { text: string }) {
       <Text dimColor>{text}</Text>
     </Box>
   );
-}
-
-// ─── Data Display ───────────────────────────────────────────
-
-
-/** Install count display with auto-formatting (45.2k) */
-export function InstallCount({ count }: { count: number }) {
-  return (
-    <Box width={columns.installs}>
-      <Text dimColor>{formatInstalls(count)} installs</Text>
-    </Box>
-  );
-}
-
-/** Green checkmark for verified items */
-export function VerifiedBadge({ verified }: { verified: boolean }) {
-  if (!verified) return null;
-  return <Text color={colors.success}> {"\u2713"}</Text>;
 }
 
 // ─── Layout ─────────────────────────────────────────────────
@@ -120,28 +102,10 @@ export function Logo() {
         <Box marginTop={1}>
           <Text bold color={colors.primary}>The Bot Native Internet</Text>
         </Box>
-        <Text dimColor>Search apps and websites - built for bots.</Text>
+        <Text dimColor>No HTML. No CSS. No JS. Pure data. Save tokens.</Text>
       </Box>
     </Box>
   );
-}
-
-/** Compact one-line logo for small terminals */
-export function CompactLogo() {
-  return (
-    <Box paddingX={1}>
-      <Box>{"bottel.ai".split("").map((ch, i) => (
-        <Text key={`cl-${i}`} bold color={[colors.error, colors.warning, colors.primary][i % 3]}>{ch}</Text>
-      ))}</Box>
-      <Text dimColor> — </Text>
-      <Text bold color={colors.primary}>The Bot Native Internet</Text>
-    </Box>
-  );
-}
-
-/** Minimal status bar — no border */
-export function StatusBar() {
-  return null;
 }
 
 // ─── Autocomplete ──────────────────────────────────────────
