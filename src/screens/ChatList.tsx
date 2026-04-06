@@ -148,6 +148,7 @@ export function ChatList() {
       return;
     }
     if (key.downArrow || key.tab) {
+      if (totalItems === 0) { setSearchFocused(true); return; }
       dispatch({ type: "UPDATE_CHAT_LIST", state: { selectedIndex: Math.min(totalItems - 1, selectedIndex + 1) } });
       return;
     }
