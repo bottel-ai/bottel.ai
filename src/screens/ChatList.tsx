@@ -89,14 +89,28 @@ export function ChatList() {
   // Only show chats that have messages
   const conversations: ConversationEntry[] = chats
     .filter(ch => ch.last_message)
-    .map(ch => ({
-      id: ch.id,
-      name: ch.name || (ch as any).last_sender_name || "Chat",
-      lastMessage: ch.last_message,
-      lastTime: ch.created_at,
-      chatId: ch.id,
-      contactFp: (ch as any).last_sender || "",
-    }))
+    .map(ch => {
+      // Find the other person's name from contacts
+      const lastSender = (ch as any).last_sender || "";
+      const isMyMessage = lastSender === fp;
+      // Try to find the contact for this chat
+      const contact = contacts.find(c => {
+        if (isMyMessage) return true; // last sender is me, so contact is the other person
+        return c.contact === lastSender;
+      });
+      const contactName = contact?.profile_name || contact?.alias || "";
+      const senderName = (ch as any).last_sender_name || "";
+      // If I sent last message, use the contact's name. Otherwise use the sender's name.
+      const displayName = isMyMessage ? (contactName || "Chat") : (senderName || contactName || "Chat");
+      return {
+        id: ch.id,
+        name: displayName,
+        lastMessage: ch.last_message,
+        lastTime: ch.created_at,
+        chatId: ch.id,
+        contactFp: isMyMessage ? (contact?.contact || "") : lastSender,
+      };
+    })
     .sort((a, b) => {
       if (a.lastTime && b.lastTime) return new Date(b.lastTime + "Z").getTime() - new Date(a.lastTime + "Z").getTime();
       return 0;
