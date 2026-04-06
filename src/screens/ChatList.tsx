@@ -67,13 +67,10 @@ export function ChatList() {
         .then((results) => {
           setProfiles(results);
           setSuggestions(
-            results
-              .filter((p) => p.fingerprint !== fp)
-              .map((p) => ({
-                id: p.fingerprint,
-                label: `${p.name} (${p.fingerprint.slice(0, 8)}...)`,
-                detail: p.online ? "online" : undefined,
-              })),
+            results.map((p) => ({
+              id: p.fingerprint,
+              label: p.fingerprint === fp ? `${p.name} (you)` : p.name,
+            })),
           );
         })
         .catch(() => { setSuggestions([]); setProfiles([]); });
@@ -110,9 +107,9 @@ export function ChatList() {
   }, [fp, navigate]);
 
   const handleSearchSelect = useCallback((item: AutocompleteItem) => {
+    if (item.id === fp) { setError("You can't chat with yourself"); return; }
     const profile = profiles.find(p => p.fingerprint === item.id);
     if (!profile) return;
-    // Add as contact, create chat, navigate
     addContact(fp, profile.fingerprint, profile.name)
       .then(() => createChat(fp, profile.fingerprint))
       .then(chat => navigate({ name: "chat-view", chatId: chat.id }))

@@ -8,7 +8,6 @@ import { isLoggedIn } from "../lib/auth.js";
 const MENU_ITEMS = [
   { label: "Edit Profile", description: "Change name, bio, visibility" },
   { label: "About", description: "About bottel.ai" },
-  { label: "Clear cache", description: "Clear cached data" },
   { label: "Back", description: "Return to home" },
 ];
 
@@ -42,9 +41,6 @@ export function Settings() {
           break;
         case "About":
           setMessage("about");
-          break;
-        case "Clear cache":
-          setMessage("Cache cleared successfully.");
           break;
         case "Back":
           goBack();
