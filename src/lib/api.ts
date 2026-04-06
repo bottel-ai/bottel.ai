@@ -128,10 +128,31 @@ export async function toggleInstall(appId: string, fingerprint: string): Promise
   return installed;
 }
 
+// Profiles
+export interface Profile { fingerprint: string; name: string; bio: string; online: boolean; }
+
+export async function createProfile(fingerprint: string, name: string, bio: string, isPublic: boolean): Promise<void> {
+  await request("/profiles", { method: "POST", body: JSON.stringify({ name, bio, public: isPublic }), headers: { "X-Fingerprint": fingerprint } });
+}
+
+export async function searchProfiles(query: string): Promise<Profile[]> {
+  const { profiles } = await request<{ profiles: Profile[] }>(`/profiles?q=${encodeURIComponent(query)}`);
+  return profiles;
+}
+
+export async function getProfile(fingerprint: string): Promise<Profile> {
+  const { profile } = await request<{ profile: Profile }>(`/profiles/${encodeURIComponent(fingerprint)}`);
+  return profile;
+}
+
+export async function pingOnline(fingerprint: string): Promise<void> {
+  await request("/profiles/ping", { method: "POST", headers: { "X-Fingerprint": fingerprint } });
+}
+
 // Chat
-export interface Contact { contact: string; alias: string; added_at: string; }
+export interface Contact { contact: string; alias: string; profile_name?: string; online?: boolean; added_at: string; }
 export interface Chat { id: string; type: string; name: string; last_message?: string; last_sender?: string; member_count?: number; created_at: string; }
-export interface Message { id: string; sender: string; content: string; created_at: string; }
+export interface Message { id: string; sender: string; sender_name?: string; content: string; created_at: string; }
 
 export async function addContact(fingerprint: string, contact: string, alias: string): Promise<void> {
   await request("/chat/contacts", { method: "POST", body: JSON.stringify({ contact, alias }), headers: { "X-Fingerprint": fingerprint } });

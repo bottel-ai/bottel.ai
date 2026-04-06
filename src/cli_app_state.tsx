@@ -15,6 +15,7 @@ export type Screen =
   | { name: "chat-list" }
   | { name: "chat-view"; chatId: string }
   | { name: "add-contact" }
+  | { name: "profile-setup" }
 ;
 
 // ─── Screen State (persisted across navigation) ─────────────────
@@ -72,6 +73,13 @@ export interface AddContactState {
   alias: string;
 }
 
+export interface ProfileSetupState {
+  step: number;
+  name: string;
+  bio: string;
+  isPublic: boolean;
+}
+
 // ─── App State ──────────────────────────────────────────────────
 
 export interface AppState {
@@ -89,6 +97,7 @@ export interface AppState {
   chatList: ChatListState;
   chatView: ChatViewState;
   addContact: AddContactState;
+  profileSetup: ProfileSetupState;
 }
 
 const INITIAL_SEARCH: SearchState = {
@@ -144,6 +153,13 @@ const INITIAL_ADD_CONTACT: AddContactState = {
   alias: "",
 };
 
+const INITIAL_PROFILE_SETUP: ProfileSetupState = {
+  step: 0,
+  name: "",
+  bio: "",
+  isPublic: false,
+};
+
 const INITIAL_STATE: AppState = {
   screen: { name: "home" },
   history: [],
@@ -159,6 +175,7 @@ const INITIAL_STATE: AppState = {
   chatList: INITIAL_CHAT_LIST,
   chatView: INITIAL_CHAT_VIEW,
   addContact: INITIAL_ADD_CONTACT,
+  profileSetup: INITIAL_PROFILE_SETUP,
 };
 
 // ─── Actions ────────────────────────────────────────────────────
@@ -180,6 +197,7 @@ export type Action =
   | { type: "UPDATE_CHAT_LIST"; state: Partial<ChatListState> }
   | { type: "UPDATE_CHAT_VIEW"; state: Partial<ChatViewState> }
   | { type: "UPDATE_ADD_CONTACT"; state: Partial<AddContactState> }
+  | { type: "UPDATE_PROFILE_SETUP"; state: Partial<ProfileSetupState> }
   | { type: "RESET_SEARCH" };
 
 // ─── Reducer ────────────────────────────────────────────────────
@@ -202,6 +220,7 @@ function reducer(state: AppState, action: Action): AppState {
         case "chat-list": resets.chatList = INITIAL_CHAT_LIST; break;
         case "chat-view": resets.chatView = INITIAL_CHAT_VIEW; break;
         case "add-contact": resets.addContact = INITIAL_ADD_CONTACT; break;
+        case "profile-setup": resets.profileSetup = INITIAL_PROFILE_SETUP; break;
       }
       return {
         ...state,
@@ -303,6 +322,12 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         addContact: { ...state.addContact, ...action.state },
+      };
+
+    case "UPDATE_PROFILE_SETUP":
+      return {
+        ...state,
+        profileSetup: { ...state.profileSetup, ...action.state },
       };
 
     case "RESET_SEARCH":

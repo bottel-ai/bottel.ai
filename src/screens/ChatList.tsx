@@ -6,6 +6,15 @@ import { Breadcrumb, Cursor, HelpFooter } from "../cli_app_components.js";
 import { isLoggedIn, getAuth } from "../lib/auth.js";
 import { getContacts, getChats, removeContact, createChat, type Contact, type Chat } from "../lib/api.js";
 
+function formatTime(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "??:??";
+  }
+}
+
 export function ChatList() {
   const { state, dispatch, navigate, goBack } = useStore();
   const { selectedIndex } = state.chatList;
@@ -88,7 +97,6 @@ export function ChatList() {
     if (key.return) {
       if (totalItems === 0) return;
       if (selectedIndex < contacts.length) {
-        // Open/create direct chat with contact
         const contact = contacts[selectedIndex]!;
         createChat(fingerprint, [contact.contact])
           .then((chat) => {
@@ -96,7 +104,6 @@ export function ChatList() {
           })
           .catch((err: Error) => setError(err.message));
       } else {
-        // Open existing chat
         const chatIdx = selectedIndex - contacts.length;
         const chat = chats[chatIdx]!;
         navigate({ name: "chat-view", chatId: chat.id });
@@ -123,10 +130,6 @@ export function ChatList() {
     <Box flexDirection="column" paddingX={1}>
       <Breadcrumb path={["Home", "Chat"]} />
 
-      <Box paddingLeft={2} marginBottom={1}>
-        <Text bold color={colors.primary}>Chat</Text>
-      </Box>
-
       {loading && (
         <Box paddingLeft={2}>
           <Text dimColor>Loading...</Text>
@@ -141,54 +144,89 @@ export function ChatList() {
 
       {!loading && (
         <>
-          <Box paddingLeft={2} marginBottom={0}>
-            <Text bold>Contacts:</Text>
-          </Box>
-          {contacts.length === 0 && (
-            <Box paddingLeft={4}>
-              <Text dimColor>No contacts yet. Press a to add one.</Text>
+          {/* Contacts Section */}
+          <Box
+            flexDirection="column"
+            borderStyle="single"
+            borderColor={colors.border}
+            paddingX={1}
+            marginBottom={1}
+          >
+            <Box marginBottom={0}>
+              <Text bold color={colors.primary}>Contacts</Text>
             </Box>
-          )}
-          {contacts.map((c, i) => (
-            <Box key={`contact-${c.contact}`} paddingLeft={2}>
-              <Cursor active={selectedIndex === i} />
-              <Text color={selectedIndex === i ? colors.primary : undefined} bold={selectedIndex === i}>
-                {c.alias} ({c.contact.slice(0, 12)}...)
-              </Text>
-            </Box>
-          ))}
-
-          <Box paddingLeft={2} marginTop={1} marginBottom={0}>
-            <Text bold>Recent Chats:</Text>
-          </Box>
-          {chats.length === 0 && (
-            <Box paddingLeft={4}>
-              <Text dimColor>No chats yet.</Text>
-            </Box>
-          )}
-          {chats.map((ch, i) => {
-            const idx = contacts.length + i;
-            const typeLabel = ch.type === "group" ? `group, ${ch.member_count ?? 0}` : "direct";
-            return (
-              <Box key={`chat-${ch.id}`} paddingLeft={2}>
-                <Cursor active={selectedIndex === idx} />
-                <Box width={30}>
-                  <Text color={selectedIndex === idx ? colors.primary : undefined} bold={selectedIndex === idx}>
-                    {ch.name} ({typeLabel})
-                  </Text>
-                </Box>
-                {ch.last_message && (
-                  <Text dimColor>
-                    Last: &quot;{ch.last_message.length > 30 ? ch.last_message.slice(0, 30) + "..." : ch.last_message}&quot;
-                  </Text>
-                )}
+            {contacts.length === 0 && (
+              <Box paddingLeft={1}>
+                <Text dimColor>No contacts yet. Press a to add one.</Text>
               </Box>
-            );
-          })}
+            )}
+            {contacts.map((c, i) => {
+              const displayName = c.profile_name || c.alias || c.contact.slice(0, 12) + "...";
+              const isOnline = c.online === true;
+              return (
+                <Box key={`contact-${c.contact}`}>
+                  <Cursor active={selectedIndex === i} />
+                  <Text color={isOnline ? colors.success : undefined}>
+                    {isOnline ? "\u25cf" : "\u25cb"}
+                  </Text>
+                  <Text> </Text>
+                  <Text
+                    color={selectedIndex === i ? colors.primary : undefined}
+                    bold={selectedIndex === i}
+                  >
+                    {displayName}
+                  </Text>
+                  <Text>  </Text>
+                  <Text dimColor>{isOnline ? "online" : "offline"}</Text>
+                </Box>
+              );
+            })}
+          </Box>
+
+          {/* Recent Chats Section */}
+          <Box
+            flexDirection="column"
+            borderStyle="single"
+            borderColor={colors.border}
+            paddingX={1}
+          >
+            <Box marginBottom={0}>
+              <Text bold color={colors.primary}>Recent Chats</Text>
+            </Box>
+            {chats.length === 0 && (
+              <Box paddingLeft={1}>
+                <Text dimColor>No chats yet.</Text>
+              </Box>
+            )}
+            {chats.map((ch, i) => {
+              const idx = contacts.length + i;
+              const typeLabel = ch.type === "group" ? `group, ${ch.member_count ?? 0}` : "direct";
+              const isSelected = selectedIndex === idx;
+              return (
+                <Box key={`chat-${ch.id}`} flexDirection="column">
+                  <Box>
+                    <Cursor active={isSelected} />
+                    <Text color={isSelected ? colors.primary : undefined} bold={isSelected}>
+                      {ch.name} ({typeLabel})
+                    </Text>
+                  </Box>
+                  {ch.last_message && (
+                    <Box paddingLeft={5}>
+                      <Text dimColor>
+                        &quot;{ch.last_message.length > 35 ? ch.last_message.slice(0, 35) + "..." : ch.last_message}&quot;
+                      </Text>
+                      <Text>  </Text>
+                      <Text dimColor>{formatTime(ch.created_at)}</Text>
+                    </Box>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
         </>
       )}
 
-      <HelpFooter text="n new chat \u00b7 a add contact \u00b7 d delete contact \u00b7 Enter open \u00b7 Esc back" />
+      <HelpFooter text="n new \u00b7 a add contact \u00b7 Enter open \u00b7 Esc back" />
     </Box>
   );
 }

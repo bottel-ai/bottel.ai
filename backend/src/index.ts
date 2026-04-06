@@ -203,6 +203,55 @@ app.delete("/apps/:slug", authMiddleware, async (c) => {
   return c.json({ ok: true });
 });
 
+// --- Profile endpoints ---
+
+// POST /profiles — create/update profile (auth)
+app.post("/profiles", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const { name, bio, public: isPublic } = await c.req.json<{ name: string; bio?: string; public?: boolean }>();
+  if (!name) return c.json({ error: "name required" }, 400);
+  await c.env.DB.prepare(
+    "INSERT INTO profiles (fingerprint, name, bio, public) VALUES (?, ?, ?, ?) ON CONFLICT(fingerprint) DO UPDATE SET name=?, bio=?, public=?"
+  ).bind(fp, name, bio || "", isPublic ? 1 : 0, name, bio || "", isPublic ? 1 : 0).run();
+  return c.json({ ok: true });
+});
+
+// GET /profiles — search public profiles
+app.get("/profiles", async (c) => {
+  const q = c.req.query("q");
+  let sql = "SELECT fingerprint, name, bio, online_at FROM profiles WHERE public = 1";
+  const bindings: string[] = [];
+  if (q) { sql += " AND name LIKE ?"; bindings.push(`%${q}%`); }
+  sql += " ORDER BY name LIMIT 20";
+  const result = bindings.length > 0
+    ? await c.env.DB.prepare(sql).bind(...bindings).all()
+    : await c.env.DB.prepare(sql).all();
+  const now = Date.now();
+  const profiles = (result.results ?? []).map((p: any) => ({
+    fingerprint: p.fingerprint,
+    name: p.name,
+    bio: p.bio,
+    online: p.online_at ? (now - new Date(p.online_at + "Z").getTime()) < 300000 : false,
+  }));
+  return c.json({ profiles });
+});
+
+// GET /profiles/:fp — single profile
+app.get("/profiles/:fp", async (c) => {
+  const fp = c.req.param("fp")!;
+  const p = await c.env.DB.prepare("SELECT fingerprint, name, bio, online_at FROM profiles WHERE fingerprint = ?").bind(fp).first();
+  if (!p) return c.json({ error: "Profile not found" }, 404);
+  const online = p.online_at ? (Date.now() - new Date((p.online_at as string) + "Z").getTime()) < 300000 : false;
+  return c.json({ profile: { fingerprint: p.fingerprint, name: p.name, bio: p.bio, online } });
+});
+
+// POST /profiles/ping — heartbeat (auth)
+app.post("/profiles/ping", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  await c.env.DB.prepare("UPDATE profiles SET online_at = datetime('now') WHERE fingerprint = ?").bind(fp).run();
+  return c.json({ ok: true });
+});
+
 // --- Chat endpoints ---
 
 // POST /chat/contacts — add contact
@@ -218,9 +267,21 @@ app.post("/chat/contacts", authMiddleware, async (c) => {
 // GET /chat/contacts — list contacts
 app.get("/chat/contacts", authMiddleware, async (c) => {
   const fingerprint = c.get("fingerprint");
-  const result = await c.env.DB.prepare("SELECT contact, alias, added_at FROM contacts WHERE owner = ? ORDER BY alias, contact")
-    .bind(fingerprint).all();
-  return c.json({ contacts: result.results });
+  const result = await c.env.DB.prepare(
+    `SELECT c.contact, c.alias, c.added_at, p.name as profile_name, p.online_at
+     FROM contacts c
+     LEFT JOIN profiles p ON p.fingerprint = c.contact
+     WHERE c.owner = ?
+     ORDER BY c.alias, c.contact`
+  ).bind(fingerprint).all();
+  const now = Date.now();
+  const contacts = (result.results ?? []).map((r: any) => ({
+    contact: r.contact,
+    alias: r.alias,
+    profile_name: r.profile_name || "",
+    online: r.online_at ? (now - new Date(r.online_at + "Z").getTime()) < 300000 : false,
+  }));
+  return c.json({ contacts });
 });
 
 // DELETE /chat/contacts/:contact — remove contact
@@ -261,6 +322,7 @@ app.get("/chat/list", authMiddleware, async (c) => {
     SELECT c.id, c.type, c.name, c.created_at,
       (SELECT content FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
       (SELECT sender FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_sender,
+      (SELECT p.name FROM messages m LEFT JOIN profiles p ON p.fingerprint = m.sender WHERE m.chat_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_sender_name,
       (SELECT COUNT(*) FROM chat_members WHERE chat_id = c.id) as member_count
     FROM chats c
     JOIN chat_members cm ON cm.chat_id = c.id
@@ -281,13 +343,16 @@ app.get("/chat/:id/messages", authMiddleware, async (c) => {
     .bind(chatId, fingerprint).first();
   if (!member) return c.json({ error: "Not a member of this chat" }, 403);
 
-  let sql = "SELECT id, sender, content, created_at FROM messages WHERE chat_id = ?";
+  let sql = `SELECT m.id, m.sender, m.content, m.created_at, p.name as sender_name
+     FROM messages m
+     LEFT JOIN profiles p ON p.fingerprint = m.sender
+     WHERE m.chat_id = ?`;
   const bindings: string[] = [chatId];
   if (since) {
-    sql += " AND created_at > ?";
+    sql += " AND m.created_at > ?";
     bindings.push(since);
   }
-  sql += " ORDER BY created_at ASC LIMIT 100";
+  sql += " ORDER BY m.created_at ASC LIMIT 100";
 
   const result = await c.env.DB.prepare(sql).bind(...bindings).all();
   return c.json({ messages: result.results });

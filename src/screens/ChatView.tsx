@@ -84,8 +84,14 @@ export function ChatView({ chatId }: { chatId: string }) {
     <Box flexDirection="column" paddingX={1}>
       <Breadcrumb path={["Home", "Chat", chatId.slice(0, 8)]} />
 
-      <Box paddingLeft={2} marginBottom={1}>
-        <Text bold color={colors.primary}>Chat</Text>
+      {/* Chat header */}
+      <Box
+        borderStyle="single"
+        borderColor={colors.border}
+        paddingX={1}
+        marginBottom={1}
+      >
+        <Text bold color={colors.primary}>Chat with {chatId.slice(0, 12)}...</Text>
       </Box>
 
       {error && (
@@ -94,23 +100,63 @@ export function ChatView({ chatId }: { chatId: string }) {
         </Box>
       )}
 
-      <Box flexDirection="column" paddingLeft={2} marginBottom={1}>
+      {/* Messages area */}
+      <Box
+        flexDirection="column"
+        borderStyle="single"
+        borderColor={colors.border}
+        paddingX={1}
+        paddingY={1}
+        marginBottom={1}
+        minHeight={6}
+      >
         {messages.length === 0 && (
           <Text dimColor>No messages yet. Say hello!</Text>
         )}
         {messages.map((msg) => {
           const isMe = msg.sender === fingerprint;
-          const senderLabel = isMe ? "You" : shortenFp(msg.sender);
+          const senderLabel = isMe ? "You" : (msg.sender_name || shortenFp(msg.sender));
+          const time = formatTime(msg.created_at);
+
+          if (isMe) {
+            // Right-aligned own messages
+            return (
+              <Box key={msg.id} flexDirection="column" marginBottom={1} alignItems="flex-end">
+                <Box>
+                  <Text color={colors.success} bold>{senderLabel}</Text>
+                  <Text dimColor>  {time}</Text>
+                </Box>
+                <Box
+                  borderStyle="round"
+                  borderColor={colors.success}
+                  paddingX={1}
+                >
+                  <Text>{msg.content}</Text>
+                </Box>
+              </Box>
+            );
+          }
+
+          // Left-aligned other messages
           return (
-            <Box key={msg.id}>
-              <Text dimColor>[{formatTime(msg.created_at)}] </Text>
-              <Text color={isMe ? colors.success : colors.secondary} bold>{senderLabel}</Text>
-              <Text>: {msg.content}</Text>
+            <Box key={msg.id} flexDirection="column" marginBottom={1} alignItems="flex-start">
+              <Box>
+                <Text color={colors.secondary} bold>{senderLabel}</Text>
+                <Text dimColor>  {time}</Text>
+              </Box>
+              <Box
+                borderStyle="round"
+                borderColor={colors.secondary}
+                paddingX={1}
+              >
+                <Text>{msg.content}</Text>
+              </Box>
             </Box>
           );
         })}
       </Box>
 
+      {/* Input box */}
       <Box paddingLeft={2}>
         <Box borderStyle="round" borderColor={colors.primary} paddingX={1} width={50}>
           <TextInput

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { useStore } from "../cli_app_state.js";
+import { useStore, type Screen } from "../cli_app_state.js";
 import { colors } from "../cli_app_theme.js";
 import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_components.js";
 import {
@@ -29,7 +29,7 @@ const LOGGED_IN_ITEMS = [
 ];
 
 export function Auth() {
-  const { state, dispatch, goBack } = useStore();
+  const { state, dispatch, goBack, navigate } = useStore();
   const { selectedIndex } = state.authScreen;
   const [mode, setMode] = useState<Mode>("menu");
   const [importValue, setImportValue] = useState("");
@@ -110,6 +110,8 @@ export function Auth() {
             showMessage(`Key pair generated!\nPublic Key: ${authData.publicKey}`);
             dispatch({ type: "UPDATE_AUTH_SCREEN", state: { selectedIndex: 0 } });
             refresh();
+            // Offer to set up profile
+            navigate({ name: "profile-setup" } as Screen);
             break;
           }
           case "Import Key":

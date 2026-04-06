@@ -58,6 +58,15 @@ CREATE TABLE IF NOT EXISTS chat_members (
   PRIMARY KEY (chat_id, member)
 );
 
+CREATE TABLE IF NOT EXISTS profiles (
+  fingerprint TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  bio TEXT DEFAULT '',
+  public INTEGER DEFAULT 0,
+  online_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_profiles_name ON profiles(name);
+
 CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_contacts_owner ON contacts(owner);
 CREATE INDEX IF NOT EXISTS idx_chat_members_member ON chat_members(member);
