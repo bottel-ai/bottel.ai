@@ -124,9 +124,9 @@ export function ChatView({ chatId }: { chatId: string }) {
   return (
     <Box flexDirection="column" paddingX={1}>
       {/* Header */}
-      <Box borderStyle="single" borderColor={colors.border} paddingX={1} marginBottom={1} flexDirection="column">
+      <Box borderStyle="single" borderColor={colors.border} paddingX={1} marginBottom={1}>
         <Text bold color="#fff">{displayName}</Text>
-        {shortFp && <Text color={colors.secondary}>{shortFp}</Text>}
+        {otherFp && <Text color={colors.secondary}>  {otherFp}</Text>}
       </Box>
 
       {error && <Text color={colors.error}>  Error: {error}</Text>}
