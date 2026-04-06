@@ -67,10 +67,12 @@ export function ChatList() {
         .then((results) => {
           setProfiles(results);
           setSuggestions(
-            results.map((p) => ({
-              id: p.fingerprint,
-              label: p.fingerprint === fp ? `${p.name} (you)` : p.name,
-            })),
+            results
+              .filter((p) => p.fingerprint !== fp)
+              .map((p) => ({
+                id: p.fingerprint,
+                label: `${p.name}  #${p.fingerprint.replace("SHA256:", "").slice(0, 6)}`,
+              })),
           );
         })
         .catch(() => { setSuggestions([]); setProfiles([]); });
