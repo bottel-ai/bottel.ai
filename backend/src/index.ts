@@ -293,26 +293,25 @@ app.delete("/chat/contacts/:contact", authMiddleware, async (c) => {
   return c.json({ ok: true });
 });
 
-// POST /chat/new — create chat
+// POST /chat/new — create direct chat
 app.post("/chat/new", authMiddleware, async (c) => {
   const fingerprint = c.get("fingerprint");
-  const { members, name, type } = await c.req.json<{ members: string[]; name?: string; type?: string }>();
-  if (!members || members.length === 0) return c.json({ error: "members required" }, 400);
+  const { contact } = await c.req.json<{ contact: string }>();
+  if (!contact) return c.json({ error: "contact fingerprint required" }, 400);
 
   const chatId = crypto.randomUUID();
-  const chatType = type || (members.length === 1 ? "direct" : "group");
 
   await c.env.DB.prepare("INSERT INTO chats (id, type, name, created_by) VALUES (?, ?, ?, ?)")
-    .bind(chatId, chatType, name || "", fingerprint).run();
+    .bind(chatId, "direct", "", fingerprint).run();
 
-  // Add creator + all members
-  const allMembers = [fingerprint, ...members.filter(m => m !== fingerprint)];
+  // Add creator + contact
+  const allMembers = [fingerprint, ...(contact !== fingerprint ? [contact] : [])];
   for (const member of allMembers) {
     await c.env.DB.prepare("INSERT OR IGNORE INTO chat_members (chat_id, member) VALUES (?, ?)")
       .bind(chatId, member).run();
   }
 
-  return c.json({ chat: { id: chatId, type: chatType, name: name || "", members: allMembers } });
+  return c.json({ chat: { id: chatId, type: "direct", name: "", members: allMembers } });
 });
 
 // GET /chat/list — list user's chats
@@ -375,23 +374,6 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
     .bind(id, chatId, fingerprint, content).run();
 
   return c.json({ message: { id, chat_id: chatId, sender: fingerprint, content, created_at: new Date().toISOString() } });
-});
-
-// POST /chat/:id/members — add member to group
-app.post("/chat/:id/members", authMiddleware, async (c) => {
-  const fingerprint = c.get("fingerprint");
-  const chatId = c.req.param("id")!;
-  const { member } = await c.req.json<{ member: string }>();
-  if (!member) return c.json({ error: "member fingerprint required" }, 400);
-
-  // Verify sender is member
-  const existing = await c.env.DB.prepare("SELECT 1 FROM chat_members WHERE chat_id = ? AND member = ?")
-    .bind(chatId, fingerprint).first();
-  if (!existing) return c.json({ error: "Not a member of this chat" }, 403);
-
-  await c.env.DB.prepare("INSERT OR IGNORE INTO chat_members (chat_id, member) VALUES (?, ?)")
-    .bind(chatId, member).run();
-  return c.json({ ok: true });
 });
 
 // 404 handler

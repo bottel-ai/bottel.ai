@@ -14,7 +14,6 @@ export type Screen =
   | { name: "trending" }
   | { name: "chat-list" }
   | { name: "chat-view"; chatId: string }
-  | { name: "add-contact" }
   | { name: "profile-setup" }
 ;
 
@@ -67,12 +66,6 @@ export interface ChatViewState {
   inputText: string;
 }
 
-export interface AddContactState {
-  step: number;
-  fingerprint: string;
-  alias: string;
-}
-
 export interface ProfileSetupState {
   step: number;
   name: string;
@@ -96,7 +89,6 @@ export interface AppState {
   myApps: MyAppsState;
   chatList: ChatListState;
   chatView: ChatViewState;
-  addContact: AddContactState;
   profileSetup: ProfileSetupState;
 }
 
@@ -147,12 +139,6 @@ const INITIAL_CHAT_VIEW: ChatViewState = {
   inputText: "",
 };
 
-const INITIAL_ADD_CONTACT: AddContactState = {
-  step: 0,
-  fingerprint: "",
-  alias: "",
-};
-
 const INITIAL_PROFILE_SETUP: ProfileSetupState = {
   step: 0,
   name: "",
@@ -174,7 +160,6 @@ const INITIAL_STATE: AppState = {
   myApps: INITIAL_MY_APPS,
   chatList: INITIAL_CHAT_LIST,
   chatView: INITIAL_CHAT_VIEW,
-  addContact: INITIAL_ADD_CONTACT,
   profileSetup: INITIAL_PROFILE_SETUP,
 };
 
@@ -196,7 +181,6 @@ export type Action =
   | { type: "UPDATE_MY_APPS"; state: Partial<MyAppsState> }
   | { type: "UPDATE_CHAT_LIST"; state: Partial<ChatListState> }
   | { type: "UPDATE_CHAT_VIEW"; state: Partial<ChatViewState> }
-  | { type: "UPDATE_ADD_CONTACT"; state: Partial<AddContactState> }
   | { type: "UPDATE_PROFILE_SETUP"; state: Partial<ProfileSetupState> }
   | { type: "RESET_SEARCH" };
 
@@ -219,7 +203,6 @@ function reducer(state: AppState, action: Action): AppState {
         case "my-apps": resets.myApps = INITIAL_MY_APPS; break;
         case "chat-list": resets.chatList = INITIAL_CHAT_LIST; break;
         case "chat-view": resets.chatView = INITIAL_CHAT_VIEW; break;
-        case "add-contact": resets.addContact = INITIAL_ADD_CONTACT; break;
         case "profile-setup": resets.profileSetup = INITIAL_PROFILE_SETUP; break;
       }
       return {
@@ -316,12 +299,6 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         chatView: { ...state.chatView, ...action.state },
-      };
-
-    case "UPDATE_ADD_CONTACT":
-      return {
-        ...state,
-        addContact: { ...state.addContact, ...action.state },
       };
 
     case "UPDATE_PROFILE_SETUP":

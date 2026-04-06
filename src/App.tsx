@@ -14,7 +14,6 @@ import { MyApps } from "./screens/MyApps.js";
 import { Trending } from "./screens/Trending.js";
 import { ChatList } from "./screens/ChatList.js";
 import { ChatView } from "./screens/ChatView.js";
-import { AddContact } from "./screens/AddContact.js";
 import { ProfileSetup } from "./screens/ProfileSetup.js";
 import { isLoggedIn, getAuth } from "./lib/auth.js";
 import { pingOnline } from "./lib/api.js";
@@ -29,7 +28,7 @@ function Router() {
   const scrollRef = useRef<ScrollViewRef>(null);
   const isHome = state.screen.name === "home";
   const isSearch = state.screen.name === "search";
-  const hasTextInput = ["search", "submit", "home", "auth", "my-apps", "chat-view", "add-contact", "profile-setup"].includes(state.screen.name);
+  const hasTextInput = ["search", "submit", "home", "auth", "my-apps", "chat-view", "chat-list", "profile-setup"].includes(state.screen.name);
 
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
   useEffect(() => {
@@ -114,7 +113,6 @@ function Router() {
         {state.screen.name === "trending" && <Trending key="trending" />}
         {state.screen.name === "chat-list" && <ChatList key="chat-list" />}
         {state.screen.name === "chat-view" && <ChatView key={`chat-${state.screen.chatId}`} chatId={state.screen.chatId} />}
-        {state.screen.name === "add-contact" && <AddContact key="add-contact" />}
         {state.screen.name === "profile-setup" && <ProfileSetup key="profile-setup" />}
       </ScrollView>
     </Box>

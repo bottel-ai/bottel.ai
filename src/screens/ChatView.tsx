@@ -5,21 +5,7 @@ import { useStore } from "../cli_app_state.js";
 import { colors } from "../cli_app_theme.js";
 import { HelpFooter } from "../cli_app_components.js";
 import { getAuth } from "../lib/auth.js";
-import { getMessages, sendMessage, type Message } from "../lib/api.js";
-
-function formatTime(iso: string): string {
-  try {
-    const d = new Date(iso + "Z");
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return d.toLocaleDateString([], { month: "short", day: "numeric" });
-  } catch { return ""; }
-}
+import { getMessages, sendMessage, getChats, type Message } from "../lib/api.js";
 
 function formatTimestamp(iso: string): string {
   try {
@@ -34,9 +20,22 @@ export function ChatView({ chatId }: { chatId: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contactName, setContactName] = useState("");
+  const [contactOnline, setContactOnline] = useState(false);
 
   const auth = getAuth();
   const fp = auth?.fingerprint ?? "";
+
+  // Fetch chat info to get contact name
+  useEffect(() => {
+    if (!fp) return;
+    getChats(fp).then(chats => {
+      const chat = chats.find(c => c.id === chatId);
+      if (chat) {
+        setContactName((chat as any).last_sender_name || chat.name || chatId.slice(0, 8));
+      }
+    }).catch(() => {});
+  }, [fp, chatId]);
 
   useEffect(() => {
     if (!fp) return;
@@ -63,6 +62,15 @@ export function ChatView({ chatId }: { chatId: string }) {
     }, 2000);
     return () => clearInterval(interval);
   }, [fp, chatId, messages]);
+
+  // Derive contact name from messages if not set
+  useEffect(() => {
+    if (contactName) return;
+    const otherMsg = messages.find(m => m.sender !== fp);
+    if (otherMsg) {
+      setContactName(otherMsg.sender_name || otherMsg.sender.slice(0, 8));
+    }
+  }, [messages, fp, contactName]);
 
   useInput((_input, key) => {
     if (key.escape) { goBack(); return; }
@@ -91,14 +99,17 @@ export function ChatView({ chatId }: { chatId: string }) {
     }
   }
 
+  const displayName = contactName || chatId.slice(0, 8);
+
   return (
     <Box flexDirection="column" paddingX={1}>
-      {/* Header bar */}
+      {/* Header */}
       <Box borderStyle="single" borderColor={colors.border} paddingX={1} marginBottom={1}>
-        <Box flexGrow={1}>
-          <Text bold color={colors.primary}># {chatId.slice(0, 8)}</Text>
-        </Box>
-        <Text dimColor>Esc back</Text>
+        <Text bold color={colors.primary}>{displayName}</Text>
+        <Text> </Text>
+        <Text color={contactOnline ? colors.success : colors.border}>
+          {contactOnline ? "\u25cf" : "\u25cb"}
+        </Text>
       </Box>
 
       {error && <Text color={colors.error}>  Error: {error}</Text>}
@@ -111,27 +122,30 @@ export function ChatView({ chatId }: { chatId: string }) {
       )}
 
       {grouped.map((group, gi) => (
-        <Box key={`g-${gi}`} flexDirection="column" paddingX={1} marginBottom={1}>
-          {/* Sender header */}
+        <Box key={`g-${gi}`} flexDirection="column" paddingX={1} marginBottom={0}>
+          {/* Sender + timestamp on first message */}
           <Box>
             <Text bold color={group.isMe ? colors.success : colors.secondary}>
               {group.senderName}
             </Text>
-            <Text dimColor>  {group.msgs[0]?.time}</Text>
+            <Text dimColor> {"\u00b7"} {group.msgs[0]?.time}</Text>
           </Box>
-          {/* Messages from this sender */}
+          {/* Message content */}
           {group.msgs.map((m, mi) => (
-            <Box key={`m-${gi}-${mi}`} paddingLeft={2}>
-              <Text>{m.content}</Text>
+            <Box key={`m-${gi}-${mi}`} flexDirection="column">
+              {mi > 0 && (
+                <Box>
+                  <Text dimColor>  {m.time}</Text>
+                </Box>
+              )}
+              <Box paddingLeft={2}>
+                <Text>{m.content}</Text>
+              </Box>
             </Box>
           ))}
+          <Box height={1} />
         </Box>
       ))}
-
-      {/* Divider */}
-      <Box paddingX={1}>
-        <Text dimColor>{"─".repeat(50)}</Text>
-      </Box>
 
       {/* Input */}
       <Box paddingX={1} marginTop={0}>
@@ -139,13 +153,13 @@ export function ChatView({ chatId }: { chatId: string }) {
           <TextInput
             value={inputText}
             onChange={v => dispatch({ type: "UPDATE_CHAT_VIEW", state: { inputText: v } })}
-            placeholder={sending ? "Sending..." : "Type a message..."}
+            placeholder={sending ? "Sending..." : "Message..."}
             focus={true}
           />
         </Box>
       </Box>
 
-      <HelpFooter text="Enter send · Esc back" />
+      <HelpFooter text="Enter send \u00b7 Esc back" />
     </Box>
   );
 }

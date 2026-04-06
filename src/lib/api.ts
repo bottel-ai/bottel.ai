@@ -167,8 +167,8 @@ export async function removeContact(fingerprint: string, contact: string): Promi
   await request(`/chat/contacts/${encodeURIComponent(contact)}`, { method: "DELETE", headers: { "X-Fingerprint": fingerprint } });
 }
 
-export async function createChat(fingerprint: string, members: string[], name?: string, type?: string): Promise<Chat> {
-  const { chat } = await request<{ chat: Chat }>("/chat/new", { method: "POST", body: JSON.stringify({ members, name, type }), headers: { "X-Fingerprint": fingerprint } });
+export async function createChat(fingerprint: string, contact: string): Promise<Chat> {
+  const { chat } = await request<{ chat: Chat }>("/chat/new", { method: "POST", body: JSON.stringify({ contact }), headers: { "X-Fingerprint": fingerprint } });
   return chat;
 }
 
@@ -188,6 +188,3 @@ export async function sendMessage(fingerprint: string, chatId: string, content: 
   return message;
 }
 
-export async function addMember(fingerprint: string, chatId: string, member: string): Promise<void> {
-  await request(`/chat/${chatId}/members`, { method: "POST", body: JSON.stringify({ member }), headers: { "X-Fingerprint": fingerprint } });
-}
