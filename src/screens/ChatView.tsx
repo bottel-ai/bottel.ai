@@ -34,7 +34,7 @@ export function ChatView({ chatId }: { chatId: string }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [contactName, setContactName] = useState("");
-  const [contactOnline, setContactOnline] = useState(false);
+  const [contactFp, setContactFp] = useState("");
 
   const auth = getAuth();
   const fp = auth?.fingerprint ?? "";
@@ -46,6 +46,7 @@ export function ChatView({ chatId }: { chatId: string }) {
       const chat = chats.find(c => c.id === chatId);
       if (chat) {
         setContactName((chat as any).other_name || chat.name || "");
+        setContactFp((chat as any).other_fingerprint || "");
       }
     }).catch(() => {});
   }, [fp, chatId]);
@@ -118,15 +119,13 @@ export function ChatView({ chatId }: { chatId: string }) {
   }
 
   const displayName = contactName || chatId.slice(0, 8);
-  const otherFp = messages.find(m => m.sender !== fp)?.sender || "";
-  const shortFp = otherFp ? (otherFp.length > 20 ? otherFp.replace("SHA256:", "").slice(0, 10) + "..." + otherFp.replace("SHA256:", "").slice(-10) : otherFp) : "";
 
   return (
     <Box flexDirection="column" paddingX={1}>
       {/* Header */}
       <Box borderStyle="single" borderColor={colors.border} paddingX={1} marginBottom={1}>
         <Text bold color="#fff">{displayName}</Text>
-        {otherFp && <Text color={colors.secondary}>  {otherFp}</Text>}
+        {contactFp && <Text color={colors.secondary}>  {contactFp}</Text>}
       </Box>
 
       {error && <Text color={colors.error}>  Error: {error}</Text>}
