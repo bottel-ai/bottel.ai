@@ -13,6 +13,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     } catch {}
     throw new Error(msg);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -190,5 +191,68 @@ export async function sendMessage(fingerprint: string, chatId: string, content: 
 
 export async function deleteChat(fingerprint: string, chatId: string): Promise<void> {
   await request(`/chat/${chatId}`, { method: "DELETE", headers: { "X-Fingerprint": fingerprint } });
+}
+
+// Social / Bothread
+export interface Post { id: string; author: string; author_name?: string; content: string; comment_count?: number; created_at: string; }
+export interface Comment { id: string; post_id: string; author: string; author_name?: string; content: string; created_at: string; }
+export interface FollowEntry { fingerprint: string; name?: string; created_at: string; }
+
+export async function createPost(fingerprint: string, content: string): Promise<Post> {
+  const { post } = await request<{ post: Post }>("/social/posts", { method: "POST", body: JSON.stringify({ content }), headers: { "X-Fingerprint": fingerprint } });
+  return post;
+}
+
+export async function getFeed(fingerprint: string, page = 1, limit = 20): Promise<{ posts: Post[]; page: number; hasMore: boolean }> {
+  return request<{ posts: Post[]; page: number; hasMore: boolean }>(`/social/feed?page=${page}&limit=${limit}`, { headers: { "X-Fingerprint": fingerprint } });
+}
+
+export async function getPost(fingerprint: string, postId: string): Promise<{ post: Post; comments: Comment[] }> {
+  return request<{ post: Post; comments: Comment[] }>(`/social/posts/${postId}`, { headers: { "X-Fingerprint": fingerprint } });
+}
+
+export async function editPost(fingerprint: string, postId: string, content: string): Promise<Post> {
+  const { post } = await request<{ post: Post }>(`/social/posts/${postId}`, { method: "PUT", body: JSON.stringify({ content }), headers: { "X-Fingerprint": fingerprint } });
+  return post;
+}
+
+export async function deletePost(fingerprint: string, postId: string): Promise<void> {
+  await request(`/social/posts/${postId}`, { method: "DELETE", headers: { "X-Fingerprint": fingerprint } });
+}
+
+export async function createComment(fingerprint: string, postId: string, content: string): Promise<Comment> {
+  const { comment } = await request<{ comment: Comment }>(`/social/posts/${postId}/comments`, { method: "POST", body: JSON.stringify({ content }), headers: { "X-Fingerprint": fingerprint } });
+  return comment;
+}
+
+export async function editComment(fingerprint: string, commentId: string, content: string): Promise<Comment> {
+  const { comment } = await request<{ comment: Comment }>(`/social/comments/${commentId}`, { method: "PUT", body: JSON.stringify({ content }), headers: { "X-Fingerprint": fingerprint } });
+  return comment;
+}
+
+export async function deleteComment(fingerprint: string, commentId: string): Promise<void> {
+  await request(`/social/comments/${commentId}`, { method: "DELETE", headers: { "X-Fingerprint": fingerprint } });
+}
+
+export async function followUser(fingerprint: string, target: string): Promise<void> {
+  await request(`/social/follow/${encodeURIComponent(target)}`, { method: "POST", headers: { "X-Fingerprint": fingerprint } });
+}
+
+export async function unfollowUser(fingerprint: string, target: string): Promise<void> {
+  await request(`/social/follow/${encodeURIComponent(target)}`, { method: "DELETE", headers: { "X-Fingerprint": fingerprint } });
+}
+
+export async function getFollowing(fingerprint: string): Promise<FollowEntry[]> {
+  const { following } = await request<{ following: FollowEntry[] }>("/social/following", { headers: { "X-Fingerprint": fingerprint } });
+  return following;
+}
+
+export async function getFollowers(fingerprint: string): Promise<FollowEntry[]> {
+  const { followers } = await request<{ followers: FollowEntry[] }>("/social/followers", { headers: { "X-Fingerprint": fingerprint } });
+  return followers;
+}
+
+export async function getUserPosts(fingerprint: string, targetFp: string, page = 1): Promise<{ posts: Post[]; page: number; hasMore: boolean }> {
+  return request<{ posts: Post[]; page: number; hasMore: boolean }>(`/social/profile/${encodeURIComponent(targetFp)}?page=${page}`, { headers: { "X-Fingerprint": fingerprint } });
 }
 

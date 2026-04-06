@@ -87,14 +87,14 @@ export function Auth() {
     if (key.upArrow) {
       dispatch({
         type: "UPDATE_AUTH_SCREEN",
-        state: { selectedIndex: Math.max(0, selectedIndex - 1) },
+        state: { selectedIndex: (selectedIndex - 1 + menuItems.length) % menuItems.length },
       });
       setMessage(null);
     }
     if (key.downArrow || key.tab) {
       dispatch({
         type: "UPDATE_AUTH_SCREEN",
-        state: { selectedIndex: Math.min(menuItems.length - 1, selectedIndex + 1) },
+        state: { selectedIndex: (selectedIndex + 1) % menuItems.length },
       });
       setMessage(null);
     }
@@ -235,7 +235,7 @@ export function Auth() {
     }
 
     allRows.push(
-      <HelpFooter key="footer" text="Esc back · ↑↓ nav · Enter select" />,
+      <HelpFooter key="footer" text="Esc back · ↑↓ nav · Tab top · Enter select" />,
     );
   }
 

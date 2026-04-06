@@ -100,7 +100,7 @@ export function ProfileSetup() {
 
       <Box paddingLeft={2} marginBottom={1}>
         {step === 0 && (
-          <Box borderStyle="round" borderColor={colors.primary} paddingX={1} width={50}>
+          <Box borderStyle="round" borderColor={colors.primary} paddingX={1} flexGrow={1}>
             <TextInput
               value={name}
               onChange={(v) => update({ name: v })}
@@ -110,7 +110,7 @@ export function ProfileSetup() {
           </Box>
         )}
         {step === 1 && (
-          <Box borderStyle="round" borderColor={colors.primary} paddingX={1} width={50}>
+          <Box borderStyle="round" borderColor={colors.primary} paddingX={1} flexGrow={1}>
             <TextInput
               value={bio}
               onChange={(v) => update({ bio: v })}

@@ -15,6 +15,8 @@ export type Screen =
   | { name: "chat-list" }
   | { name: "chat-view"; chatId: string }
   | { name: "profile-setup" }
+  | { name: "social" }
+  | { name: "post-detail"; postId: string }
 ;
 
 // ─── Screen State (persisted across navigation) ─────────────────
@@ -66,6 +68,20 @@ export interface ChatViewState {
   inputText: string;
 }
 
+export interface SocialState {
+  selectedIndex: number;
+  feedIndex: number;
+  view: "feed" | "my-posts" | "following" | "followers" | "find";
+  composing: boolean;
+  composeText: string;
+}
+
+export interface PostDetailState {
+  selectedIndex: number;
+  composing: boolean;
+  composeText: string;
+}
+
 export interface ProfileSetupState {
   step: number;
   name: string;
@@ -89,6 +105,8 @@ export interface AppState {
   myApps: MyAppsState;
   chatList: ChatListState;
   chatView: ChatViewState;
+  social: SocialState;
+  postDetail: PostDetailState;
   profileSetup: ProfileSetupState;
 }
 
@@ -139,6 +157,20 @@ const INITIAL_CHAT_VIEW: ChatViewState = {
   inputText: "",
 };
 
+const INITIAL_SOCIAL: SocialState = {
+  selectedIndex: 0,
+  feedIndex: -1,
+  view: "feed",
+  composing: false,
+  composeText: "",
+};
+
+const INITIAL_POST_DETAIL: PostDetailState = {
+  selectedIndex: 0,
+  composing: false,
+  composeText: "",
+};
+
 const INITIAL_PROFILE_SETUP: ProfileSetupState = {
   step: 0,
   name: "",
@@ -160,6 +192,8 @@ const INITIAL_STATE: AppState = {
   myApps: INITIAL_MY_APPS,
   chatList: INITIAL_CHAT_LIST,
   chatView: INITIAL_CHAT_VIEW,
+  social: INITIAL_SOCIAL,
+  postDetail: INITIAL_POST_DETAIL,
   profileSetup: INITIAL_PROFILE_SETUP,
 };
 
@@ -181,6 +215,8 @@ export type Action =
   | { type: "UPDATE_MY_APPS"; state: Partial<MyAppsState> }
   | { type: "UPDATE_CHAT_LIST"; state: Partial<ChatListState> }
   | { type: "UPDATE_CHAT_VIEW"; state: Partial<ChatViewState> }
+  | { type: "UPDATE_SOCIAL"; state: Partial<SocialState> }
+  | { type: "UPDATE_POST_DETAIL"; state: Partial<PostDetailState> }
   | { type: "UPDATE_PROFILE_SETUP"; state: Partial<ProfileSetupState> }
   | { type: "RESET_SEARCH" };
 
@@ -203,6 +239,8 @@ function reducer(state: AppState, action: Action): AppState {
         case "my-apps": resets.myApps = INITIAL_MY_APPS; break;
         case "chat-list": resets.chatList = INITIAL_CHAT_LIST; break;
         case "chat-view": resets.chatView = INITIAL_CHAT_VIEW; break;
+        case "social": resets.social = INITIAL_SOCIAL; break;
+        case "post-detail": resets.postDetail = INITIAL_POST_DETAIL; break;
         case "profile-setup": resets.profileSetup = INITIAL_PROFILE_SETUP; break;
       }
       return {
@@ -299,6 +337,18 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         chatView: { ...state.chatView, ...action.state },
+      };
+
+    case "UPDATE_SOCIAL":
+      return {
+        ...state,
+        social: { ...state.social, ...action.state },
+      };
+
+    case "UPDATE_POST_DETAIL":
+      return {
+        ...state,
+        postDetail: { ...state.postDetail, ...action.state },
       };
 
     case "UPDATE_PROFILE_SETUP":

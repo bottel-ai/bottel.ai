@@ -57,11 +57,11 @@ export function MyApps() {
           return;
         }
         if (key.leftArrow) {
-          setEditConfirmIndex(0);
+          setEditConfirmIndex((editConfirmIndex - 1 + 2) % 2);
           return;
         }
-        if (key.rightArrow) {
-          setEditConfirmIndex(1);
+        if (key.rightArrow || key.tab) {
+          setEditConfirmIndex((editConfirmIndex + 1) % 2);
           return;
         }
         if (key.return) {
@@ -151,12 +151,16 @@ export function MyApps() {
     }
 
     if (key.upArrow) {
-      dispatch({ type: "UPDATE_MY_APPS", state: { selectedIndex: Math.max(0, selectedIndex - 1) } });
+      if (apps.length > 0) {
+        dispatch({ type: "UPDATE_MY_APPS", state: { selectedIndex: (selectedIndex - 1 + apps.length) % apps.length } });
+      }
       return;
     }
 
     if (key.downArrow || key.tab) {
-      dispatch({ type: "UPDATE_MY_APPS", state: { selectedIndex: Math.min(apps.length - 1, selectedIndex + 1) } });
+      if (apps.length > 0) {
+        dispatch({ type: "UPDATE_MY_APPS", state: { selectedIndex: (selectedIndex + 1) % apps.length } });
+      }
       return;
     }
 
@@ -354,7 +358,7 @@ export function MyApps() {
       }
 
       rows.push(
-        <HelpFooter key="footer" text="Esc cancel · ←→ nav · Enter confirm" />,
+        <HelpFooter key="footer" text="Esc cancel · ←→ nav · Tab toggle · Enter confirm" />,
       );
     }
 
@@ -405,7 +409,7 @@ export function MyApps() {
   });
 
   rows.push(
-    <HelpFooter key="footer" text="Esc back \u00b7 \u2191\u2193 nav \u00b7 Enter view \u00b7 e edit \u00b7 d delete" />,
+    <HelpFooter key="footer" text="Esc back · ↑↓ nav · Tab top · Enter view · e edit · d delete" />,
   );
 
   return (

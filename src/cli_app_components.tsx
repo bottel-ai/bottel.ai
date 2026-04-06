@@ -87,7 +87,7 @@ export function Separator({ width = 60 }: { width?: number }) {
 export function ScreenHeader({ title, style = "section" }: { title: string; style?: "header" | "section" }) {
   const bs = style === "header" ? boxStyle.header : boxStyle.section;
   return (
-    <Box {...bs} paddingX={2} marginBottom={1}>
+    <Box {...bs} paddingX={2} marginBottom={1} flexGrow={1}>
       <Text bold color={colors.primary}>{title}</Text>
     </Box>
   );
@@ -173,7 +173,7 @@ export function Autocomplete({
   onExit,
   suggestions,
   placeholder,
-  width = 50,
+  width,
   focused,
 }: AutocompleteProps) {
   const [suggestionIndex, setSuggestionIndex] = useState(-1);
@@ -189,18 +189,15 @@ export function Autocomplete({
     (input, key) => {
       if (key.downArrow) {
         if (suggestions.length > 0 && showDropdown) {
-          if (suggestionIndex < suggestions.length - 1) {
-            setSuggestionIndex(suggestionIndex + 1);
-          }
-          // At last item: stay (don't exit)
+          // Wrap: last suggestion → back to input (-1)
+          setSuggestionIndex((suggestionIndex + 1 + 1) % (suggestions.length + 1) - 1);
         }
         return;
       }
       if (key.upArrow) {
-        if (suggestionIndex > 0) {
-          setSuggestionIndex(suggestionIndex - 1);
-        } else if (suggestionIndex === 0) {
-          setSuggestionIndex(-1);
+        if (suggestions.length > 0 && showDropdown) {
+          // Wrap: input (-1) → last suggestion
+          setSuggestionIndex((suggestionIndex + 1 - 1 + (suggestions.length + 1)) % (suggestions.length + 1) - 1);
         }
         return;
       }
@@ -233,13 +230,15 @@ export function Autocomplete({
 
   const showSuggestions = (focused ?? true) && showDropdown && suggestions.length > 0;
 
+  const sizeProps = width ? { width } : { flexGrow: 1 as const };
+
   return (
     <Box flexDirection="column">
       <Box
         borderStyle="round"
         borderColor={(focused ?? true) ? colors.primary : colors.border}
         paddingX={2}
-        width={width}
+        {...sizeProps}
       >
         <Text color={(focused ?? true) ? colors.primary : undefined}>🔍 </Text>
         <TextInput
@@ -253,7 +252,7 @@ export function Autocomplete({
       {showSuggestions && (
         <Box
           flexDirection="column"
-          width={width}
+          {...sizeProps}
           borderStyle="single"
           borderColor={colors.border}
           paddingX={1}

@@ -376,6 +376,7 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
   const chatId = c.req.param("id")!;
   const { content } = await c.req.json<{ content: string }>();
   if (!content) return c.json({ error: "content required" }, 400);
+  if (content.length > 1000) return c.json({ error: "Message too long (max 1000 characters)" }, 400);
 
   // Verify membership
   const member = await c.env.DB.prepare("SELECT 1 FROM chat_members WHERE chat_id = ? AND member = ?")
@@ -402,6 +403,267 @@ app.delete("/chat/:id", authMiddleware, async (c) => {
     c.env.DB.prepare("DELETE FROM chats WHERE id = ?").bind(chatId),
   ]);
   return c.json({ ok: true });
+});
+
+// --- Bothread (Social Feed) endpoints ---
+
+// POST /social/posts — create post
+app.post("/social/posts", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const { content } = await c.req.json<{ content: string }>();
+  if (!content || content.length === 0) return c.json({ error: "content required" }, 400);
+  if (content.length > 280) return c.json({ error: "content exceeds 280 characters" }, 400);
+
+  const id = crypto.randomUUID();
+  await c.env.DB.prepare("INSERT INTO posts (id, author, content) VALUES (?, ?, ?)")
+    .bind(id, fp, content).run();
+
+  const post = await c.env.DB.prepare("SELECT * FROM posts WHERE id = ?").bind(id).first();
+  return c.json({ post }, 201);
+});
+
+// GET /social/feed — timeline: own + followed users' posts
+app.get("/social/feed", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const page = Math.max(1, parseInt(c.req.query("page") || "1"));
+  const limit = Math.min(50, Math.max(1, parseInt(c.req.query("limit") || "20")));
+  const offset = (page - 1) * limit;
+
+  // Get list of followed fingerprints
+  const followResult = await c.env.DB.prepare("SELECT following FROM follows WHERE follower = ?")
+    .bind(fp).all();
+  const followed = (followResult.results ?? []).map((r: any) => r.following as string);
+
+  // Build IN clause: self + followed
+  const allAuthors = [fp, ...followed];
+  const placeholders = allAuthors.map(() => "?").join(", ");
+
+  const result = await c.env.DB.prepare(
+    `SELECT p.id, p.author, p.content, p.created_at, pr.name as author_name
+     FROM posts p
+     LEFT JOIN profiles pr ON pr.fingerprint = p.author
+     WHERE p.author IN (${placeholders})
+     ORDER BY p.created_at DESC
+     LIMIT ? OFFSET ?`
+  ).bind(...allAuthors, limit + 1, offset).all();
+
+  const rows = result.results ?? [];
+  const hasMore = rows.length > limit;
+  const posts = rows.slice(0, limit);
+
+  return c.json({ posts, page, hasMore });
+});
+
+// GET /social/posts/:id — single post + comments
+app.get("/social/posts/:id", async (c) => {
+  const postId = c.req.param("id");
+
+  const post = await c.env.DB.prepare(
+    `SELECT p.id, p.author, p.content, p.created_at, pr.name as author_name
+     FROM posts p
+     LEFT JOIN profiles pr ON pr.fingerprint = p.author
+     WHERE p.id = ?`
+  ).bind(postId).first();
+
+  if (!post) return c.json({ error: "Post not found" }, 404);
+
+  const commentsResult = await c.env.DB.prepare(
+    `SELECT cm.id, cm.post_id, cm.author, cm.content, cm.created_at, pr.name as author_name
+     FROM comments cm
+     LEFT JOIN profiles pr ON pr.fingerprint = cm.author
+     WHERE cm.post_id = ?
+     ORDER BY cm.created_at ASC`
+  ).bind(postId).all();
+
+  return c.json({ post, comments: commentsResult.results ?? [] });
+});
+
+// PUT /social/posts/:id — edit post (author only, within 5 mins)
+app.put("/social/posts/:id", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const postId = c.req.param("id");
+  const { content } = await c.req.json<{ content: string }>();
+  if (!content || content.length === 0) return c.json({ error: "content required" }, 400);
+  if (content.length > 280) return c.json({ error: "content exceeds 280 characters" }, 400);
+
+  const post = await c.env.DB.prepare("SELECT * FROM posts WHERE id = ?").bind(postId).first();
+  if (!post) return c.json({ error: "Post not found" }, 404);
+  if (post.author !== fp) return c.json({ error: "Not the author" }, 403);
+
+  // Check 5-minute edit window
+  const withinWindow = await c.env.DB.prepare(
+    "SELECT 1 WHERE datetime('now') <= datetime(?, '+5 minutes')"
+  ).bind(post.created_at).first();
+  if (!withinWindow) return c.json({ error: "Edit window expired (5 minutes)" }, 403);
+
+  await c.env.DB.prepare("UPDATE posts SET content = ? WHERE id = ?").bind(content, postId).run();
+  const updated = await c.env.DB.prepare("SELECT * FROM posts WHERE id = ?").bind(postId).first();
+  return c.json({ post: updated });
+});
+
+// DELETE /social/posts/:id — delete post + cascade comments
+app.delete("/social/posts/:id", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const postId = c.req.param("id");
+
+  const post = await c.env.DB.prepare("SELECT * FROM posts WHERE id = ?").bind(postId).first();
+  if (!post) return c.json({ error: "Post not found" }, 404);
+  if (post.author !== fp) return c.json({ error: "Not the author" }, 403);
+
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM comments WHERE post_id = ?").bind(postId),
+    c.env.DB.prepare("DELETE FROM posts WHERE id = ?").bind(postId),
+  ]);
+
+  return c.body(null, 204);
+});
+
+// POST /social/posts/:id/comments — add comment
+app.post("/social/posts/:id/comments", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const postId = c.req.param("id");
+  const { content } = await c.req.json<{ content: string }>();
+  if (!content || content.length === 0) return c.json({ error: "content required" }, 400);
+  if (content.length > 280) return c.json({ error: "content exceeds 280 characters" }, 400);
+
+  // Check post exists
+  const post = await c.env.DB.prepare("SELECT 1 FROM posts WHERE id = ?").bind(postId).first();
+  if (!post) return c.json({ error: "Post not found" }, 404);
+
+  const id = crypto.randomUUID();
+  await c.env.DB.prepare("INSERT INTO comments (id, post_id, author, content) VALUES (?, ?, ?, ?)")
+    .bind(id, postId, fp, content).run();
+
+  const comment = await c.env.DB.prepare("SELECT * FROM comments WHERE id = ?").bind(id).first();
+  return c.json({ comment }, 201);
+});
+
+// PUT /social/comments/:id — edit comment (author only, within 5 mins)
+app.put("/social/comments/:id", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const commentId = c.req.param("id");
+  const { content } = await c.req.json<{ content: string }>();
+  if (!content || content.length === 0) return c.json({ error: "content required" }, 400);
+  if (content.length > 280) return c.json({ error: "content exceeds 280 characters" }, 400);
+
+  const comment = await c.env.DB.prepare("SELECT * FROM comments WHERE id = ?").bind(commentId).first();
+  if (!comment) return c.json({ error: "Comment not found" }, 404);
+  if (comment.author !== fp) return c.json({ error: "Not the author" }, 403);
+
+  const withinWindow = await c.env.DB.prepare(
+    "SELECT 1 WHERE datetime('now') <= datetime(?, '+5 minutes')"
+  ).bind(comment.created_at).first();
+  if (!withinWindow) return c.json({ error: "Edit window expired (5 minutes)" }, 403);
+
+  await c.env.DB.prepare("UPDATE comments SET content = ? WHERE id = ?").bind(content, commentId).run();
+  const updated = await c.env.DB.prepare("SELECT * FROM comments WHERE id = ?").bind(commentId).first();
+  return c.json({ comment: updated });
+});
+
+// DELETE /social/comments/:id — delete comment (author only)
+app.delete("/social/comments/:id", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const commentId = c.req.param("id");
+
+  const comment = await c.env.DB.prepare("SELECT * FROM comments WHERE id = ?").bind(commentId).first();
+  if (!comment) return c.json({ error: "Comment not found" }, 404);
+  if (comment.author !== fp) return c.json({ error: "Not the author" }, 403);
+
+  await c.env.DB.prepare("DELETE FROM comments WHERE id = ?").bind(commentId).run();
+  return c.body(null, 204);
+});
+
+// POST /social/follow/:fp — follow user
+app.post("/social/follow/:fp", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const target = c.req.param("fp");
+  if (fp === target) return c.json({ error: "Cannot follow yourself" }, 400);
+
+  await c.env.DB.prepare("INSERT OR IGNORE INTO follows (follower, following) VALUES (?, ?)")
+    .bind(fp, target).run();
+  return c.json({ ok: true });
+});
+
+// DELETE /social/follow/:fp — unfollow user
+app.delete("/social/follow/:fp", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const target = c.req.param("fp");
+
+  const result = await c.env.DB.prepare("DELETE FROM follows WHERE follower = ? AND following = ?")
+    .bind(fp, target).run();
+  if (result.meta.changes === 0) return c.json({ error: "Not following this user" }, 404);
+  return c.body(null, 204);
+});
+
+// GET /social/following — list who I follow
+app.get("/social/following", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const result = await c.env.DB.prepare(
+    `SELECT f.following as fingerprint, f.created_at as followed_at, p.name
+     FROM follows f
+     LEFT JOIN profiles p ON p.fingerprint = f.following
+     WHERE f.follower = ?
+     ORDER BY f.created_at DESC`
+  ).bind(fp).all();
+  return c.json({ following: result.results ?? [] });
+});
+
+// GET /social/followers — list my followers
+app.get("/social/followers", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const result = await c.env.DB.prepare(
+    `SELECT f.follower as fingerprint, f.created_at as followed_at, p.name
+     FROM follows f
+     LEFT JOIN profiles p ON p.fingerprint = f.follower
+     WHERE f.following = ?
+     ORDER BY f.created_at DESC`
+  ).bind(fp).all();
+  return c.json({ followers: result.results ?? [] });
+});
+
+// GET /social/profile/:fp — user's posts + follower/following counts
+app.get("/social/profile/:fp", async (c) => {
+  const targetFp = c.req.param("fp");
+  const page = Math.max(1, parseInt(c.req.query("page") || "1"));
+  const limit = Math.min(50, Math.max(1, parseInt(c.req.query("limit") || "20")));
+  const offset = (page - 1) * limit;
+
+  // Get profile info
+  const profile = await c.env.DB.prepare(
+    "SELECT fingerprint, name, bio FROM profiles WHERE fingerprint = ?"
+  ).bind(targetFp).first();
+
+  // Get posts
+  const postsResult = await c.env.DB.prepare(
+    `SELECT p.id, p.author, p.content, p.created_at, pr.name as author_name
+     FROM posts p
+     LEFT JOIN profiles pr ON pr.fingerprint = p.author
+     WHERE p.author = ?
+     ORDER BY p.created_at DESC
+     LIMIT ? OFFSET ?`
+  ).bind(targetFp, limit + 1, offset).all();
+
+  const rows = postsResult.results ?? [];
+  const hasMore = rows.length > limit;
+  const posts = rows.slice(0, limit);
+
+  // Get follower/following counts
+  const followerCount = await c.env.DB.prepare(
+    "SELECT COUNT(*) as count FROM follows WHERE following = ?"
+  ).bind(targetFp).first<{ count: number }>();
+
+  const followingCount = await c.env.DB.prepare(
+    "SELECT COUNT(*) as count FROM follows WHERE follower = ?"
+  ).bind(targetFp).first<{ count: number }>();
+
+  return c.json({
+    profile: profile || { fingerprint: targetFp, name: "", bio: "" },
+    posts,
+    page,
+    hasMore,
+    followerCount: followerCount?.count ?? 0,
+    followingCount: followingCount?.count ?? 0,
+  });
 });
 
 // 404 handler

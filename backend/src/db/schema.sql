@@ -70,3 +70,29 @@ CREATE INDEX IF NOT EXISTS idx_profiles_name ON profiles(name);
 CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_contacts_owner ON contacts(owner);
 CREATE INDEX IF NOT EXISTS idx_chat_members_member ON chat_members(member);
+
+CREATE TABLE IF NOT EXISTS posts (
+  id TEXT PRIMARY KEY,
+  author TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author);
+CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS comments (
+  id TEXT PRIMARY KEY,
+  post_id TEXT NOT NULL,
+  author TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id);
+
+CREATE TABLE IF NOT EXISTS follows (
+  follower TEXT NOT NULL,
+  following TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (follower, following)
+);
+CREATE INDEX IF NOT EXISTS idx_follows_following ON follows(following);

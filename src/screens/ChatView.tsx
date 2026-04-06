@@ -3,7 +3,7 @@ import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { useStore } from "../cli_app_state.js";
 import { colors } from "../cli_app_theme.js";
-import { HelpFooter } from "../cli_app_components.js";
+import { Breadcrumb, HelpFooter } from "../cli_app_components.js";
 import { getAuth } from "../lib/auth.js";
 import { getMessages, sendMessage, getChats, type Message } from "../lib/api.js";
 
@@ -88,7 +88,7 @@ export function ChatView({ chatId }: { chatId: string }) {
 
   useInput((_input, key) => {
     if (key.escape) { goBack(); return; }
-    if (key.return && inputText.trim() && !sending) {
+    if (key.return && inputText.trim() && !sending && inputText.length <= 1000) {
       setSending(true);
       setError(null);
       const text = inputText.trim();
@@ -122,10 +122,11 @@ export function ChatView({ chatId }: { chatId: string }) {
 
   return (
     <Box flexDirection="column" paddingX={1}>
+      <Breadcrumb path={["Home", "Chat", displayName]} />
       {/* Header */}
-      <Box borderStyle="single" borderColor={colors.border} paddingX={1} marginBottom={1}>
+      <Box borderStyle="single" borderColor={colors.border} paddingX={1} marginBottom={1} flexGrow={1}>
         <Text bold color="#fff">{displayName}</Text>
-        {contactFp && <Text color={colors.secondary}>  {contactFp}</Text>}
+        {contactFp && <Text color={colors.secondary}>  {contactFp.replace("SHA256:", "")}</Text>}
       </Box>
 
       {error && <Text color={colors.error}>  Error: {error}</Text>}
@@ -170,7 +171,7 @@ export function ChatView({ chatId }: { chatId: string }) {
 
       {/* Input */}
       <Box paddingX={1} marginTop={0}>
-        <Box borderStyle="round" borderColor={sending ? colors.warning : colors.primary} paddingX={1} flexGrow={1}>
+        <Box borderStyle="round" borderColor={inputText.length > 1000 ? colors.error : sending ? colors.warning : colors.primary} paddingX={1} flexGrow={1}>
           <TextInput
             value={inputText}
             onChange={v => dispatch({ type: "UPDATE_CHAT_VIEW", state: { inputText: v } })}
@@ -179,8 +180,16 @@ export function ChatView({ chatId }: { chatId: string }) {
           />
         </Box>
       </Box>
+      <Box paddingX={2}>
+        <Text color={inputText.length > 1000 ? colors.error : colors.secondary}>{inputText.length}/1000</Text>
+      </Box>
 
-      <HelpFooter text="Enter send \u00b7 Esc back" />
+      {inputText.length > 1000 && (
+        <Box paddingX={2}>
+          <Text color={colors.error}>🤯 Token overflow!</Text>
+        </Box>
+      )}
+      <HelpFooter text="Enter send · Esc back" />
     </Box>
   );
 }

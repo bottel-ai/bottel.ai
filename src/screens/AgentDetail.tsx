@@ -50,8 +50,8 @@ export function AgentDetail({ agentId }: { agentId: string }) {
       goBack();
       return;
     }
-    if (key.leftArrow) dispatch({ type: "UPDATE_AGENT_DETAIL", state: { buttonIndex: 0 } });
-    if (key.rightArrow) dispatch({ type: "UPDATE_AGENT_DETAIL", state: { buttonIndex: 1 } });
+    if (key.leftArrow || key.upArrow) dispatch({ type: "UPDATE_AGENT_DETAIL", state: { buttonIndex: (buttonIndex - 1 + 2) % 2 } });
+    if (key.rightArrow || key.downArrow || key.tab) dispatch({ type: "UPDATE_AGENT_DETAIL", state: { buttonIndex: (buttonIndex + 1) % 2 } });
     if (key.return && installStatus === "idle") {
       if (buttonIndex === 0) {
         if (isInstalled) {
@@ -89,7 +89,7 @@ export function AgentDetail({ agentId }: { agentId: string }) {
   allRows.push(<Breadcrumb key="breadcrumb" path={["Home", agent.category, agent.name]} />);
 
   allRows.push(
-    <Box key="header" {...boxStyle.header} paddingX={1} marginY={1}>
+    <Box key="header" {...boxStyle.header} paddingX={1} marginY={1} flexGrow={1}>
       <Box flexGrow={1}>
         <Text bold color={colors.primary}>{agent.name}</Text>
         <Text dimColor>  v{agent.version}</Text>
@@ -162,7 +162,7 @@ export function AgentDetail({ agentId }: { agentId: string }) {
     </Box>
   );
 
-  allRows.push(<HelpFooter key="footer" text="Esc back · ←→ nav · Enter select" />);
+  allRows.push(<HelpFooter key="footer" text="Esc back · ←→ nav · Tab toggle · Enter select" />);
 
   return (
     <Box flexDirection="column" paddingX={1}>

@@ -38,10 +38,14 @@ export function Installed() {
       return;
     }
     if (key.upArrow) {
-      dispatch({ type: "UPDATE_INSTALLED", state: { selectedIndex: Math.max(0, selectedIndex - 1) } });
+      if (installedAgents.length > 0) {
+        dispatch({ type: "UPDATE_INSTALLED", state: { selectedIndex: (selectedIndex - 1 + installedAgents.length) % installedAgents.length } });
+      }
     }
     if (key.downArrow || key.tab) {
-      dispatch({ type: "UPDATE_INSTALLED", state: { selectedIndex: Math.min(installedAgents.length - 1, selectedIndex + 1) } });
+      if (installedAgents.length > 0) {
+        dispatch({ type: "UPDATE_INSTALLED", state: { selectedIndex: (selectedIndex + 1) % installedAgents.length } });
+      }
     }
     if (key.return && installedAgents.length > 0 && installedAgents[selectedIndex]) {
       navigate({ name: "agent-detail", agentId: installedAgents[selectedIndex].id });
@@ -101,7 +105,7 @@ export function Installed() {
     });
   }
 
-  allRows.push(<HelpFooter key="footer" text="Esc back · ↑↓ nav · Enter select" />);
+  allRows.push(<HelpFooter key="footer" text="Esc back · ↑↓ nav · Tab top · Enter select" />);
 
   return (
     <Box flexDirection="column" paddingX={1}>

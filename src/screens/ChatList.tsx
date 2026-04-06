@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import { useStore } from "../cli_app_state.js";
 import { colors } from "../cli_app_theme.js";
-import { Autocomplete, HelpFooter, type AutocompleteItem } from "../cli_app_components.js";
+import { Autocomplete, Breadcrumb, ScreenHeader, HelpFooter, type AutocompleteItem } from "../cli_app_components.js";
 import { isLoggedIn, getAuth } from "../lib/auth.js";
 import {
   getContacts, getChats, addContact, createChat, deleteChat, searchProfiles,
@@ -142,14 +142,20 @@ export function ChatList() {
 
     if (input === "/") { setSearchFocused(true); return; }
 
-    if (key.upArrow) {
-      if (selectedIndex === 0) { setSearchFocused(true); return; }
-      dispatch({ type: "UPDATE_CHAT_LIST", state: { selectedIndex: selectedIndex - 1 } });
+    if (key.tab) {
+      setSearchFocused(true);
       return;
     }
-    if (key.downArrow || key.tab) {
-      if (totalItems === 0) { setSearchFocused(true); return; }
-      dispatch({ type: "UPDATE_CHAT_LIST", state: { selectedIndex: Math.min(totalItems - 1, selectedIndex + 1) } });
+    if (key.upArrow) {
+      if (totalItems > 0) {
+        dispatch({ type: "UPDATE_CHAT_LIST", state: { selectedIndex: (selectedIndex - 1 + totalItems) % totalItems } });
+      }
+      return;
+    }
+    if (key.downArrow) {
+      if (totalItems > 0) {
+        dispatch({ type: "UPDATE_CHAT_LIST", state: { selectedIndex: (selectedIndex + 1) % totalItems } });
+      }
       return;
     }
 
@@ -169,7 +175,8 @@ export function ChatList() {
   if (!loggedIn) {
     return (
       <Box flexDirection="column" paddingX={1}>
-        <Text bold color={colors.primary}>Chat</Text>
+        <Breadcrumb path={["Home", "Chat"]} />
+        <ScreenHeader title="Chat" />
         <Text color={colors.error}>You must be logged in. Go to Auth first.</Text>
         <HelpFooter text="Esc back" />
       </Box>
@@ -178,6 +185,7 @@ export function ChatList() {
 
   return (
     <Box flexDirection="column" paddingX={1}>
+      <Breadcrumb path={["Home", "Chat"]} />
       {/* Search bar */}
       <Autocomplete
         value={searchQuery}
@@ -187,7 +195,6 @@ export function ChatList() {
         onExit={() => { setSearchFocused(false); setSearchQuery(""); }}
         suggestions={suggestions}
         placeholder="Search bots and people..."
-        width={50}
         focused={searchFocused}
       />
 
@@ -241,7 +248,7 @@ export function ChatList() {
         </Box>
       )}
 
-      <HelpFooter text={searchFocused ? "Esc close search" : "\u2191\u2193 nav \u00b7 Enter open \u00b7 / search \u00b7 Esc back"} />
+      <HelpFooter text={searchFocused ? "Esc close search" : "↑↓ nav · Tab search · Enter open · Esc back"} />
     </Box>
   );
 }

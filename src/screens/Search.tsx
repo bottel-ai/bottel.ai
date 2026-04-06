@@ -44,15 +44,25 @@ export function Search() {
       return;
     }
     if (inputFocused) {
-      if (key.downArrow || key.tab && results.length > 0) update({ inputFocused: false, selectedIndex: 0 });
+      if ((key.downArrow || key.tab) && results.length > 0) update({ inputFocused: false, selectedIndex: 0 });
+      return;
+    }
+    if (key.tab) {
+      update({ inputFocused: true });
       return;
     }
     if (key.upArrow) {
-      if (selectedIndex <= 0) update({ inputFocused: true });
-      else update({ selectedIndex: selectedIndex - 1 });
+      if (pagedResults.length > 0) {
+        update({ selectedIndex: (selectedIndex - 1 + pagedResults.length) % pagedResults.length });
+      }
       return;
     }
-    if (key.downArrow || key.tab) { update({ selectedIndex: Math.min(pagedResults.length - 1, selectedIndex + 1) }); return; }
+    if (key.downArrow) {
+      if (pagedResults.length > 0) {
+        update({ selectedIndex: (selectedIndex + 1) % pagedResults.length });
+      }
+      return;
+    }
     if (key.leftArrow && currentPage > 0) { update({ page: currentPage - 1, selectedIndex: 0 }); return; }
     if (key.rightArrow && currentPage < totalPages - 1) { update({ page: currentPage + 1, selectedIndex: 0 }); return; }
     if (key.return) {
@@ -143,7 +153,7 @@ export function Search() {
         );
       })()}
 
-      <HelpFooter text={`Esc back · ↑↓ nav · Enter select${totalPages > 1 ? " · ←→ pages" : ""}`} />
+      <HelpFooter text={`Esc back · ↑↓ nav · Tab section · Enter select${totalPages > 1 ? " · ←→ pages" : ""}`} />
     </Box>
   );
 }

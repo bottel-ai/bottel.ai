@@ -22,11 +22,11 @@ export function Settings() {
       return;
     }
     if (key.upArrow) {
-      dispatch({ type: "UPDATE_SETTINGS", state: { selectedIndex: Math.max(0, selectedIndex - 1) } });
+      dispatch({ type: "UPDATE_SETTINGS", state: { selectedIndex: (selectedIndex - 1 + MENU_ITEMS.length) % MENU_ITEMS.length } });
       setMessage(null);
     }
     if (key.downArrow || key.tab) {
-      dispatch({ type: "UPDATE_SETTINGS", state: { selectedIndex: Math.min(MENU_ITEMS.length - 1, selectedIndex + 1) } });
+      dispatch({ type: "UPDATE_SETTINGS", state: { selectedIndex: (selectedIndex + 1) % MENU_ITEMS.length } });
       setMessage(null);
     }
     if (key.return) {
@@ -75,11 +75,11 @@ export function Settings() {
     );
   }
 
-  allRows.push(<HelpFooter key="footer" text="Esc back · ↑↓ nav · Enter select" />);
+  allRows.push(<HelpFooter key="footer" text="Esc back · ↑↓ nav · Tab top · Enter select" />);
 
   if (message === "about") {
     allRows.push(
-      <Box key="about-header" marginTop={1} {...boxStyle.section} paddingX={2} paddingY={1} flexDirection="column">
+      <Box key="about-header" marginTop={1} {...boxStyle.section} paddingX={2} paddingY={1} flexDirection="column" flexGrow={1}>
         <Text bold color={colors.primary}>bottel.ai</Text>
         <Text dimColor>The Bot Native Internet</Text>
         <Text> </Text>

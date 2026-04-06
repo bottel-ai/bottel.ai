@@ -6,7 +6,7 @@ import { colors } from "../cli_app_theme.js";
 import { Autocomplete, HelpFooter, Dialog, type AutocompleteItem } from "../cli_app_components.js";
 
 const MENU_ITEMS = [
-  "Trending", "Chat", "Submit", "My Apps", "Auth", "Installed", "Settings",
+  "Trending", "Chat", "Social", "Submit", "My Apps", "Auth", "Installed", "Settings",
 ];
 
 const FOOTER_ITEMS = ["About", "Terms", "Privacy", "Help"];
@@ -15,6 +15,7 @@ const MENU_MAP: Record<string, string> = {
   "Search": "search",
   "Trending": "trending",
   "Chat": "chat-list",
+  "Social": "social",
   "Submit": "submit",
   "My Apps": "my-apps",
   "Auth": "auth",
@@ -56,15 +57,39 @@ export function Home() {
     if (input === "q" && !searchFocused) { exit(); return; }
 
     if (!searchFocused) {
-      // Menu navigation
-      if (key.upArrow) {
-        if (selectedIndex === 0) setSearchFocused(true);
-        else dispatch({ type: "UPDATE_HOME", state: { selectedIndex: selectedIndex - 1 } });
+      // Tab: cycle through all items then back to search
+      if (key.tab) {
+        const totalNav = MENU_ITEMS.length + FOOTER_ITEMS.length;
+        if (selectedIndex < totalNav - 1) {
+          dispatch({ type: "UPDATE_HOME", state: { selectedIndex: selectedIndex + 1 } });
+        } else {
+          setSearchFocused(true);
+        }
         return;
       }
-      if (key.downArrow || key.tab) {
-        const totalNav = MENU_ITEMS.length + FOOTER_ITEMS.length;
-        dispatch({ type: "UPDATE_HOME", state: { selectedIndex: Math.min(totalNav - 1, selectedIndex + 1) } });
+      // Menu navigation — arrow keys wrap within current section
+      if (key.upArrow) {
+        if (selectedIndex < MENU_ITEMS.length) {
+          // Within menu: wrap
+          dispatch({ type: "UPDATE_HOME", state: { selectedIndex: (selectedIndex - 1 + MENU_ITEMS.length) % MENU_ITEMS.length } });
+        } else {
+          // Within footer: wrap
+          const footerIdx = selectedIndex - MENU_ITEMS.length;
+          const newFooterIdx = (footerIdx - 1 + FOOTER_ITEMS.length) % FOOTER_ITEMS.length;
+          dispatch({ type: "UPDATE_HOME", state: { selectedIndex: MENU_ITEMS.length + newFooterIdx } });
+        }
+        return;
+      }
+      if (key.downArrow) {
+        if (selectedIndex < MENU_ITEMS.length) {
+          // Within menu: wrap
+          dispatch({ type: "UPDATE_HOME", state: { selectedIndex: (selectedIndex + 1) % MENU_ITEMS.length } });
+        } else {
+          // Within footer: wrap
+          const footerIdx = selectedIndex - MENU_ITEMS.length;
+          const newFooterIdx = (footerIdx + 1) % FOOTER_ITEMS.length;
+          dispatch({ type: "UPDATE_HOME", state: { selectedIndex: MENU_ITEMS.length + newFooterIdx } });
+        }
         return;
       }
       if (key.return) {
@@ -191,7 +216,7 @@ export function Home() {
         })}
       </Box>
 
-      <HelpFooter text="/ search · ↑↓ nav · Enter select · q quit" />
+      <HelpFooter text="/ search · ↑↓ nav · Tab next · Enter select · q quit" />
 
       <Box justifyContent="center" marginTop={1} gap={1}>
         <Text dimColor>© 2026 bottel.ai  ·</Text>

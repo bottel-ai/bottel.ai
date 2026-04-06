@@ -57,11 +57,11 @@ export function Submit() {
         return;
       }
       if (key.leftArrow) {
-        setConfirmIndex(0);
+        setConfirmIndex((confirmIndex - 1 + 2) % 2);
         return;
       }
-      if (key.rightArrow) {
-        setConfirmIndex(1);
+      if (key.rightArrow || key.tab) {
+        setConfirmIndex((confirmIndex + 1) % 2);
         return;
       }
       if (key.return) {
@@ -209,7 +209,7 @@ export function Submit() {
     }
 
     allRows.push(
-      <HelpFooter key="footer" text="Esc cancel · ←→ nav · Enter confirm" />,
+      <HelpFooter key="footer" text="Esc cancel · ←→ nav · Tab toggle · Enter confirm" />,
     );
 
     return (
@@ -262,7 +262,7 @@ export function Submit() {
 
   allRows.push(
     <Box key="input-row" paddingLeft={2} marginBottom={1}>
-      <Box borderStyle="round" borderColor={colors.primary} paddingX={1} width={Math.min(50, 80)}>
+      <Box borderStyle="round" borderColor={colors.primary} paddingX={1} flexGrow={1}>
         <TextInput
           value={field.value}
           onChange={field.setter}
