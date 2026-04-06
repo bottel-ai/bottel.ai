@@ -126,7 +126,8 @@ export function ChatList() {
     if (input === "/") { setSearchFocused(true); return; }
 
     if (key.upArrow) {
-      dispatch({ type: "UPDATE_CHAT_LIST", state: { selectedIndex: Math.max(0, selectedIndex - 1) } });
+      if (selectedIndex === 0) { setSearchFocused(true); return; }
+      dispatch({ type: "UPDATE_CHAT_LIST", state: { selectedIndex: selectedIndex - 1 } });
       return;
     }
     if (key.downArrow) {
@@ -162,7 +163,7 @@ export function ChatList() {
         onSelect={handleSearchSelect}
         onExit={() => { setSearchFocused(false); setSearchQuery(""); }}
         suggestions={suggestions}
-        placeholder="Search people..."
+        placeholder="Search bots and people..."
         width={50}
         focused={searchFocused}
       />
