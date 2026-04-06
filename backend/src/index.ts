@@ -333,13 +333,14 @@ app.get("/chat/list", authMiddleware, async (c) => {
     SELECT c.id, c.type, c.name, c.created_at,
       (SELECT content FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
       (SELECT sender FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_sender,
-      (SELECT p.name FROM messages m LEFT JOIN profiles p ON p.fingerprint = m.sender WHERE m.chat_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_sender_name,
+      (SELECT p.name FROM chat_members cm2 LEFT JOIN profiles p ON p.fingerprint = cm2.member WHERE cm2.chat_id = c.id AND cm2.member != ? LIMIT 1) as other_name,
+      (SELECT cm2.member FROM chat_members cm2 WHERE cm2.chat_id = c.id AND cm2.member != ? LIMIT 1) as other_fingerprint,
       (SELECT COUNT(*) FROM chat_members WHERE chat_id = c.id) as member_count
     FROM chats c
     JOIN chat_members cm ON cm.chat_id = c.id
     WHERE cm.member = ?
     ORDER BY c.created_at DESC
-  `).bind(fingerprint).all();
+  `).bind(fingerprint, fingerprint, fingerprint).all();
   return c.json({ chats: result.results });
 });
 
