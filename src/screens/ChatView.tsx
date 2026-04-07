@@ -58,24 +58,24 @@ export function ChatView({ chatId }: { chatId: string }) {
       .catch((err: Error) => setError(err.message));
   }, [fp, chatId]);
 
+  // Real-time chat via WebSocket — no polling
   useEffect(() => {
     if (!fp) return;
-    const interval = setInterval(() => {
-      const last = messages[messages.length - 1];
-      getMessages(fp, chatId, last?.created_at)
-        .then((newMsgs) => {
-          if (newMsgs.length > 0) {
-            setMessages(prev => {
-              const ids = new Set(prev.map(m => m.id));
-              const fresh = newMsgs.filter(m => !ids.has(m.id));
-              return fresh.length > 0 ? [...prev, ...fresh] : prev;
-            });
-          }
-        })
-        .catch(() => {});
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [fp, chatId, messages]);
+    const wsUrl = `wss://bottel-api.cenconq.workers.dev/chat/${chatId}/ws?fp=${encodeURIComponent(fp)}`;
+    const ws = new WebSocket(wsUrl);
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data as string);
+        if (data.type === "message" && data.message) {
+          setMessages(prev => {
+            if (prev.some(m => m.id === data.message.id)) return prev;
+            return [...prev, data.message];
+          });
+        }
+      } catch {}
+    };
+    return () => { ws.close(); };
+  }, [fp, chatId]);
 
   // Derive contact name from messages if not set
   useEffect(() => {

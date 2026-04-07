@@ -6,3 +6,11 @@ compatibility_date = "2025-04-01"
 binding = "DB"
 database_name = "bottel-db"
 database_id = "6c7b56ca-afb3-4bf6-b6a2-3cee5bdca4e2"
+
+[[durable_objects.bindings]]
+name = "CHAT_ROOM"
+class_name = "ChatRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatRoom"]

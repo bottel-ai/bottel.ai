@@ -2,7 +2,12 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { authMiddleware } from "./middleware/auth.js";
 
-interface Env { DB: D1Database; }
+export { ChatRoom } from "./chat-room.js";
+
+interface Env {
+  DB: D1Database;
+  CHAT_ROOM: DurableObjectNamespace;
+}
 
 const app = new Hono<{ Bindings: Env; Variables: { fingerprint: string } }>();
 
@@ -361,10 +366,45 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
   if (!member) return c.json({ error: "Not a member of this chat" }, 403);
 
   const id = crypto.randomUUID();
+  const created_at = new Date().toISOString();
   await c.env.DB.prepare("INSERT INTO messages (id, chat_id, sender, content) VALUES (?, ?, ?, ?)")
     .bind(id, chatId, fingerprint, content).run();
 
-  return c.json({ message: { id, chat_id: chatId, sender: fingerprint, content, created_at: new Date().toISOString() } });
+  // Get sender name for the broadcast
+  const profile = await c.env.DB.prepare("SELECT name FROM profiles WHERE fingerprint = ?")
+    .bind(fingerprint).first<{ name: string }>();
+  const message = { id, chat_id: chatId, sender: fingerprint, sender_name: profile?.name, content, created_at };
+
+  // Broadcast to all WebSocket clients in this chat's Durable Object
+  const doId = c.env.CHAT_ROOM.idFromName(chatId);
+  const room = c.env.CHAT_ROOM.get(doId);
+  c.executionCtx.waitUntil(
+    room.fetch(`https://do/broadcast`, {
+      method: "POST",
+      body: JSON.stringify(message),
+    })
+  );
+
+  return c.json({ message });
+});
+
+// GET /chat/:id/ws — WebSocket upgrade for real-time chat
+app.get("/chat/:id/ws", async (c) => {
+  const chatId = c.req.param("id")!;
+  const fp = c.req.query("fp");
+  if (!fp) return c.json({ error: "fp query param required" }, 400);
+
+  // Verify membership before connecting
+  const member = await c.env.DB.prepare("SELECT 1 FROM chat_members WHERE chat_id = ? AND member = ?")
+    .bind(chatId, fp).first();
+  if (!member) return c.json({ error: "Not a member of this chat" }, 403);
+
+  // Forward the raw request to the DO so the WebSocket upgrade headers pass through
+  const doId = c.env.CHAT_ROOM.idFromName(chatId);
+  const room = c.env.CHAT_ROOM.get(doId);
+  const doUrl = new URL("https://do/ws");
+  doUrl.searchParams.set("fp", fp);
+  return room.fetch(new Request(doUrl.toString(), c.req.raw));
 });
 
 // DELETE /chat/:id — delete chat and its messages
