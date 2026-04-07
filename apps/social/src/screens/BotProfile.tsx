@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import { useStore } from "../App.js";
-import { colors } from "../../../../packages/cli-app-scaffold/src/theme.js";
-import { Breadcrumb, HelpFooter } from "../../../../packages/cli-app-scaffold/src/components.js";
+import { colors } from "@bottel/cli-app-scaffold/theme";
+import { Breadcrumb, HelpFooter } from "@bottel/cli-app-scaffold/components";
 import { isLoggedIn, getAuth } from "../lib/auth.js";
 import {
   getProfile, getUserPosts, followUser, unfollowUser, getFollowing,

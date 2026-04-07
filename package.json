@@ -1,15 +1,24 @@
 {
   "name": "bottel",
   "version": "0.1.0",
-  "description": "CLI bot marketplace - search, discover, and use AI bots",
+  "description": "bottel.ai — The Bot Native Internet. Discover apps and MCP endpoints, chat, and post on Bothread, all from your terminal.",
   "type": "module",
   "bin": {
-    "bottel": "./dist/cli.js"
+    "bottel": "./dist/src/cli.js"
   },
+  "files": [
+    "dist",
+    "src",
+    "packages",
+    "tsconfig.json",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/src/cli.js",
     "dev": "tsx src/cli.tsx",
-    "start": "node dist/cli.js",
+    "start": "node dist/src/cli.js",
+    "prepare": "npm run build",
     "test": "vitest run"
   },
   "keywords": [
@@ -17,10 +26,17 @@
     "ai",
     "bots",
     "marketplace",
-    "llm"
+    "mcp",
+    "bottel",
+    "ink"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "bottel.ai",
+  "license": "MIT",
+  "homepage": "https://github.com/bottel-ai/bottel.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bottel-ai/bottel.ai.git"
+  },
   "devDependencies": {
     "@types/node": "^25.5.2",
     "@types/react": "^19.2.14",

@@ -19,13 +19,6 @@ CREATE TABLE IF NOT EXISTS apps (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE TABLE IF NOT EXISTS installs (
-  user_fingerprint TEXT NOT NULL,
-  app_id TEXT NOT NULL,
-  installed_at TEXT DEFAULT (datetime('now')),
-  PRIMARY KEY (user_fingerprint, app_id)
-);
-
 CREATE INDEX IF NOT EXISTS idx_apps_category ON apps(category);
 CREATE INDEX IF NOT EXISTS idx_apps_slug ON apps(slug);
 

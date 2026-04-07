@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { useStore } from "../App.js";
-import { colors } from "../../../../packages/cli-app-scaffold/src/theme.js";
-import { Breadcrumb, HelpFooter } from "../../../../packages/cli-app-scaffold/src/components.js";
+import { colors } from "@bottel/cli-app-scaffold/theme";
+import { Breadcrumb, HelpFooter } from "@bottel/cli-app-scaffold/components";
 import { getAuth } from "../lib/auth.js";
 import { getMessages, sendMessage, getChats, type Message } from "../lib/api.js";
 
@@ -58,25 +58,52 @@ export function ChatView({ chatId }: { chatId: string }) {
       .catch((err: Error) => setError(err.message));
   }, [fp, chatId]);
 
-  // Poll for new messages
+  // Real-time chat via WebSocket — no polling, auto-reconnect on disconnect
   useEffect(() => {
     if (!fp) return;
-    const interval = setInterval(() => {
-      const last = messages[messages.length - 1];
-      getMessages(fp, chatId, last?.created_at)
-        .then((newMsgs) => {
-          if (newMsgs.length > 0) {
+    const apiUrl = process.env.BOTTEL_API_URL || "https://bottel-api.cenconq.workers.dev";
+    const wsBase = apiUrl.replace(/^http/, "ws");
+    let ws: WebSocket | null = null;
+    let reconnectTimer: NodeJS.Timeout | null = null;
+    let attempt = 0;
+    let cancelled = false;
+
+    const connect = () => {
+      if (cancelled) return;
+      ws = new WebSocket(`${wsBase}/chat/${chatId}/ws?fp=${encodeURIComponent(fp)}`);
+
+      ws.onopen = () => { attempt = 0; };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data as string);
+          if (data.type === "message" && data.message) {
             setMessages(prev => {
-              const ids = new Set(prev.map(m => m.id));
-              const fresh = newMsgs.filter(m => !ids.has(m.id));
-              return fresh.length > 0 ? [...prev, ...fresh] : prev;
+              if (prev.some(m => m.id === data.message.id)) return prev;
+              return [...prev, data.message];
             });
           }
-        })
-        .catch(() => {});
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [fp, chatId, messages]);
+        } catch {}
+      };
+
+      ws.onclose = () => {
+        if (cancelled) return;
+        const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+        attempt++;
+        reconnectTimer = setTimeout(connect, delay);
+      };
+
+      ws.onerror = () => { ws?.close(); };
+    };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      ws?.close();
+    };
+  }, [fp, chatId]);
 
   // Derive contact name from messages if not set
   useEffect(() => {

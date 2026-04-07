@@ -1,8 +1,8 @@
 import React, { useEffect } from "react";
 import { Box, Text } from "ink";
-import { createStore } from "../../../packages/cli-app-scaffold/src/engine.js";
-import { colors } from "../../../packages/cli-app-scaffold/src/theme.js";
-import { Breadcrumb } from "../../../packages/cli-app-scaffold/src/components.js";
+import { createStore } from "@bottel/cli-app-scaffold/engine";
+import { colors } from "@bottel/cli-app-scaffold/theme";
+import { Breadcrumb } from "@bottel/cli-app-scaffold/components";
 import { isLoggedIn, generateKeyPair, saveAuth, getShortFingerprint } from "./lib/auth.js";
 import { createProfile } from "./lib/api.js";
 import { Feed } from "./screens/Feed.js";

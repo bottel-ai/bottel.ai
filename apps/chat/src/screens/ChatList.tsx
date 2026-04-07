@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import { useStore } from "../App.js";
-import { colors } from "../../../../packages/cli-app-scaffold/src/theme.js";
-import { Breadcrumb, HelpFooter, Autocomplete, type AutocompleteItem } from "../../../../packages/cli-app-scaffold/src/components.js";
+import { colors } from "@bottel/cli-app-scaffold/theme";
+import { Breadcrumb, HelpFooter, Autocomplete, type AutocompleteItem } from "@bottel/cli-app-scaffold/components";
 import { isLoggedIn, getAuth } from "../lib/auth.js";
 import {
   getChats, addContact, createChat, deleteChat, searchProfiles,

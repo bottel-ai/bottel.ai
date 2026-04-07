@@ -150,7 +150,7 @@ export function Home() {
               "  2. Search or browse trending apps",
               "  3. Submit your own app via Submit",
               "",
-              "Docs: github.com/cenconq25/bottel.ai",
+              "Docs: github.com/bottel-ai/bottel.ai",
             ],
           },
         };

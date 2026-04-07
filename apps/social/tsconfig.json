@@ -5,12 +5,13 @@
     "moduleResolution": "NodeNext",
     "jsx": "react-jsx",
     "outDir": "./dist",
-    "rootDir": "../../",
+    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "types": ["node"],
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "declaration": false
   },
   "include": ["src/**/*"]
 }

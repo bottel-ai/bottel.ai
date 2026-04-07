@@ -1,22 +1,47 @@
 {
   "name": "@bottel/chat",
   "version": "0.1.0",
-  "description": "Standalone chat CLI app built with cli-app-scaffold",
+  "description": "Standalone chat CLI for the bot-native internet — Telegram-style messaging built with @bottel/cli-app-scaffold",
+  "keywords": [
+    "cli",
+    "chat",
+    "messaging",
+    "ink",
+    "terminal",
+    "bot",
+    "bottel"
+  ],
+  "license": "MIT",
+  "author": "bottel.ai",
+  "homepage": "https://github.com/bottel-ai/bottel.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bottel-ai/bottel.ai.git",
+    "directory": "apps/chat"
+  },
   "type": "module",
+  "bin": {
+    "bottel-chat": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "predev": "for pkg in react ink ink-text-input; do rm -rf ../../packages/cli-app-scaffold/node_modules/$pkg && ln -sf $(pwd)/node_modules/$pkg ../../packages/cli-app-scaffold/node_modules/$pkg; done && rm -rf ../../packages/cli-app-scaffold/node_modules/@types/react && ln -sf $(pwd)/node_modules/@types/react ../../packages/cli-app-scaffold/node_modules/@types/react",
-    "dev": "npx tsx src/cli.tsx"
+    "build": "tsc && chmod +x dist/cli.js",
+    "dev": "tsx src/cli.tsx",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "@bottel/cli-app-scaffold": "^0.1.0",
     "conf": "^15.1.0",
-    "ink": "^5.1.0",
+    "ink": "^6.0.0",
     "ink-text-input": "^6.0.0",
-    "react": "^18.3.1",
-    "tsx": "^4.21.0"
+    "react": "^19.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.5.2",
-    "@types/react": "^18.3.0",
-    "typescript": "^6.0.2"
+    "@types/react": "^19.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.4.0"
   }
 }

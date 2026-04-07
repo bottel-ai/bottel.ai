@@ -48,13 +48,13 @@ describe("Auth system", () => {
   });
 
   it("StatusBar shows auth status", () => {
-    const content = fs.readFileSync(path.resolve(__dirname, "../cli_app_components.tsx"), "utf-8");
+    const content = fs.readFileSync(path.resolve(__dirname, "../components.tsx"), "utf-8");
     expect(content).toContain("isLoggedIn");
     expect(content).toContain("not logged in");
   });
 
   it("State engine has auth and submit screens", () => {
-    const content = fs.readFileSync(path.resolve(__dirname, "../cli_app_state.tsx"), "utf-8");
+    const content = fs.readFileSync(path.resolve(__dirname, "../state.tsx"), "utf-8");
     expect(content).toContain('"auth"');
     expect(content).toContain('"submit"');
   });
