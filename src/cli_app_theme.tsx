@@ -1,17 +1,17 @@
-// ─── Colors ─────────────────────────────────────────────────────
+/**
+ * cli_app_theme — bottel.ai theme module.
+ *
+ * Re-exports the canonical theme constants from @bottel/cli-app-scaffold
+ * and adds bottel.ai-specific extensions (column widths, number formatter).
+ *
+ * Existing screens import from "./cli_app_theme.js" — keep this façade so
+ * the scaffold remains the single source of truth for colors / boxStyle
+ * without requiring a sweeping rename across all screens.
+ */
 
-export const colors = {
-  primary: "#48dbfb",
-  secondary: "#54a0ff",
-  accent: "#ff9ff3",
-  warning: "#feca57",
-  success: "#2ed573",
-  error: "#ff6b6b",
-  border: "#5f27cd",
-  dimBorder: "gray",
-} as const;
+export { colors, boxStyle } from "@bottel/cli-app-scaffold";
 
-// ─── Column Widths ──────────────────────────────────────────────
+// ─── Column Widths (bottel.ai-specific) ─────────────────────────
 
 export const columns = {
   cursor: 3,
@@ -19,14 +19,7 @@ export const columns = {
   version: 10,
 } as const;
 
-// ─── Box Styles ─────────────────────────────────────────────────
-
-export const boxStyle = {
-  header: { borderStyle: "double" as const, borderColor: colors.border },
-  section: { borderStyle: "single" as const, borderColor: colors.border },
-} as const;
-
-// ─── Text Formatters ────────────────────────────────────────────
+// ─── Text Formatters (bottel.ai-specific) ───────────────────────
 
 export function formatNumber(n: number): string {
   return n.toLocaleString("en-US");
