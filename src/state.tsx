@@ -54,11 +54,12 @@ export interface MyAppsState {
 }
 
 export interface SubmitState {
-  step: number;  // 0=name, 1=slug, 2=description, 3=mcp, 4=version, 5=confirm
+  step: number;  // 0=name, 1=slug, 2=description, 3=mcp, 4=npm, 5=version, 6=confirm
   name: string;
   slug: string;
   description: string;
   mcpUrl: string;
+  npmPackage: string;
   version: string;
 }
 
@@ -151,6 +152,7 @@ const INITIAL_SUBMIT: SubmitState = {
   slug: "",
   description: "",
   mcpUrl: "",
+  npmPackage: "",
   version: "0.1.0",
 };
 

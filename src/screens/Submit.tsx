@@ -12,6 +12,7 @@ const STEP_LABELS = [
   "App ID",
   "Description",
   "MCP Server URL",
+  "npm Package",
   "Version",
   "Confirm",
 ];
@@ -25,7 +26,7 @@ function slugify(name: string): string {
 
 export function Submit() {
   const { state, dispatch, goBack } = useStore();
-  const { step, name, slug, description, mcpUrl, version } = state.submit;
+  const { step, name, slug, description, mcpUrl, npmPackage, version } = state.submit;
   const [confirmIndex, setConfirmIndex] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -48,8 +49,8 @@ export function Submit() {
       return;
     }
 
-    if (step === 5) {
-      if (key.escape) { update({ step: 4 }); return; }
+    if (step === 6) {
+      if (key.escape) { update({ step: 5 }); return; }
       if (key.leftArrow) { setConfirmIndex((confirmIndex - 1 + 2) % 2); return; }
       if (key.rightArrow || key.tab) { setConfirmIndex((confirmIndex + 1) % 2); return; }
       if (key.return) {
@@ -58,7 +59,7 @@ export function Submit() {
         const fingerprint = auth?.fingerprint ?? "unknown";
         setSubmitting(true);
         setError(null);
-        submitApp({ name, slug, description, category: "General", version, mcpUrl }, fingerprint)
+        submitApp({ name, slug, description, category: "General", version, mcpUrl, npmPackage }, fingerprint)
           .then(() => setSubmitted(true))
           .catch((err: Error) => setError(err.message))
           .finally(() => setSubmitting(false));
@@ -83,12 +84,13 @@ export function Submit() {
       if (step === 2 && description.trim().length < 10) { setError("Description must be at least 10 characters"); return; }
       if (step === 2 && description.trim().length > 200) { setError("Description must be under 200 characters"); return; }
       if (step === 3 && mcpUrl.trim() && !/^https?:\/\/.+/.test(mcpUrl.trim())) { setError("MCP URL must start with http:// or https://"); return; }
-      if (step === 4 && !version.trim()) { setError("Version is required"); return; }
-      if (step === 4 && !/^\d+\.\d+\.\d+$/.test(version.trim())) { setError("Version must be in semver format (e.g. 1.0.0)"); return; }
+      if (step === 4 && npmPackage.trim() && !/^(@[a-z0-9-]+\/)?[a-z0-9][a-z0-9-_.]*$/.test(npmPackage.trim())) { setError("Invalid npm package name (e.g. @scope/name or my-package)"); return; }
+      if (step === 5 && !version.trim()) { setError("Version is required"); return; }
+      if (step === 5 && !/^\d+\.\d+\.\d+$/.test(version.trim())) { setError("Version must be in semver format (e.g. 1.0.0)"); return; }
 
       setError(null);
       if (step === 0) update({ step: 1, slug: slugify(name) });
-      else if (step < 5) update({ step: step + 1 });
+      else if (step < 6) update({ step: step + 1 });
       return;
     }
   });
@@ -119,7 +121,7 @@ export function Submit() {
     return <Box flexDirection="column" paddingX={1}>{allRows}</Box>;
   }
 
-  if (step === 5) {
+  if (step === 6) {
     const shortFp = getShortFingerprint();
 
     allRows.push(
@@ -133,6 +135,7 @@ export function Submit() {
       ["App ID:", slug],
       ["Description:", description],
       ["MCP URL:", mcpUrl || "(none)"],
+      ["npm Package:", npmPackage || "(none)"],
       ["Version:", version],
       ["Signed by:", `bottel_${shortFp.replace("SHA256:", "")}...`],
     ];
@@ -172,7 +175,8 @@ export function Submit() {
     1: { label: "App ID", value: slug, setter: (v) => { update({ slug: v }); setError(null); }, placeholder: "my-cool-bot" },
     2: { label: "Description", value: description, setter: (v) => { update({ description: v }); setError(null); }, placeholder: "A bot that does awesome things" },
     3: { label: "MCP Server URL", value: mcpUrl, setter: (v) => { update({ mcpUrl: v }); setError(null); }, placeholder: "https://my-bot.example.com/mcp", hint: "Optional — leave empty if not an MCP service" },
-    4: { label: "Version", value: version, setter: (v) => { update({ version: v }); setError(null); }, placeholder: "0.1.0" },
+    4: { label: "npm Package", value: npmPackage, setter: (v) => { update({ npmPackage: v }); setError(null); }, placeholder: "@scope/my-bot or my-bot", hint: "Optional — npm package to install/run via npx" },
+    5: { label: "Version", value: version, setter: (v) => { update({ version: v }); setError(null); }, placeholder: "0.1.0" },
   };
 
   const field = fieldMap[step]!;

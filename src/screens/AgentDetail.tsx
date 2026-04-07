@@ -148,6 +148,26 @@ export function AgentDetail({ agentId }: { agentId: string }) {
         <Text dimColor>Connect via: mcp connect {agent.mcpUrl}</Text>
       </Box>
     );
+  }
+  if (agent.npmPackage) {
+    allRows.push(
+      <Box key="npm-label" marginBottom={1}>
+        <Text bold color={colors.accent}>npm Package</Text>
+      </Box>
+    );
+    allRows.push(
+      <Box key="npm-pkg" borderStyle="single" borderColor={colors.primary} paddingX={1} flexGrow={1} marginBottom={1}>
+        <Text dimColor>Package: </Text>
+        <Text color={colors.primary} bold>{agent.npmPackage}</Text>
+      </Box>
+    );
+    allRows.push(
+      <Box key="npm-hint" marginBottom={1}>
+        <Text dimColor>Run via: npx -y --prefer-offline {agent.npmPackage}</Text>
+      </Box>
+    );
+  }
+  if (isMcp) {
     allRows.push(
       <Box key="buttons" gap={2}>
         <Text

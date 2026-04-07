@@ -91,6 +91,7 @@ app.post("/apps", authMiddleware, async (c) => {
     longDescription?: string;
     capabilities?: string[];
     mcpUrl?: string;
+    npmPackage?: string;
   }>();
 
   if (!body.name || !body.slug || !body.description || !body.category || !body.version) {
@@ -100,8 +101,8 @@ app.post("/apps", authMiddleware, async (c) => {
   const id = crypto.randomUUID();
 
   await c.env.DB.prepare(
-    `INSERT INTO apps (id, name, slug, description, long_description, category, author, version, capabilities, public_key, mcp_url)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO apps (id, name, slug, description, long_description, category, author, version, capabilities, public_key, mcp_url, npm_package)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     id,
     body.name,
@@ -113,7 +114,8 @@ app.post("/apps", authMiddleware, async (c) => {
     body.version,
     JSON.stringify(body.capabilities ?? []),
     fingerprint,
-    body.mcpUrl ?? ""
+    body.mcpUrl ?? "",
+    body.npmPackage ?? ""
   ).run();
 
   // Sync FTS index

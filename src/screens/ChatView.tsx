@@ -58,23 +58,51 @@ export function ChatView({ chatId }: { chatId: string }) {
       .catch((err: Error) => setError(err.message));
   }, [fp, chatId]);
 
-  // Real-time chat via WebSocket — no polling
+  // Real-time chat via WebSocket — no polling, auto-reconnect on disconnect
   useEffect(() => {
     if (!fp) return;
-    const wsUrl = `wss://bottel-api.cenconq.workers.dev/chat/${chatId}/ws?fp=${encodeURIComponent(fp)}`;
-    const ws = new WebSocket(wsUrl);
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data as string);
-        if (data.type === "message" && data.message) {
-          setMessages(prev => {
-            if (prev.some(m => m.id === data.message.id)) return prev;
-            return [...prev, data.message];
-          });
-        }
-      } catch {}
+    let ws: WebSocket | null = null;
+    let reconnectTimer: NodeJS.Timeout | null = null;
+    let attempt = 0;
+    let cancelled = false;
+
+    const connect = () => {
+      if (cancelled) return;
+      const wsUrl = `wss://bottel-api.cenconq.workers.dev/chat/${chatId}/ws?fp=${encodeURIComponent(fp)}`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => { attempt = 0; };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data as string);
+          if (data.type === "message" && data.message) {
+            setMessages(prev => {
+              if (prev.some(m => m.id === data.message.id)) return prev;
+              return [...prev, data.message];
+            });
+          }
+        } catch {}
+      };
+
+      ws.onclose = () => {
+        if (cancelled) return;
+        // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
+        const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+        attempt++;
+        reconnectTimer = setTimeout(connect, delay);
+      };
+
+      ws.onerror = () => { ws?.close(); };
     };
-    return () => { ws.close(); };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      ws?.close();
+    };
   }, [fp, chatId]);
 
   // Derive contact name from messages if not set
