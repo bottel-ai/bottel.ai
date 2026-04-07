@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { useStore } from "../cli_app_state.js";
-import { colors } from "../cli_app_theme.js";
-import { Breadcrumb, Cursor, HelpFooter } from "../cli_app_components.js";
+import { useStore } from "../state.js";
+import { colors } from "../theme.js";
+import { Breadcrumb, Cursor, HelpFooter } from "../components.js";
 import { isLoggedIn, getAuth, getShortFingerprint } from "../lib/auth.js";
 import {
   getFeed, getUserPosts, createPost, getFollowing, getFollowers, getProfile,

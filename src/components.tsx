@@ -1,17 +1,13 @@
 /**
- * cli_app_components — bottel.ai component module.
+ * components — bottel.ai components.
  *
- * Re-exports the generic CLI components from @bottel/cli-app-scaffold
- * and adds bottel.ai-specific components (Logo with auth integration).
- *
- * Existing screens import from "./cli_app_components.js" — keep this façade
- * so the scaffold remains the single source of truth for the shared
- * primitives without requiring a sweeping rename across all screens.
+ * Re-exports generic CLI components from cli-app-scaffold and adds
+ * bottel.ai-specific components (Logo with auth integration).
  */
 
 import React from "react";
 import { Box, Text } from "ink";
-import { colors } from "./cli_app_theme.js";
+import { colors } from "./theme.js";
 import { isLoggedIn, getShortFingerprint } from "./lib/auth.js";
 
 export {
@@ -22,8 +18,8 @@ export {
   ScreenHeader,
   Autocomplete,
   Dialog,
-} from "@bottel/cli-app-scaffold";
-export type { AutocompleteItem } from "@bottel/cli-app-scaffold";
+} from "../packages/cli-app-scaffold/src/components.js";
+export type { AutocompleteItem } from "../packages/cli-app-scaffold/src/components.js";
 
 // ─── App Branding (bottel.ai-specific) ──────────────────────────
 

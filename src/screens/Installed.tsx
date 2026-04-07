@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { Box, Text, useInput } from "ink";
 import { type App, getApps } from "../lib/api.js";
-import { useStore } from "../cli_app_state.js";
-import { colors, columns } from "../cli_app_theme.js";
-import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_components.js";
+import { useStore } from "../state.js";
+import { colors, columns } from "../theme.js";
+import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../components.js";
 
 export function Installed() {
   const { state, dispatch, navigate, goBack } = useStore();

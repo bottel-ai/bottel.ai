@@ -5,7 +5,7 @@
     "moduleResolution": "NodeNext",
     "jsx": "react-jsx",
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "types": ["node"],
@@ -13,5 +13,5 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "packages/cli-app-scaffold/src/**/*"]
 }

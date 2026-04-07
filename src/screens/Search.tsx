@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import TextInput from "ink-text-input";
 import { type App, getApps } from "../lib/api.js";
-import { useStore } from "../cli_app_state.js";
-import { colors } from "../cli_app_theme.js";
-import { Cursor, HelpFooter } from "../cli_app_components.js";
+import { useStore } from "../state.js";
+import { colors } from "../theme.js";
+import { Cursor, HelpFooter } from "../components.js";
 
 const PAGE_SIZE = 5;
 

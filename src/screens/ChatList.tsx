@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Box, Text, useInput } from "ink";
-import { useStore } from "../cli_app_state.js";
-import { colors } from "../cli_app_theme.js";
-import { Autocomplete, Breadcrumb, ScreenHeader, HelpFooter, type AutocompleteItem } from "../cli_app_components.js";
+import { useStore } from "../state.js";
+import { colors } from "../theme.js";
+import { Autocomplete, Breadcrumb, ScreenHeader, HelpFooter, type AutocompleteItem } from "../components.js";
 import { isLoggedIn, getAuth } from "../lib/auth.js";
 import {
   getChats, addContact, createChat, deleteChat, searchProfiles,

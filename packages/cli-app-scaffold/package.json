@@ -1,22 +1,14 @@
 {
   "name": "@bottel/cli-app-scaffold",
   "version": "0.1.0",
+  "description": "Generic CLI app scaffold — engine, theme, and components for building bot-native CLI apps",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc"
-  },
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "files": ["src"],
   "peerDependencies": {
     "ink": ">=5.0.0",
     "ink-text-input": ">=6.0.0",
     "react": ">=18.0.0"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.0",
-    "ink": "^6.0.0",
-    "ink-text-input": "^6.0.0",
-    "react": "^19.0.0",
-    "typescript": "^5.4.0"
   }
 }

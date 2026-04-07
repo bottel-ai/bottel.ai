@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Box, Text, useInput } from "ink";
-import { useStore } from "../cli_app_state.js";
-import { colors, boxStyle } from "../cli_app_theme.js";
-import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../cli_app_components.js";
+import { useStore } from "../state.js";
+import { colors, boxStyle } from "../theme.js";
+import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../components.js";
 import { isLoggedIn } from "../lib/auth.js";
 
 const MENU_ITEMS = [

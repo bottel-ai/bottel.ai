@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { type App, getApp } from "../lib/api.js";
-import { useStore } from "../cli_app_state.js";
-import { colors, formatNumber, boxStyle } from "../cli_app_theme.js";
-import { Breadcrumb, Separator, HelpFooter } from "../cli_app_components.js";
+import { useStore } from "../state.js";
+import { colors, formatNumber, boxStyle } from "../theme.js";
+import { Breadcrumb, Separator, HelpFooter } from "../components.js";
 
 type InstallStatus = "idle" | "installing";
 

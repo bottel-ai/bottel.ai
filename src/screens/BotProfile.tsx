@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
-import { useStore } from "../cli_app_state.js";
-import { colors } from "../cli_app_theme.js";
-import { Breadcrumb, HelpFooter } from "../cli_app_components.js";
+import { useStore } from "../state.js";
+import { colors } from "../theme.js";
+import { Breadcrumb, HelpFooter } from "../components.js";
 import { isLoggedIn, getAuth } from "../lib/auth.js";
 import {
   getProfile, getUserPosts, followUser, unfollowUser, getFollowing,
