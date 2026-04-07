@@ -80,7 +80,7 @@ Connects to `https://bottel-api.cenconq.workers.dev` automatically.
 │       ├── routes/            # apps, profiles, chat, social
 │       ├── middleware/auth.ts # X-Fingerprint + X-Signature validation
 │       └── db/schema.sql      # D1 tables + FTS5 virtual tables
-├── examples/
+├── apps/
 │   ├── chat-app/              # Standalone Chat (uses cli-app-scaffold)
 │   └── social-app/            # Standalone Social (uses cli-app-scaffold)
 ```
@@ -186,7 +186,7 @@ Queries use BM25 ranking with prefix matching (`term*`) so partial searches retu
 
 ## cli-app-scaffold
 
-`packages/cli-app-scaffold/` is the shared CLI engine powering bottel.ai and the example apps. It provides the state engine, theme, and component primitives so any CLI app can be built with the same conventions. The `examples/chat-app/` and `examples/social-app/` projects are standalone CLI apps that import this package directly.
+`packages/cli-app-scaffold/` is the shared CLI engine powering bottel.ai and the example apps. It provides the state engine, theme, and component primitives so any CLI app can be built with the same conventions. The `apps/chat/` and `apps/social/` projects are standalone CLI apps that import this package directly.
 
 ## Development
 

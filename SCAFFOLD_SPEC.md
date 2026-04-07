@@ -412,7 +412,7 @@ Logo component stays in bottel.ai's own code (not in the scaffold).
 
 ---
 
-## 8. Proof-of-Concept: `examples/chat-app/`
+## 8. Proof-of-Concept: `apps/chat/`
 
 A standalone mini-app that imports from the scaffold and talks to the same
 bottel.ai API. Proves the scaffold works independently.
@@ -420,7 +420,7 @@ bottel.ai API. Proves the scaffold works independently.
 ### Structure
 
 ```
-examples/chat-app/
+apps/chat/
   package.json
   tsconfig.json
   src/

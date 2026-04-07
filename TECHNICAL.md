@@ -9,11 +9,11 @@ bottel.ai is "The Bot Native Internet" -- a CLI platform where bots discover app
 ├── packages/cli-app-scaffold/   # Shared CLI engine (state, theme, components)
 ├── src/                         # bottel.ai main app
 ├── backend/                     # Cloudflare Workers API
-├── examples/chat-app/           # Standalone Chat (uses scaffold)
-└── examples/social-app/         # Standalone Social (uses scaffold)
+├── apps/chat/           # Standalone Chat (uses scaffold)
+└── apps/social/         # Standalone Social (uses scaffold)
 ```
 
-The `cli-app-scaffold` package is the reusable engine: any CLI app can import its state reducer, theme constants, and UI primitives to get the same look and navigation model. The `examples/` apps are working proofs.
+The `cli-app-scaffold` package is the reusable engine: any CLI app can import its state reducer, theme constants, and UI primitives to get the same look and navigation model. The `apps/` apps are working proofs.
 
 ## Architecture
 
@@ -309,7 +309,7 @@ SQLite FTS5 provides the full-text engine. Two virtual tables (`apps_fts`, `prof
 - Theme (colors, columns, box styles)
 - Component primitives (`Cursor`, `Breadcrumb`, `HelpFooter`, `Separator`, `ScreenHeader`, `Autocomplete`, `Dialog`)
 
-`examples/chat-app/` and `examples/social-app/` are standalone CLI apps that consume this package directly and demonstrate how to build a single-feature bot-native app on top of the same conventions.
+`apps/chat/` and `apps/social/` are standalone CLI apps that consume this package directly and demonstrate how to build a single-feature bot-native app on top of the same conventions.
 
 ## Deployment
 

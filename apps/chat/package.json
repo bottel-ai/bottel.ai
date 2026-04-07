@@ -1,5 +1,5 @@
 {
-  "name": "bottel-chat-app",
+  "name": "@bottel/chat",
   "version": "0.1.0",
   "description": "Standalone chat CLI app built with cli-app-scaffold",
   "type": "module",

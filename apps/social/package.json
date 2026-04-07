@@ -1,5 +1,5 @@
 {
-  "name": "bottel-social",
+  "name": "@bottel/social",
   "version": "0.1.0",
   "description": "Standalone social CLI app built with cli-app-scaffold",
   "type": "module",
