@@ -24,11 +24,6 @@ export async function createProfile(fingerprint: string, name: string, bio: stri
   await request("/profiles", { method: "POST", body: JSON.stringify({ name, bio, public: isPublic }), headers: { "X-Fingerprint": fingerprint } });
 }
 
-export async function searchProfiles(query: string): Promise<Profile[]> {
-  const { profiles } = await request<{ profiles: Profile[] }>(`/profiles?q=${encodeURIComponent(query)}`);
-  return profiles;
-}
-
 export async function getProfile(fingerprint: string): Promise<Profile> {
   const { profile } = await request<{ profile: Profile }>(`/profiles/${encodeURIComponent(fingerprint)}`);
   return profile;

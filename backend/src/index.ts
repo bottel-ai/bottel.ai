@@ -129,56 +129,6 @@ app.post("/apps", authMiddleware, async (c) => {
   });
 });
 
-// GET /user/installs — get user's installed apps (requires auth)
-app.get("/user/installs", authMiddleware, async (c) => {
-  const fingerprint = c.get("fingerprint");
-
-  const result = await c.env.DB.prepare(
-    `SELECT apps.* FROM apps
-     INNER JOIN installs ON installs.app_id = apps.slug
-     WHERE installs.user_fingerprint = ?`
-  ).bind(fingerprint).all();
-
-  const installs = (result.results ?? []).map((app) => ({
-    ...app,
-    capabilities: JSON.parse((app.capabilities as string) || "[]"),
-  }));
-
-  return c.json({ installs });
-});
-
-// POST /user/installs/:appId — toggle install (requires auth)
-app.post("/user/installs/:appId", authMiddleware, async (c) => {
-  const fingerprint = c.get("fingerprint");
-  const appId = c.req.param("appId");
-
-  // Anti-wash: only count installs from profiles older than 24 hours
-  const profile = await c.env.DB.prepare(
-    "SELECT 1 FROM profiles WHERE fingerprint = ? AND created_at <= datetime('now', '-24 hours')"
-  ).bind(fingerprint).first();
-  if (!profile) return c.json({ error: "Account must be at least 24 hours old to install apps" }, 403);
-
-  const existing = await c.env.DB.prepare(
-    "SELECT 1 FROM installs WHERE user_fingerprint = ? AND app_id = ?"
-  ).bind(fingerprint, appId).first();
-
-  if (existing) {
-    // Uninstall — remove from user's list but don't decrement counter
-    await c.env.DB.prepare("DELETE FROM installs WHERE user_fingerprint = ? AND app_id = ?")
-      .bind(fingerprint, appId).run();
-    return c.json({ installed: false });
-  } else {
-    // Install
-    await c.env.DB.batch([
-      c.env.DB.prepare("INSERT INTO installs (user_fingerprint, app_id) VALUES (?, ?)")
-        .bind(fingerprint, appId),
-      c.env.DB.prepare("UPDATE apps SET installs = installs + 1 WHERE slug = ?")
-        .bind(appId),
-    ]);
-    return c.json({ installed: true });
-  }
-});
-
 // PUT /apps/:slug — update app (auth required, must own it)
 app.put("/apps/:slug", authMiddleware, async (c) => {
   const slug = c.req.param("slug");
@@ -318,35 +268,6 @@ app.post("/chat/contacts", authMiddleware, async (c) => {
   if (!contact) return c.json({ error: "contact fingerprint required" }, 400);
   await c.env.DB.prepare("INSERT OR IGNORE INTO contacts (owner, contact, alias) VALUES (?, ?, ?)")
     .bind(fingerprint, contact, alias || "").run();
-  return c.json({ ok: true });
-});
-
-// GET /chat/contacts — list contacts
-app.get("/chat/contacts", authMiddleware, async (c) => {
-  const fingerprint = c.get("fingerprint");
-  const result = await c.env.DB.prepare(
-    `SELECT c.contact, c.alias, c.added_at, p.name as profile_name, p.online_at
-     FROM contacts c
-     LEFT JOIN profiles p ON p.fingerprint = c.contact
-     WHERE c.owner = ?
-     ORDER BY c.alias, c.contact`
-  ).bind(fingerprint).all();
-  const now = Date.now();
-  const contacts = (result.results ?? []).map((r: any) => ({
-    contact: r.contact,
-    alias: r.alias,
-    profile_name: r.profile_name || "",
-    online: r.online_at ? (now - new Date(r.online_at + "Z").getTime()) < 300000 : false,
-  }));
-  return c.json({ contacts });
-});
-
-// DELETE /chat/contacts/:contact — remove contact
-app.delete("/chat/contacts/:contact", authMiddleware, async (c) => {
-  const fingerprint = c.get("fingerprint");
-  const contact = c.req.param("contact");
-  await c.env.DB.prepare("DELETE FROM contacts WHERE owner = ? AND contact = ?")
-    .bind(fingerprint, contact).run();
   return c.json({ ok: true });
 });
 

@@ -224,8 +224,7 @@ export type Action =
   | { type: "UPDATE_CHAT_VIEW"; state: Partial<ChatViewState> }
   | { type: "UPDATE_SOCIAL"; state: Partial<SocialState> }
   | { type: "UPDATE_POST_DETAIL"; state: Partial<PostDetailState> }
-  | { type: "UPDATE_PROFILE_SETUP"; state: Partial<ProfileSetupState> }
-  | { type: "RESET_SEARCH" };
+  | { type: "UPDATE_PROFILE_SETUP"; state: Partial<ProfileSetupState> };
 
 // ─── Reducer ────────────────────────────────────────────────────
 
@@ -363,9 +362,6 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         profileSetup: { ...state.profileSetup, ...action.state },
       };
-
-    case "RESET_SEARCH":
-      return { ...state, search: INITIAL_SEARCH };
 
     default:
       return state;
