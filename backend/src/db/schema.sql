@@ -7,11 +7,8 @@ CREATE TABLE IF NOT EXISTS apps (
   category TEXT NOT NULL,
   author TEXT NOT NULL,
   version TEXT NOT NULL DEFAULT '0.1.0',
-  rating REAL DEFAULT 0,
-  reviews INTEGER DEFAULT 0,
   installs INTEGER DEFAULT 0,
   capabilities TEXT DEFAULT '[]',
-  size TEXT DEFAULT '',
   verified INTEGER DEFAULT 0,
   public_key TEXT,
   mcp_url TEXT DEFAULT '',
@@ -29,14 +26,6 @@ CREATE TABLE IF NOT EXISTS messages (
   sender TEXT NOT NULL,
   content TEXT NOT NULL,
   created_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS contacts (
-  owner TEXT NOT NULL,
-  contact TEXT NOT NULL,
-  alias TEXT DEFAULT '',
-  added_at TEXT DEFAULT (datetime('now')),
-  PRIMARY KEY (owner, contact)
 );
 
 CREATE TABLE IF NOT EXISTS chats (
@@ -69,7 +58,6 @@ CREATE VIRTUAL TABLE IF NOT EXISTS apps_fts USING fts5(name, description, slug);
 CREATE VIRTUAL TABLE IF NOT EXISTS profiles_fts USING fts5(name, bio);
 
 CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_contacts_owner ON contacts(owner);
 CREATE INDEX IF NOT EXISTS idx_chat_members_member ON chat_members(member);
 
 CREATE TABLE IF NOT EXISTS posts (

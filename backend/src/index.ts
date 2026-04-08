@@ -270,16 +270,6 @@ app.post("/profiles/ping", authMiddleware, async (c) => {
 
 // --- Chat endpoints ---
 
-// POST /chat/contacts — add contact
-app.post("/chat/contacts", authMiddleware, async (c) => {
-  const fingerprint = c.get("fingerprint");
-  const { contact, alias } = await c.req.json<{ contact: string; alias?: string }>();
-  if (!contact) return c.json({ error: "contact fingerprint required" }, 400);
-  await c.env.DB.prepare("INSERT OR IGNORE INTO contacts (owner, contact, alias) VALUES (?, ?, ?)")
-    .bind(fingerprint, contact, alias || "").run();
-  return c.json({ ok: true });
-});
-
 // POST /chat/new — create or find existing direct chat
 app.post("/chat/new", authMiddleware, async (c) => {
   const fingerprint = c.get("fingerprint");

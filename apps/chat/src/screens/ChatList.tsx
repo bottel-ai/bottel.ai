@@ -5,7 +5,7 @@ import { colors } from "@bottel/cli-app-scaffold/theme";
 import { Breadcrumb, HelpFooter, Autocomplete, type AutocompleteItem } from "@bottel/cli-app-scaffold/components";
 import { isLoggedIn, getAuth } from "../lib/auth.js";
 import {
-  getChats, addContact, createChat, deleteChat, searchProfiles,
+  getChats, createChat, deleteChat, searchProfiles,
   type Chat, type Profile,
 } from "../lib/api.js";
 
@@ -117,8 +117,7 @@ export function ChatList() {
     if (item.id === fp) { setError("You can't chat with yourself"); return; }
     const profile = profiles.find(p => p.fingerprint === item.id);
     if (!profile) return;
-    addContact(fp, profile.fingerprint, profile.name)
-      .then(() => createChat(fp, profile.fingerprint))
+    createChat(fp, profile.fingerprint)
       .then(chat => navigate({ name: "chat-view", chatId: chat.id }))
       .catch((err: Error) => setError(err.message));
   }, [fp, profiles, navigate]);

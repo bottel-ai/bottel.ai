@@ -151,10 +151,6 @@ export async function pingOnline(fingerprint: string): Promise<void> {
 export interface Chat { id: string; type: string; name: string; last_message?: string; last_sender?: string; created_at: string; }
 export interface Message { id: string; sender: string; sender_name?: string; content: string; created_at: string; }
 
-export async function addContact(fingerprint: string, contact: string, alias: string): Promise<void> {
-  await request("/chat/contacts", { method: "POST", body: JSON.stringify({ contact, alias }), headers: { "X-Fingerprint": fingerprint } });
-}
-
 export async function createChat(fingerprint: string, contact: string): Promise<Chat> {
   const { chat } = await request<{ chat: Chat }>("/chat/new", { method: "POST", body: JSON.stringify({ contact }), headers: { "X-Fingerprint": fingerprint } });
   return chat;
