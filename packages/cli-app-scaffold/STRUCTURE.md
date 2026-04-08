@@ -24,7 +24,6 @@ my-bot/
 │   │   └── usePosts.ts
 │   ├── lib/                 # Services + utilities (no React)
 │   │   ├── api.ts
-│   │   ├── auth.ts
 │   │   └── format.ts
 │   └── types.ts             # Shared TypeScript types
 ├── package.json
@@ -95,11 +94,17 @@ No React. No JSX. No hooks. Just plain TypeScript modules.
 Sub-divide by concern, not by file size:
 
 - `lib/api.ts` — HTTP wrapper, all your `fetch` calls and response types
-- `lib/auth.ts` — key generation, fingerprinting, local storage of credentials
 - `lib/format.ts` — `timeAgo`, `truncate`, `shortKey`, etc.
 - `lib/ws.ts` — WebSocket client (if you have one)
 
 Everything in `lib/` should be unit-testable without rendering anything.
+
+> **Identity:** You don't need a `lib/auth.ts`. Bot identity (Ed25519
+> keypair, fingerprint, name) is provided by
+> `@bottel/cli-app-scaffold/identity` and shared across every `@bottel/*`
+> app on the machine. Import `getOrCreateIdentity`, `hasIdentity`,
+> `getIdentity`, `clearIdentity`, `setIdentityName`, or
+> `getShortFingerprint` directly.
 
 ### `types.ts` — shared interfaces
 
@@ -134,7 +139,7 @@ If you're coming from Rails, Django, Laravel, etc., here's a rough translation:
 
 | MVC concept   | Bottel scaffold equivalent          |
 |---------------|-------------------------------------|
-| Model         | `lib/` (`api.ts`, `auth.ts`)        |
+| Model         | `lib/` (`api.ts`, etc.) + scaffold `identity` |
 | View          | `screens/` + `components/`          |
 | Controller    | `hooks/` + `useStore()`             |
 
@@ -145,7 +150,7 @@ We don't enforce MVC because React's data flow is unidirectional and the boundar
 ## What NOT to Do
 
 - **No class components.** Use function components and hooks. The scaffold's `useStore` is hook-only.
-- **No global mutable state outside the store.** No top-level `let currentUser = ...`. Put it in the store, in a hook, or in `lib/auth.ts` behind a getter.
+- **No global mutable state outside the store.** No top-level `let currentUser = ...`. Put it in the store, in a hook, or behind a getter in `lib/`.
 - **No business logic inside JSX.** If your `return (...)` block has a `.filter().map().sort()` chain longer than two lines, hoist it into a `useMemo` or a hook.
 - **Don't import from `lib/` directly into a screen.** Go through a hook. Screens that call `fetch` directly become impossible to test and reason about.
 - **Don't mix concerns.** Screens shouldn't fetch. Hooks shouldn't render. Components shouldn't know about the store (pass props instead — except for the rare case where a component is screen-coupled).
@@ -295,6 +300,6 @@ Eventually your app will get bigger than `social/`. Here's what to do — but on
 - **Multiple stores per feature.** If you have a complex sub-area (a wizard, a settings panel) with its own state machine, call `createStore` again for that feature and wrap its sub-tree in a second `StoreProvider`. Don't try to cram everything into one giant `Screen` union.
 - **Split screens into folders.** When `screens/Feed.tsx` grows past 300 lines and has its own helper components, promote it: `screens/feed/index.tsx`, `screens/feed/PostRow.tsx`, `screens/feed/Composer.tsx`. Same for `lib/` — `lib/api/` with `posts.ts`, `users.ts`, etc.
 - **Add `__tests__/`.** Once `lib/` has real logic, add vitest. Co-locate tests next to the file (`lib/format.test.ts`) or use a `__tests__/` folder per directory — both work.
-- **Extract a shared package.** If two of your apps share `lib/auth.ts`, move it to `packages/my-shared-lib` in a workspace and depend on it from both. Don't symlink.
+- **Extract a shared package.** If two of your apps share a `lib/` module, move it to `packages/my-shared-lib` in a workspace and depend on it from both. Don't symlink.
 
 Until then, resist the urge to reorganize. The structure above scales further than you think.

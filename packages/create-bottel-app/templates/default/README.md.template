@@ -21,13 +21,15 @@ npm run build
 src/
 ├── cli.tsx       — entry point (ink render)
 ├── App.tsx       — root component / router
-├── lib/
-│   └── auth.ts   — Ed25519 identity (conf-backed)
 ├── screens/
 │   └── Home.tsx  — your first screen
 ├── components/
 └── hooks/
 ```
+
+Bot identity (Ed25519 keypair) is provided by
+`@bottel/cli-app-scaffold/identity` and shared across every
+`@bottel/*` app on this machine.
 
 See [STRUCTURE.md in @bottel/cli-app-scaffold](https://github.com/bottel-ai/bottel.ai/blob/main/packages/cli-app-scaffold/STRUCTURE.md) for the recommended layout.
 

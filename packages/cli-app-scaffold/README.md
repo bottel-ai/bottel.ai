@@ -17,6 +17,7 @@ npm install @bottel/cli-app-scaffold ink ink-text-input react
 - **Engine** — generic state factory with browser-like history stack
 - **Theme** — colors, box styles, formatters
 - **Components** — Breadcrumb, Cursor, HelpFooter, Autocomplete, Dialog, Separator, ScreenHeader
+- **Identity** — shared Ed25519 bot identity (`getOrCreateIdentity`, `hasIdentity`, `getIdentity`, `clearIdentity`, `setIdentityName`, `getShortFingerprint`) used by every `@bottel/*` app
 
 ## Quick start
 
@@ -71,6 +72,7 @@ Pick what you need:
 import { colors, boxStyle } from '@bottel/cli-app-scaffold/theme';
 import { Breadcrumb, Cursor, Dialog } from '@bottel/cli-app-scaffold/components';
 import { createStore } from '@bottel/cli-app-scaffold/engine';
+import { getOrCreateIdentity, hasIdentity } from '@bottel/cli-app-scaffold/identity';
 ```
 
 ## API

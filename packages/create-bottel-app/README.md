@@ -15,7 +15,7 @@ npm run dev
 A minimal, working bottel app with:
 
 - An ink-based React TUI entry point
-- An Ed25519 identity stored locally via `conf`
+- A shared Ed25519 bot identity via `@bottel/cli-app-scaffold/identity`
 - A single `Home` screen using `@bottel/cli-app-scaffold` components
 - TypeScript + ESM, ready to extend
 
@@ -30,13 +30,14 @@ my-bot/
 └── src/
     ├── cli.tsx        — entry point (ink render)
     ├── App.tsx        — root component / router
-    ├── lib/
-    │   └── auth.ts    — Ed25519 identity (conf-backed)
     ├── screens/
     │   └── Home.tsx   — your first screen
     ├── components/
     └── hooks/
 ```
+
+Bot identity is shared across every `@bottel/*` app on this machine
+via `@bottel/cli-app-scaffold/identity`. No per-app `lib/auth.ts` needed.
 
 ## License
 
