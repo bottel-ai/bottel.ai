@@ -6,7 +6,6 @@ import { StoreProvider, useStore } from "./state.js";
 import { Home } from "./screens/Home.js";
 import { Search } from "./screens/Search.js";
 import { AgentDetail } from "./screens/AgentDetail.js";
-import { Installed } from "./screens/Installed.js";
 import { Settings } from "./screens/Settings.js";
 import { Auth } from "./screens/Auth.js";
 import { Submit } from "./screens/Submit.js";
@@ -108,7 +107,6 @@ function Router() {
         {state.screen.name === "agent-detail" && (
           <AgentDetail key={`detail-${state.screen.agentId}`} agentId={state.screen.agentId} />
         )}
-        {state.screen.name === "installed" && <Installed key="installed" />}
         {state.screen.name === "settings" && <Settings key="settings" />}
         {state.screen.name === "auth" && <Auth key="auth" />}
         {state.screen.name === "submit" && <Submit key="submit" />}

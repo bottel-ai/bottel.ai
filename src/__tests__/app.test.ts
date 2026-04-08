@@ -10,7 +10,6 @@ const requiredFiles = [
   "screens/Home.tsx",
   "screens/Search.tsx",
   "screens/AgentDetail.tsx",
-  "screens/Installed.tsx",
   "screens/Settings.tsx",
   "screens/Auth.tsx",
   "screens/Submit.tsx",

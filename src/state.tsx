@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useReducer, useCallback } from "react";
-import { takeCheckpoint } from "./launcher.js";
 
 // ─── Screen Types ────────────────────────────────────────────────
 
@@ -7,7 +6,6 @@ export type Screen =
   | { name: "home" }
   | { name: "search" }
   | { name: "agent-detail"; agentId: string }
-  | { name: "installed" }
   | { name: "settings" }
   | { name: "auth" }
   | { name: "submit" }
@@ -34,10 +32,6 @@ export interface HomeState {
   selectedIndex: number;
 }
 
-export interface InstalledState {
-  selectedIndex: number;
-}
-
 export interface SettingsState {
   selectedIndex: number;
 }
@@ -54,18 +48,12 @@ export interface MyAppsState {
   selectedIndex: number;
 }
 
-export type SubmitType = "mcp" | "npm" | "pip" | "multiple";
-
 export interface SubmitState {
-  step: number;  // index into the steps array for the current submitType
-  submitType: SubmitType | null;  // null = type not yet picked
-  typeIndex: number;  // cursor for the type picker
+  step: number;
   name: string;
   slug: string;
   description: string;
   mcpUrl: string;
-  npmPackage: string;
-  pipPackage: string;
   version: string;
 }
 
@@ -105,10 +93,8 @@ export interface ProfileSetupState {
 export interface AppState {
   screen: Screen;
   history: Screen[];
-  installed: Set<string>;
   search: SearchState;
   home: HomeState;
-  installedScreen: InstalledState;
   settings: SettingsState;
   agentDetail: AgentDetailState;
   authScreen: AuthScreenState;
@@ -132,10 +118,6 @@ const INITIAL_HOME: HomeState = {
   selectedIndex: 0,
 };
 
-const INITIAL_INSTALLED: InstalledState = {
-  selectedIndex: 0,
-};
-
 const INITIAL_SETTINGS: SettingsState = {
   selectedIndex: 0,
 };
@@ -154,14 +136,10 @@ const INITIAL_MY_APPS: MyAppsState = {
 
 const INITIAL_SUBMIT: SubmitState = {
   step: 0,
-  submitType: null,
-  typeIndex: 0,
   name: "",
   slug: "",
   description: "",
   mcpUrl: "",
-  npmPackage: "",
-  pipPackage: "",
   version: "0.1.0",
 };
 
@@ -199,10 +177,8 @@ const INITIAL_PROFILE_SETUP: ProfileSetupState = {
 const INITIAL_STATE: AppState = {
   screen: { name: "home" },
   history: [],
-  installed: new Set(["code-reviewer", "translator", "data-analyst"]),
   search: INITIAL_SEARCH,
   home: INITIAL_HOME,
-  installedScreen: INITIAL_INSTALLED,
   settings: INITIAL_SETTINGS,
   agentDetail: INITIAL_AGENT_DETAIL,
   authScreen: INITIAL_AUTH_SCREEN,
@@ -221,11 +197,8 @@ export type Action =
   | { type: "NAVIGATE"; screen: Screen }
   | { type: "GO_BACK" }
   | { type: "GO_HOME" }
-  | { type: "INSTALL_AGENT"; agentId: string }
-  | { type: "UNINSTALL_AGENT"; agentId: string }
   | { type: "UPDATE_SEARCH"; state: Partial<SearchState> }
   | { type: "UPDATE_HOME"; state: Partial<HomeState> }
-  | { type: "UPDATE_INSTALLED"; state: Partial<InstalledState> }
   | { type: "UPDATE_SETTINGS"; state: Partial<SettingsState> }
   | { type: "UPDATE_AGENT_DETAIL"; state: Partial<AgentDetailState> }
   | { type: "UPDATE_AUTH_SCREEN"; state: Partial<AuthScreenState> }
@@ -247,7 +220,6 @@ function reducer(state: AppState, action: Action): AppState {
       const resets: Partial<AppState> = {};
       switch (action.screen.name) {
         // search: don't reset — Home may set query before navigating
-        case "installed": resets.installedScreen = INITIAL_INSTALLED; break;
         case "settings": resets.settings = INITIAL_SETTINGS; break;
         case "agent-detail": resets.agentDetail = INITIAL_AGENT_DETAIL; break;
         case "home": resets.home = INITIAL_HOME; break;
@@ -284,18 +256,6 @@ function reducer(state: AppState, action: Action): AppState {
         screen: { name: "home" },
       };
 
-    case "INSTALL_AGENT": {
-      const installed = new Set(state.installed);
-      installed.add(action.agentId);
-      return { ...state, installed };
-    }
-
-    case "UNINSTALL_AGENT": {
-      const installed = new Set(state.installed);
-      installed.delete(action.agentId);
-      return { ...state, installed };
-    }
-
     case "UPDATE_SEARCH":
       return {
         ...state,
@@ -306,12 +266,6 @@ function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         home: { ...state.home, ...action.state },
-      };
-
-    case "UPDATE_INSTALLED":
-      return {
-        ...state,
-        installedScreen: { ...state.installedScreen, ...action.state },
       };
 
     case "UPDATE_SETTINGS":
@@ -392,8 +346,7 @@ interface StoreContext {
 const Store = createContext<StoreContext>(null!);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  // If we're remounting after a launchExternal, hydrate from the checkpoint
-  const [state, dispatch] = useReducer(reducer, takeCheckpoint() ?? INITIAL_STATE);
+  const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
 
   const navigate = useCallback(
     (screen: Screen) => dispatch({ type: "NAVIGATE", screen }),

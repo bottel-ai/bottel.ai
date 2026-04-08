@@ -6,51 +6,27 @@ import { colors } from "../theme.js";
 import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../components.js";
 import { isLoggedIn, getAuth, getShortFingerprint } from "../lib/auth.js";
 import { submitApp } from "../lib/api.js";
-import type { SubmitType } from "../state.js";
 
-// Step IDs (stable across all submitTypes)
+// Linear MCP-only flow
 const STEP = {
-  TYPE: 0,
-  NAME: 1,
-  ID: 2,
-  DESCRIPTION: 3,
-  MCP: 4,
-  NPM: 5,
-  PIP: 6,
-  VERSION: 7,
-  CONFIRM: 8,
+  NAME: 0,
+  ID: 1,
+  DESCRIPTION: 2,
+  MCP: 3,
+  VERSION: 4,
+  CONFIRM: 5,
 } as const;
 
 const STEP_LABELS: Record<number, string> = {
-  [STEP.TYPE]: "Type",
   [STEP.NAME]: "App Name",
   [STEP.ID]: "App ID",
   [STEP.DESCRIPTION]: "Description",
   [STEP.MCP]: "MCP Server URL",
-  [STEP.NPM]: "npm Package",
-  [STEP.PIP]: "pip Package",
   [STEP.VERSION]: "Version",
   [STEP.CONFIRM]: "Confirm",
 };
 
-const TYPE_OPTIONS: { type: SubmitType; label: string; description: string }[] = [
-  { type: "mcp", label: "MCP Server", description: "Remote service exposed over the Model Context Protocol" },
-  { type: "npm", label: "npm Package", description: "Node.js CLI tool installable via npx" },
-  { type: "pip", label: "pip Package", description: "Python tool installable via pip" },
-  { type: "multiple", label: "Multiple", description: "Combine MCP + npm + pip in one submission" },
-];
-
-// Steps shown for each type, in order
-function stepsForType(type: SubmitType): number[] {
-  const base = [STEP.NAME, STEP.ID, STEP.DESCRIPTION];
-  const tail = [STEP.VERSION, STEP.CONFIRM];
-  switch (type) {
-    case "mcp": return [STEP.TYPE, ...base, STEP.MCP, ...tail];
-    case "npm": return [STEP.TYPE, ...base, STEP.NPM, ...tail];
-    case "pip": return [STEP.TYPE, ...base, STEP.PIP, ...tail];
-    case "multiple": return [STEP.TYPE, ...base, STEP.MCP, STEP.NPM, STEP.PIP, ...tail];
-  }
-}
+const TOTAL_STEPS = 6;
 
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -58,7 +34,7 @@ function slugify(name: string): string {
 
 export function Submit() {
   const { state, dispatch, goBack } = useStore();
-  const { step, submitType, typeIndex, name, slug, description, mcpUrl, npmPackage, pipPackage, version } = state.submit;
+  const { step, name, slug, description, mcpUrl, version } = state.submit;
   const [confirmIndex, setConfirmIndex] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -70,16 +46,11 @@ export function Submit() {
   const update = (s: Partial<typeof state.submit>) =>
     dispatch({ type: "UPDATE_SUBMIT", state: s });
 
-  // Compute current position in the active step list
-  const steps = submitType ? stepsForType(submitType) : [STEP.TYPE];
-  const stepPos = steps.indexOf(step);
-  const totalSteps = steps.length;
-
   const goToNext = () => {
-    if (stepPos < steps.length - 1) update({ step: steps[stepPos + 1]! });
+    if (step < STEP.CONFIRM) update({ step: step + 1 });
   };
   const goToPrev = () => {
-    if (stepPos > 0) update({ step: steps[stepPos - 1]! });
+    if (step > 0) update({ step: step - 1 });
     else goBack();
   };
 
@@ -94,25 +65,6 @@ export function Submit() {
       return;
     }
 
-    // Type picker
-    if (step === STEP.TYPE) {
-      if (key.escape) { goBack(); return; }
-      if (key.upArrow) {
-        update({ typeIndex: (typeIndex - 1 + TYPE_OPTIONS.length) % TYPE_OPTIONS.length });
-        return;
-      }
-      if (key.downArrow || key.tab) {
-        update({ typeIndex: (typeIndex + 1) % TYPE_OPTIONS.length });
-        return;
-      }
-      if (key.return) {
-        const picked = TYPE_OPTIONS[typeIndex]!.type;
-        update({ submitType: picked, step: STEP.NAME });
-        setError(null);
-      }
-      return;
-    }
-
     // Confirm step
     if (step === STEP.CONFIRM) {
       if (key.escape) { goToPrev(); return; }
@@ -124,7 +76,7 @@ export function Submit() {
         const fingerprint = auth?.fingerprint ?? "unknown";
         setSubmitting(true);
         setError(null);
-        submitApp({ name, slug, description, category: "General", version, mcpUrl, npmPackage, pipPackage }, fingerprint)
+        submitApp({ name, slug, description, category: "General", version, mcpUrl }, fingerprint)
           .then(() => setSubmitted(true))
           .catch((err: Error) => setError(err.message))
           .finally(() => setSubmitting(false));
@@ -151,16 +103,8 @@ export function Submit() {
         if (description.trim().length > 200) { setError("Description must be under 200 characters"); return; }
       }
       if (step === STEP.MCP) {
-        if (!mcpUrl.trim()) { setError("MCP URL is required for MCP submissions"); return; }
+        if (!mcpUrl.trim()) { setError("MCP URL is required"); return; }
         if (!/^https?:\/\/.+/.test(mcpUrl.trim())) { setError("MCP URL must start with http:// or https://"); return; }
-      }
-      if (step === STEP.NPM) {
-        if (!npmPackage.trim()) { setError("npm package name is required"); return; }
-        if (!/^(@[a-z0-9-]+\/)?[a-z0-9][a-z0-9-_.]*$/.test(npmPackage.trim())) { setError("Invalid npm package name (e.g. @scope/name or my-package)"); return; }
-      }
-      if (step === STEP.PIP) {
-        if (!pipPackage.trim()) { setError("pip package name is required"); return; }
-        if (!/^[a-zA-Z0-9][a-zA-Z0-9-_.]*$/.test(pipPackage.trim())) { setError("Invalid pip package name (e.g. mypackage or my-package)"); return; }
       }
       if (step === STEP.VERSION) {
         if (!version.trim()) { setError("Version is required"); return; }
@@ -176,7 +120,7 @@ export function Submit() {
   const allRows: React.ReactNode[] = [];
 
   allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Submit"]} />);
-  allRows.push(<ScreenHeader key="header" title="Submit App" />);
+  allRows.push(<ScreenHeader key="header" title="Submit MCP App" />);
 
   if (!loggedIn) {
     allRows.push(
@@ -192,31 +136,10 @@ export function Submit() {
     allRows.push(
       <Box key="success" paddingLeft={2} flexDirection="column">
         <Text color={colors.success} bold>App submitted successfully!</Text>
-        <Text dimColor>Your app has been published to bottel.ai.</Text>
+        <Text dimColor>Your MCP app has been published to bottel.ai.</Text>
       </Box>,
     );
     allRows.push(<HelpFooter key="footer" text="Esc/Enter back to home" />);
-    return <Box flexDirection="column" paddingX={1}>{allRows}</Box>;
-  }
-
-  // Type picker screen
-  if (step === STEP.TYPE) {
-    allRows.push(
-      <Box key="type-label" paddingLeft={2} marginBottom={1}>
-        <Text bold>What are you submitting?</Text>
-      </Box>,
-    );
-    TYPE_OPTIONS.forEach((opt, i) => {
-      const selected = i === typeIndex;
-      allRows.push(
-        <Box key={`type-${opt.type}`} paddingLeft={2}>
-          <Cursor active={selected} />
-          <Text bold={selected} color={selected ? colors.primary : undefined}>{opt.label.padEnd(14)}</Text>
-          <Text dimColor>{opt.description}</Text>
-        </Box>,
-      );
-    });
-    allRows.push(<HelpFooter key="footer" text="Esc back · ↑↓ nav · Enter select" />);
     return <Box flexDirection="column" paddingX={1}>{allRows}</Box>;
   }
 
@@ -231,16 +154,13 @@ export function Submit() {
     );
 
     const fields: [string, string][] = [
-      ["Type:", submitType ?? ""],
       ["Name:", name],
       ["App ID:", slug],
       ["Description:", description],
+      ["MCP URL:", mcpUrl],
+      ["Version:", version],
+      ["Signed by:", `bottel_${shortFp.replace("SHA256:", "")}...`],
     ];
-    if (steps.includes(STEP.MCP)) fields.push(["MCP URL:", mcpUrl]);
-    if (steps.includes(STEP.NPM)) fields.push(["npm Package:", npmPackage]);
-    if (steps.includes(STEP.PIP)) fields.push(["pip Package:", pipPackage]);
-    fields.push(["Version:", version]);
-    fields.push(["Signed by:", `bottel_${shortFp.replace("SHA256:", "")}...`]);
 
     fields.forEach(([label, value]) => {
       allRows.push(
@@ -278,8 +198,6 @@ export function Submit() {
     [STEP.ID]: { label: "App ID", value: slug, setter: (v) => { update({ slug: v }); setError(null); }, placeholder: "my-cool-bot" },
     [STEP.DESCRIPTION]: { label: "Description", value: description, setter: (v) => { update({ description: v }); setError(null); }, placeholder: "A bot that does awesome things" },
     [STEP.MCP]: { label: "MCP Server URL", value: mcpUrl, setter: (v) => { update({ mcpUrl: v }); setError(null); }, placeholder: "https://my-bot.example.com/mcp" },
-    [STEP.NPM]: { label: "npm Package", value: npmPackage, setter: (v) => { update({ npmPackage: v }); setError(null); }, placeholder: "@scope/my-bot or my-bot" },
-    [STEP.PIP]: { label: "pip Package", value: pipPackage, setter: (v) => { update({ pipPackage: v }); setError(null); }, placeholder: "my-python-bot" },
     [STEP.VERSION]: { label: "Version", value: version, setter: (v) => { update({ version: v }); setError(null); }, placeholder: "0.1.0" },
   };
 
@@ -287,7 +205,7 @@ export function Submit() {
 
   allRows.push(
     <Box key="step-label" paddingLeft={2} marginBottom={1}>
-      <Text bold>Step {stepPos + 1}/{totalSteps}: {STEP_LABELS[step]}</Text>
+      <Text bold>Step {step + 1}/{TOTAL_STEPS}: {STEP_LABELS[step]}</Text>
     </Box>,
   );
 

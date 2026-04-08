@@ -91,19 +91,21 @@ app.post("/apps", authMiddleware, async (c) => {
     longDescription?: string;
     capabilities?: string[];
     mcpUrl?: string;
-    npmPackage?: string;
-    pipPackage?: string;
   }>();
 
   if (!body.name || !body.slug || !body.description || !body.category || !body.version) {
     return c.json({ error: "name, slug, description, category, and version are required" }, 400);
   }
 
+  if (!body.mcpUrl || !/^https?:\/\/.+/.test(body.mcpUrl)) {
+    return c.json({ error: "mcpUrl is required and must start with http:// or https://" }, 400);
+  }
+
   const id = crypto.randomUUID();
 
   await c.env.DB.prepare(
-    `INSERT INTO apps (id, name, slug, description, long_description, category, author, version, capabilities, public_key, mcp_url, npm_package, pip_package)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO apps (id, name, slug, description, long_description, category, author, version, capabilities, public_key, mcp_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     id,
     body.name,
@@ -115,9 +117,7 @@ app.post("/apps", authMiddleware, async (c) => {
     body.version,
     JSON.stringify(body.capabilities ?? []),
     fingerprint,
-    body.mcpUrl ?? "",
-    body.npmPackage ?? "",
-    body.pipPackage ?? ""
+    body.mcpUrl
   ).run();
 
   // Sync FTS index

@@ -12,8 +12,6 @@ CREATE TABLE IF NOT EXISTS apps (
   verified INTEGER DEFAULT 0,
   public_key TEXT,
   mcp_url TEXT DEFAULT '',
-  npm_package TEXT DEFAULT '',
-  pip_package TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now'))
 );
 

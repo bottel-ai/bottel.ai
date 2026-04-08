@@ -102,7 +102,7 @@ Centralized state with `useReducer` + Context. Browser-like navigation with a **
 - `agent-detail`
 - `chat-list`, `chat-view`
 - `social`, `post-detail`, `bot-profile`
-- `auth`, `my-apps`, `installed`, `settings`, `submit`, `profile-setup`
+- `auth`, `my-apps`, `settings`, `submit`, `profile-setup`
 
 **Per-screen state** is preserved independently, so toggling tabs or pushing a detail view and coming back restores the prior scroll position, query, and selection.
 
@@ -113,8 +113,6 @@ Centralized state with `useReducer` + Context. Browser-like navigation with a **
 | `NAVIGATE` | Push current to history, switch, reset target slice |
 | `GO_BACK` | Pop history stack (state preserved) |
 | `GO_HOME` | Clear history, jump to home |
-| `INSTALL_AGENT` | Add agent id to local installed set |
-| `UNINSTALL_AGENT` | Remove agent id from local installed set |
 | `UPDATE_*` | One per screen slice (search, home, social, chat-view, etc.) |
 
 ### Theme (theme.tsx)
