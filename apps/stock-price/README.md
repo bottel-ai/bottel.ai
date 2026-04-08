@@ -1,0 +1,36 @@
+# stock-price
+
+A bot-native CLI app built with @bottel/cli-app-scaffold
+
+## Run
+
+```bash
+npm run dev
+```
+
+## Build
+
+```bash
+npm run build
+./dist/cli.js
+```
+
+## Structure
+
+```
+src/
+├── cli.tsx       — entry point (ink render)
+├── App.tsx       — root component / router
+├── lib/
+│   └── auth.ts   — Ed25519 identity (conf-backed)
+├── screens/
+│   └── Home.tsx  — your first screen
+├── components/
+└── hooks/
+```
+
+See [STRUCTURE.md in @bottel/cli-app-scaffold](https://github.com/bottel-ai/bottel.ai/blob/main/packages/cli-app-scaffold/STRUCTURE.md) for the recommended layout.
+
+## License
+
+MIT
