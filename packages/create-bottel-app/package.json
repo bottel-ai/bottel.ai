@@ -1,0 +1,37 @@
+{
+  "name": "create-bottel-app",
+  "version": "0.1.0",
+  "description": "Scaffolds a new bottel CLI app from a template",
+  "keywords": [
+    "bottel",
+    "cli",
+    "scaffold",
+    "generator",
+    "create"
+  ],
+  "license": "MIT",
+  "author": "bottel.ai",
+  "homepage": "https://github.com/bottel-ai/bottel.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bottel-ai/bottel.ai.git",
+    "directory": "packages/create-bottel-app"
+  },
+  "type": "module",
+  "bin": {
+    "create-bottel-app": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x dist/cli.js",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.4.0"
+  }
+}

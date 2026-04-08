@@ -72,9 +72,31 @@ export function AgentDetail({ agentId }: { agentId: string }) {
             launchApp("pipx", ["run", agent.pipPackage]);
           }
         } else if (buttonIndex === 1) {
-          // Uninstall: clear npx cache or pipx uninstall
+          // Uninstall: clear npx cache (where `npx -y` puts the package)
+          // and also try `npm uninstall -g` in case it was globally installed.
           if (agent.npmPackage) {
-            launchApp("npm", ["uninstall", "-g", agent.npmPackage]);
+            const pkg = agent.npmPackage;
+            const script = `
+              const fs = require('fs');
+              const path = require('path');
+              const os = require('os');
+              const cacheDir = path.join(os.homedir(), '.npm', '_npx');
+              let removed = 0;
+              if (fs.existsSync(cacheDir)) {
+                for (const entry of fs.readdirSync(cacheDir)) {
+                  const pkgFile = path.join(cacheDir, entry, 'node_modules', '${pkg}', 'package.json');
+                  if (fs.existsSync(pkgFile)) {
+                    fs.rmSync(path.join(cacheDir, entry), { recursive: true, force: true });
+                    removed++;
+                  }
+                }
+              }
+              console.log('Removed ' + removed + ' npx cache entries for ${pkg}');
+              try { require('child_process').execSync('npm uninstall -g ${pkg}', { stdio: 'inherit' }); } catch (e) {}
+              console.log('\\nDone. Press Enter to return to bottel.ai...');
+              process.stdin.once('data', () => process.exit(0));
+            `;
+            launchApp("node", ["-e", script]);
           } else if (agent.pipPackage) {
             launchApp("pipx", ["uninstall", agent.pipPackage]);
           }
