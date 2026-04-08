@@ -2,13 +2,13 @@ import React from "react";
 import { Box, Text, useApp, useInput } from "ink";
 import { colors } from "@bottel/cli-app-scaffold/theme";
 import { Breadcrumb, HelpFooter } from "@bottel/cli-app-scaffold/components";
-import { getOrCreateAuth } from "../lib/auth.js";
+import { getOrCreateIdentity } from "@bottel/cli-app-scaffold/identity";
 
 const APP_NAME = "{{NAME}}";
 
 export function Home() {
   const { exit } = useApp();
-  const auth = getOrCreateAuth();
+  const auth = getOrCreateIdentity();
   const shortFp = auth.fingerprint.replace("SHA256:", "").slice(0, 16);
 
   useInput((char, key) => {

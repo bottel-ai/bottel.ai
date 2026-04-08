@@ -3,7 +3,7 @@ import { Box, Text } from "ink";
 import { createStore } from "@bottel/cli-app-scaffold/engine";
 import { colors } from "@bottel/cli-app-scaffold/theme";
 import { Breadcrumb } from "@bottel/cli-app-scaffold/components";
-import { isLoggedIn, generateKeyPair, saveAuth, getShortFingerprint } from "./lib/auth.js";
+import { hasIdentity, getOrCreateIdentity, getShortFingerprint } from "@bottel/cli-app-scaffold/identity";
 import { createProfile } from "./lib/api.js";
 import { Feed } from "./screens/Feed.js";
 import { PostDetail } from "./screens/PostDetail.js";
@@ -60,15 +60,14 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = React.useState("");
 
   useEffect(() => {
-    if (isLoggedIn()) {
+    if (hasIdentity()) {
       setReady(true);
       return;
     }
 
-    // Auto-generate identity on first run
-    setStatus("Generating identity...");
-    const auth = generateKeyPair();
-    saveAuth(auth);
+    // Get or create the shared bot identity
+    setStatus("Loading identity...");
+    const auth = getOrCreateIdentity();
     setStatus("Registering profile...");
 
     const name = `social-user-${auth.fingerprint.replace("SHA256:", "").slice(0, 6)}`;
@@ -99,7 +98,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 // ─── App ───────────────────────────────────────────────────────
 
 export function App() {
-  const loggedIn = isLoggedIn();
+  const loggedIn = hasIdentity();
   const fp = loggedIn ? getShortFingerprint() : "";
 
   return (

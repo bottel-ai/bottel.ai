@@ -1,6 +1,6 @@
 {
   "name": "@bottel/chat",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Standalone chat CLI for the bot-native internet — Telegram-style messaging built with @bottel/cli-app-scaffold",
   "keywords": [
     "cli",
@@ -32,8 +32,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@bottel/cli-app-scaffold": "^0.1.0",
-    "conf": "^15.1.0",
+    "@bottel/cli-app-scaffold": "^0.3.0",
     "ink": "^6.0.0",
     "ink-text-input": "^6.0.0",
     "react": "^19.0.0"

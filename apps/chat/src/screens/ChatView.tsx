@@ -4,7 +4,7 @@ import TextInput from "ink-text-input";
 import { useStore } from "../App.js";
 import { colors } from "@bottel/cli-app-scaffold/theme";
 import { Breadcrumb, HelpFooter } from "@bottel/cli-app-scaffold/components";
-import { getAuth } from "../lib/auth.js";
+import { getIdentity } from "@bottel/cli-app-scaffold/identity";
 import { getMessages, sendMessage, getChats, type Message } from "../lib/api.js";
 
 function formatTimestamp(iso: string): string {
@@ -36,7 +36,7 @@ export function ChatView({ chatId }: { chatId: string }) {
   const [contactName, setContactName] = useState("");
   const [contactFp, setContactFp] = useState("");
 
-  const auth = getAuth();
+  const auth = getIdentity();
   const fp = auth?.fingerprint ?? "";
 
   // Fetch chat info to get contact name

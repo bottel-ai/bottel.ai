@@ -4,7 +4,7 @@ import TextInput from "ink-text-input";
 import { useStore } from "../App.js";
 import { colors } from "@bottel/cli-app-scaffold/theme";
 import { Breadcrumb, HelpFooter, Cursor } from "@bottel/cli-app-scaffold/components";
-import { isLoggedIn, getAuth } from "../lib/auth.js";
+import { hasIdentity, getIdentity } from "@bottel/cli-app-scaffold/identity";
 import {
   getFeed, getUserPosts, getFollowing, createPost,
   type Post, type FollowEntry,
@@ -40,8 +40,8 @@ export function Feed() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loggedIn = isLoggedIn();
-  const auth = getAuth();
+  const loggedIn = hasIdentity();
+  const auth = getIdentity();
   const fp = auth?.fingerprint ?? "";
 
   const loadPosts = useCallback(() => {

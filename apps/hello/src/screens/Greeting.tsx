@@ -3,11 +3,11 @@ import { Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { colors } from "@bottel/cli-app-scaffold/theme";
 import { Breadcrumb, HelpFooter } from "@bottel/cli-app-scaffold/components";
-import { getOrCreateAuth, setName } from "../lib/auth.js";
+import { getOrCreateIdentity, setIdentityName } from "@bottel/cli-app-scaffold/identity";
 
 export function Greeting() {
   const { exit } = useApp();
-  const auth = getOrCreateAuth();
+  const auth = getOrCreateIdentity();
   const [name, setLocalName] = useState(auth.name ?? "");
   const [editing, setEditing] = useState(!auth.name);
   const [input, setInput] = useState("");
@@ -20,7 +20,7 @@ export function Greeting() {
 
   const submit = () => {
     if (input.trim()) {
-      setName(input.trim());
+      setIdentityName(input.trim());
       setLocalName(input.trim());
       setEditing(false);
       setInput("");

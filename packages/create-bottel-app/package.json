@@ -1,6 +1,6 @@
 {
   "name": "create-bottel-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Scaffolds a new bottel CLI app from a template",
   "keywords": [
     "bottel",

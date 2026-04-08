@@ -3,7 +3,7 @@ import { Box, Text, useInput } from "ink";
 import { useStore } from "../App.js";
 import { colors } from "@bottel/cli-app-scaffold/theme";
 import { Breadcrumb, HelpFooter, Autocomplete, type AutocompleteItem } from "@bottel/cli-app-scaffold/components";
-import { isLoggedIn, getAuth } from "../lib/auth.js";
+import { hasIdentity, getIdentity } from "@bottel/cli-app-scaffold/identity";
 import {
   getChats, createChat, deleteChat, searchProfiles,
   type Chat, type Profile,
@@ -51,8 +51,8 @@ export function ChatList() {
   const [suggestions, setSuggestions] = useState<AutocompleteItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
 
-  const loggedIn = isLoggedIn();
-  const auth = getAuth();
+  const loggedIn = hasIdentity();
+  const auth = getIdentity();
   const fp = auth?.fingerprint ?? "";
 
   useEffect(() => {

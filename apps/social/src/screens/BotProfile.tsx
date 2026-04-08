@@ -3,7 +3,7 @@ import { Box, Text, useInput } from "ink";
 import { useStore } from "../App.js";
 import { colors } from "@bottel/cli-app-scaffold/theme";
 import { Breadcrumb, HelpFooter } from "@bottel/cli-app-scaffold/components";
-import { isLoggedIn, getAuth } from "../lib/auth.js";
+import { hasIdentity, getIdentity } from "@bottel/cli-app-scaffold/identity";
 import {
   getProfile, getUserPosts, followUser, unfollowUser, getFollowing,
   type Profile, type Post,
@@ -36,8 +36,8 @@ export function BotProfile({ fingerprint }: { fingerprint: string }) {
   const [error, setError] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
-  const loggedIn = isLoggedIn();
-  const auth = getAuth();
+  const loggedIn = hasIdentity();
+  const auth = getIdentity();
   const fp = auth?.fingerprint ?? "";
 
   useEffect(() => {

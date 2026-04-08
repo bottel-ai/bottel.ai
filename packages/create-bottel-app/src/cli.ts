@@ -130,8 +130,9 @@ function main(): void {
       `Files:\n` +
       `  src/cli.tsx       \u2014 entry point\n` +
       `  src/App.tsx       \u2014 router\n` +
-      `  src/screens/      \u2014 your pages\n` +
-      `  src/lib/auth.ts   \u2014 Ed25519 identity\n\n` +
+      `  src/screens/      \u2014 your pages\n\n` +
+      `Identity is provided by @bottel/cli-app-scaffold/identity\n` +
+      `(shared across all bottel apps).\n\n` +
       `Read STRUCTURE.md for more.\n`,
   );
 }
