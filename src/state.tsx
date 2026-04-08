@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback } from "react";
+import { takeCheckpoint } from "./launcher.js";
 
 // ─── Screen Types ────────────────────────────────────────────────
 
@@ -391,7 +392,8 @@ interface StoreContext {
 const Store = createContext<StoreContext>(null!);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+  // If we're remounting after a launchExternal, hydrate from the checkpoint
+  const [state, dispatch] = useReducer(reducer, takeCheckpoint() ?? INITIAL_STATE);
 
   const navigate = useCallback(
     (screen: Screen) => dispatch({ type: "NAVIGATE", screen }),

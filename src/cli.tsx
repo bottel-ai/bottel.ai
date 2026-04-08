@@ -2,6 +2,7 @@
 import React from "react";
 import { render } from "ink";
 import App from "./App.js";
+import { registerInk } from "./launcher.js";
 
 // ANSI escape sequences
 const ENTER_ALT_SCREEN = "\x1b[?1049h";
@@ -18,7 +19,9 @@ function restore() {
   process.stdout.write(DISABLE_MOUSE + EXIT_ALT_SCREEN);
 }
 
-render(<App />);
+const appElement = <App />;
+const instance = render(appElement);
+registerInk(instance, appElement);
 
 process.on("exit", restore);
 process.on("SIGINT", () => { restore(); process.exit(0); });

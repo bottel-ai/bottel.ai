@@ -5,6 +5,7 @@ import { type App, getApp } from "../lib/api.js";
 import { useStore } from "../state.js";
 import { colors, formatNumber, boxStyle } from "../theme.js";
 import { Breadcrumb, Separator, HelpFooter } from "../components.js";
+import { launchExternal, setCheckpoint } from "../launcher.js";
 
 type InstallStatus = "idle" | "installing";
 
@@ -12,6 +13,12 @@ export function AgentDetail({ agentId }: { agentId: string }) {
   const { state, dispatch, goBack } = useStore();
   const { buttonIndex } = state.agentDetail;
   const [installStatus, setInstallStatus] = useState<InstallStatus>("idle");
+
+  const launchApp = (command: string, args: string[]) => {
+    // Save current state so we land back here after the child exits
+    setCheckpoint(state);
+    launchExternal(command, args);
+  };
 
   const [agent, setAgent] = useState<App | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,15 +52,36 @@ export function AgentDetail({ agentId }: { agentId: string }) {
     }
   }, [installStatus]);
 
+  const runnable = !!(agent?.npmPackage || agent?.pipPackage);
+  const buttonCount = runnable ? 3 : 2;
+
   useInput((_input, key) => {
     if (key.escape) {
       goBack();
       return;
     }
-    if (key.leftArrow || key.upArrow) dispatch({ type: "UPDATE_AGENT_DETAIL", state: { buttonIndex: (buttonIndex - 1 + 2) % 2 } });
-    if (key.rightArrow || key.downArrow || key.tab) dispatch({ type: "UPDATE_AGENT_DETAIL", state: { buttonIndex: (buttonIndex + 1) % 2 } });
+    if (key.leftArrow || key.upArrow) dispatch({ type: "UPDATE_AGENT_DETAIL", state: { buttonIndex: (buttonIndex - 1 + buttonCount) % buttonCount } });
+    if (key.rightArrow || key.downArrow || key.tab) dispatch({ type: "UPDATE_AGENT_DETAIL", state: { buttonIndex: (buttonIndex + 1) % buttonCount } });
     if (key.return && installStatus === "idle") {
-      if (buttonIndex === 0 && !isMcp) {
+      if (runnable && agent) {
+        if (buttonIndex === 0) {
+          // Run via npx or pipx
+          if (agent.npmPackage) {
+            launchApp("npx", ["-y", "--prefer-offline", agent.npmPackage]);
+          } else if (agent.pipPackage) {
+            launchApp("pipx", ["run", agent.pipPackage]);
+          }
+        } else if (buttonIndex === 1) {
+          // Uninstall: clear npx cache or pipx uninstall
+          if (agent.npmPackage) {
+            launchApp("npm", ["uninstall", "-g", agent.npmPackage]);
+          } else if (agent.pipPackage) {
+            launchApp("pipx", ["uninstall", agent.pipPackage]);
+          }
+        } else {
+          goBack();
+        }
+      } else if (buttonIndex === 0 && !isMcp) {
         if (isInstalled) {
           dispatch({ type: "UNINSTALL_AGENT", agentId });
         } else {
@@ -185,7 +213,34 @@ export function AgentDetail({ agentId }: { agentId: string }) {
       </Box>
     );
   }
-  if (isMcp) {
+  if (runnable) {
+    // Run + Uninstall + Back
+    allRows.push(
+      <Box key="buttons" gap={2}>
+        <Text
+          bold={buttonIndex === 0}
+          color={buttonIndex === 0 ? colors.success : undefined}
+          dimColor={buttonIndex !== 0}
+        >
+          [ ▶ Run ]
+        </Text>
+        <Text
+          bold={buttonIndex === 1}
+          color={buttonIndex === 1 ? colors.error : undefined}
+          dimColor={buttonIndex !== 1}
+        >
+          [ Uninstall ]
+        </Text>
+        <Text
+          bold={buttonIndex === 2}
+          color={buttonIndex === 2 ? colors.primary : undefined}
+          dimColor={buttonIndex !== 2}
+        >
+          [ Back ]
+        </Text>
+      </Box>
+    );
+  } else if (isMcp) {
     allRows.push(
       <Box key="buttons" gap={2}>
         <Text
