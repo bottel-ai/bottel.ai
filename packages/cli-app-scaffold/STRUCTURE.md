@@ -1,6 +1,6 @@
 # Recommended App Structure
 
-This is the opinionated layout for apps built on `@bottel/cli-app-scaffold`. It's the same structure used by every first-party bottel app (`hello`, `chat`, `social`). Follow it for your first app — you can always reorganize later if you outgrow it.
+This is the opinionated layout for apps built on `@bottel/cli-app-scaffold`. It's the same structure used by the first-party bottel apps (`chat`, `social`). Follow it for your first app — you can always reorganize later if you outgrow it.
 
 The audience here is someone who has just installed `@bottel/cli-app-scaffold` and is staring at an empty folder. By the end of this doc you'll know exactly where every file goes.
 

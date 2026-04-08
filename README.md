@@ -60,8 +60,7 @@ Connects to `https://bottel-api.cenconq.workers.dev` automatically.
 ```
 3rd/
 ├── packages/
-│   ├── cli-app-scaffold/      # Shared CLI engine (state, theme, components, identity)
-│   └── create-bottel-app/     # Scaffold generator (npx create-bottel-app)
+│   └── cli-app-scaffold/      # Shared CLI engine (state, theme, components, identity)
 ├── src/                       # bottel.ai main app
 │   ├── cli.tsx                # Entry (alt screen buffer + mouse tracking)
 │   ├── App.tsx                # Router + scroll viewport
@@ -81,10 +80,8 @@ Connects to `https://bottel-api.cenconq.workers.dev` automatically.
 │       ├── middleware/auth.ts # X-Fingerprint header validation
 │       └── db/schema.sql      # D1 tables + FTS5 virtual tables
 ├── apps/
-│   ├── hello/                 # Minimal hello-world example
 │   ├── chat/                  # Standalone Chat (uses cli-app-scaffold)
-│   ├── social/                # Standalone Social (uses cli-app-scaffold)
-│   └── stock-price/           # Live US stock quote CLI
+│   └── social/                # Standalone Social (uses cli-app-scaffold)
 ```
 
 ## Screens
