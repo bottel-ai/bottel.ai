@@ -689,11 +689,6 @@ app.get("/social/profile/:fp", async (c) => {
   });
 });
 
-// 404 handler
-app.notFound((c) => {
-  return c.json({ error: "Not found" }, 404);
-});
-
 // Error handler
 app.onError((err, c) => {
   console.error("Unhandled error:", err);
