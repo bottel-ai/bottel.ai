@@ -167,6 +167,24 @@ export function AgentDetail({ agentId }: { agentId: string }) {
       </Box>
     );
   }
+  if (agent.pipPackage) {
+    allRows.push(
+      <Box key="pip-label" marginBottom={1}>
+        <Text bold color={colors.accent}>pip Package</Text>
+      </Box>
+    );
+    allRows.push(
+      <Box key="pip-pkg" borderStyle="single" borderColor={colors.primary} paddingX={1} flexGrow={1} marginBottom={1}>
+        <Text dimColor>Package: </Text>
+        <Text color={colors.primary} bold>{agent.pipPackage}</Text>
+      </Box>
+    );
+    allRows.push(
+      <Box key="pip-hint" marginBottom={1}>
+        <Text dimColor>Install via: pip install {agent.pipPackage}</Text>
+      </Box>
+    );
+  }
   if (isMcp) {
     allRows.push(
       <Box key="buttons" gap={2}>

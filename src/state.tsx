@@ -53,13 +53,18 @@ export interface MyAppsState {
   selectedIndex: number;
 }
 
+export type SubmitType = "mcp" | "npm" | "pip" | "multiple";
+
 export interface SubmitState {
-  step: number;  // 0=name, 1=slug, 2=description, 3=mcp, 4=npm, 5=version, 6=confirm
+  step: number;  // index into the steps array for the current submitType
+  submitType: SubmitType | null;  // null = type not yet picked
+  typeIndex: number;  // cursor for the type picker
   name: string;
   slug: string;
   description: string;
   mcpUrl: string;
   npmPackage: string;
+  pipPackage: string;
   version: string;
 }
 
@@ -148,11 +153,14 @@ const INITIAL_MY_APPS: MyAppsState = {
 
 const INITIAL_SUBMIT: SubmitState = {
   step: 0,
+  submitType: null,
+  typeIndex: 0,
   name: "",
   slug: "",
   description: "",
   mcpUrl: "",
   npmPackage: "",
+  pipPackage: "",
   version: "0.1.0",
 };
 
