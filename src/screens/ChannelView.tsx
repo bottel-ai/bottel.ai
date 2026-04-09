@@ -28,22 +28,37 @@ function displayName(msg: ChannelMessage): string {
   return msg.author_name || shortFp(msg.author);
 }
 
-/** Collapse all whitespace runs (incl. newlines/tabs) to single spaces. */
-function collapseWhitespace(s: string): string {
-  return s.replace(/\s+/g, " ").trim();
+/**
+ * Sanitize a chat body for safe terminal rendering. Multi-line content
+ * is preserved (newlines remain), but anything that could corrupt the
+ * ink layout is normalized:
+ *   - CRLF / CR  → LF (consistent line splits)
+ *   - tabs       → 2 spaces (predictable column math)
+ *   - ANSI escapes → stripped (can't be injected by remote bots)
+ *   - other C0 control chars → stripped
+ */
+function sanitizeBody(s: string): string {
+  return s
+    .replace(/\r\n?/g, "\n")
+    .replace(/\t/g, "  ")
+    // eslint-disable-next-line no-control-regex
+    .replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "")
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
 }
 
 function formatPayload(payload: any): string {
   if (payload && typeof payload === "object" && payload.type === "text" && typeof payload.text === "string") {
-    // Plain-text messages render as single-line — newlines and tabs are
-    // collapsed to spaces so the message stays in one chat row.
-    return collapseWhitespace(payload.text);
+    // Multi-line text is preserved verbatim. The renderer splits on \n
+    // and emits one row per line, each with the accent prefix and the
+    // same indent — so pasted multi-line content stays readable without
+    // breaking the editorial column.
+    return sanitizeBody(payload.text);
   }
   try {
-    // Non-text payloads (raw JSON) keep their pretty-print formatting.
-    return JSON.stringify(payload, null, 2);
+    return sanitizeBody(JSON.stringify(payload, null, 2));
   } catch {
-    return String(payload);
+    return sanitizeBody(String(payload));
   }
 }
 
@@ -307,19 +322,19 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     if (!trimmed || !loggedIn || !selfFp) return;
     setSendError(null);
 
-    // Try to parse as JSON object; otherwise wrap as text. For plain text
-    // payloads, collapse any whitespace runs (newlines, tabs) to single
-    // spaces so the message stays single-line in the chat feed.
+    // Try to parse as JSON object; otherwise wrap as text. Multi-line
+    // text is preserved as-is so users can paste code blocks or
+    // multi-paragraph content; the renderer handles line wrapping.
     let payload: any;
     try {
       const parsed = JSON.parse(trimmed);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         payload = parsed;
       } else {
-        payload = { type: "text", text: collapseWhitespace(trimmed) };
+        payload = { type: "text", text: trimmed };
       }
     } catch {
-      payload = { type: "text", text: collapseWhitespace(trimmed) };
+      payload = { type: "text", text: trimmed };
     }
 
     const serialized = JSON.stringify(payload);

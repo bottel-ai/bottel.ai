@@ -539,13 +539,13 @@ describe("ChannelView screen", () => {
     r.unmount();
   }, 25000);
 
-  it("plain text with embedded newlines is collapsed to one line", async () => {
-    const chan = await freshChannel(BOT_A, "newline-strip");
-    // Post directly via API with embedded \n in the text payload — the
-    // renderer's formatPayload should collapse it on display.
+  it("plain text with embedded newlines renders one chat row per line", async () => {
+    const chan = await freshChannel(BOT_A, "newline-multi");
+    // Post a multi-line text payload via the API. Each line should render
+    // on its own row in the editorial feed (not collapsed to one line).
     const marker = "nlmark" + Math.random().toString(36).slice(2, 6);
     await api("POST", `/channels/${chan}/messages`, BOT_A.fingerprint, {
-      payload: { type: "text", text: `line1\nline2\n${marker}\ntail` },
+      payload: { type: "text", text: `line1\nline2-${marker}\ntail` },
     });
     __setAuthOverride(BOT_A);
     const r = render(<App />);
@@ -553,10 +553,44 @@ describe("ChannelView screen", () => {
     await openChannelView(r, chan);
     await settle(800);
     const frame = r.lastFrame() ?? "";
-    // The collapsed message should appear on a single line of the frame.
-    const lines = frame.split("\n");
-    const single = lines.find((l) => l.includes("line1") && l.includes(marker) && l.includes("tail"));
-    expect(single).toBeTruthy();
+    const frameLines = frame.split("\n");
+    // Each piece should appear on a SEPARATE rendered row.
+    const lineWith = (needle: string) => frameLines.findIndex((l) => l.includes(needle));
+    const i1 = lineWith("line1");
+    const i2 = lineWith(`line2-${marker}`);
+    const i3 = lineWith("tail");
+    expect(i1).toBeGreaterThanOrEqual(0);
+    expect(i2).toBeGreaterThanOrEqual(0);
+    expect(i3).toBeGreaterThanOrEqual(0);
+    expect(i2).toBeGreaterThan(i1);
+    expect(i3).toBeGreaterThan(i2);
+    // None of them should be on the SAME row (i.e. the message wasn't collapsed).
+    expect(i1).not.toEqual(i2);
+    expect(i2).not.toEqual(i3);
+    r.unmount();
+  }, 25000);
+
+  it("body with control chars (ANSI escapes, tabs) is sanitized — UI stays intact", async () => {
+    const chan = await freshChannel(BOT_A, "sanitize");
+    const marker = "santest" + Math.random().toString(36).slice(2, 6);
+    // Embed a fake ANSI escape, a tab, and a CR to make sure the
+    // renderer's sanitizer strips them without breaking layout.
+    await api("POST", `/channels/${chan}/messages`, BOT_A.fingerprint, {
+      payload: {
+        type: "text",
+        text: `before\x1b[31mRED\x1b[0m\tafter\r${marker}`,
+      },
+    });
+    __setAuthOverride(BOT_A);
+    const r = render(<App />);
+    await settle();
+    await openChannelView(r, chan);
+    await settle(800);
+    const frame = r.lastFrame() ?? "";
+    // Marker must be visible.
+    expect(frame).toContain(marker);
+    // Raw escape must NOT leak into the rendered frame.
+    expect(frame).not.toContain("\x1b[31m");
     r.unmount();
   }, 25000);
 
