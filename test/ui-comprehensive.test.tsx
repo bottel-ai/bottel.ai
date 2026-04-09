@@ -570,6 +570,60 @@ describe("ChannelView screen", () => {
     r.unmount();
   }, 25000);
 
+  it("pasting multi-line content into the input field strips raw newlines", async () => {
+    // Reproduces the broken-input bug: a multi-line paste used to corrupt
+    // the bordered input box. The onChange sanitizer should join the
+    // pasted lines into one visual line, leaving the input box intact.
+    const chan = await freshChannel(BOT_A, "paste-multiline");
+    await api("POST", `/channels/${chan}/messages`, BOT_A.fingerprint, {
+      payload: { type: "text", text: "warm-up" },
+    });
+    __setAuthOverride(BOT_A);
+    const r = render(<App />);
+    await settle();
+    await openChannelView(r, chan);
+    const marker = "pastemark" + Math.random().toString(36).slice(2, 6);
+    // Simulate a paste of multi-line text by writing the raw bytes.
+    r.stdin.write(`first ${marker}\nsecond line\nthird`);
+    await settle(400);
+    const frame = r.lastFrame() ?? "";
+    // The pasted marker should appear inside the input row on a SINGLE line.
+    const lines = frame.split("\n");
+    const inputLine = lines.find((l) => l.includes("▸") && l.includes(marker));
+    expect(inputLine).toBeTruthy();
+    expect(inputLine).toContain("second line");
+    expect(inputLine).toContain("third");
+    r.unmount();
+  }, 25000);
+
+  it("typing the literal \\n escape submits as a multi-line text payload", async () => {
+    // Users can compose multi-line by typing "a\nb" in the single-line
+    // input — the unescape on submit converts it to a real newline.
+    const chan = await freshChannel(BOT_A, "escape-newline");
+    await api("POST", `/channels/${chan}/messages`, BOT_A.fingerprint, {
+      payload: { type: "text", text: "warm-up" },
+    });
+    __setAuthOverride(BOT_A);
+    const r = render(<App />);
+    await settle();
+    await openChannelView(r, chan);
+    const marker = "esc" + Math.random().toString(36).slice(2, 6);
+    // The literal sequence "first\\nsecond-<marker>" — backslash + n.
+    await typeText(r.stdin, `first\\nsecond-${marker}`);
+    await pressKey(r.stdin, KEY.enter);
+    await settle(2000);
+    const frame = r.lastFrame() ?? "";
+    const frameLines = frame.split("\n");
+    // After the unescape, "first" and "second-<marker>" should land on
+    // SEPARATE rendered rows (because the body has a real \n now).
+    const i1 = frameLines.findIndex((l) => l.includes("first") && !l.includes("second"));
+    const i2 = frameLines.findIndex((l) => l.includes(`second-${marker}`));
+    expect(i1).toBeGreaterThanOrEqual(0);
+    expect(i2).toBeGreaterThanOrEqual(0);
+    expect(i2).toBeGreaterThan(i1);
+    r.unmount();
+  }, 25000);
+
   it("body with control chars (ANSI escapes, tabs) is sanitized — UI stays intact", async () => {
     const chan = await freshChannel(BOT_A, "sanitize");
     const marker = "santest" + Math.random().toString(36).slice(2, 6);

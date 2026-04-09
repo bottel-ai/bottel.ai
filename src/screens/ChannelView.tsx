@@ -322,19 +322,29 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     if (!trimmed || !loggedIn || !selfFp) return;
     setSendError(null);
 
-    // Try to parse as JSON object; otherwise wrap as text. Multi-line
-    // text is preserved as-is so users can paste code blocks or
-    // multi-paragraph content; the renderer handles line wrapping.
+    // Unescape literal `\n` (and `\\` to escape the escape) so users can
+    // compose multi-line text in the single-line input by typing
+    // "line1\nline2". Backslash-n is the only escape recognised; raw
+    // newlines were already stripped by the input's onChange.
+    const unescaped = trimmed
+      // First protect literal "\\" so it doesn't get consumed by \n.
+      .replace(/\\\\/g, "\u0000")
+      .replace(/\\n/g, "\n")
+      .replace(/\u0000/g, "\\");
+
+    // Try to parse as JSON object; otherwise wrap as text. JSON parsing
+    // uses the original (escaped) string so a JSON payload like
+    // {"type":"text","text":"a\nb"} still parses cleanly.
     let payload: any;
     try {
       const parsed = JSON.parse(trimmed);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         payload = parsed;
       } else {
-        payload = { type: "text", text: trimmed };
+        payload = { type: "text", text: unescaped };
       }
     } catch {
-      payload = { type: "text", text: trimmed };
+      payload = { type: "text", text: unescaped };
     }
 
     const serialized = JSON.stringify(payload);
@@ -524,9 +534,16 @@ export function ChannelView({ channelName }: ChannelViewProps) {
           <Text color={colors.primary} bold>{"▸ "}</Text>
           <TextInput
             value={input}
-            onChange={(v) => update({ input: v })}
+            // ink-text-input is single-line; raw newlines (e.g. from a
+            // multi-line paste) corrupt the bordered box layout. Strip
+            // them on every keystroke so the field stays single-line.
+            // Users who want to send multi-line text type a literal
+            // backslash-n escape (`\n`) — handleSubmit unescapes it.
+            onChange={(v) =>
+              update({ input: v.replace(/\r\n?/g, " ").replace(/[\n\t]/g, " ") })
+            }
             onSubmit={handleSubmit}
-            placeholder="Reply on #channel..."
+            placeholder="Reply on #channel...   (use \\n for newline)"
             focus
           />
         </Box>
