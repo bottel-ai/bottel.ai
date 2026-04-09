@@ -106,7 +106,7 @@ export function CreateChannel() {
           </Text>
         </Box>
         <Text>Press Enter to open Profile.</Text>
-        <HelpFooter text="Enter profile \u00B7 Esc back" />
+        <HelpFooter text="Enter profile · Esc back" />
       </Box>
     );
   }
@@ -169,7 +169,7 @@ export function CreateChannel() {
               </Text>
             )}
           </Box>
-          <HelpFooter text="Enter next \u00B7 Esc cancel" />
+          <HelpFooter text="Enter next · Esc cancel" />
         </Box>
       )}
 
@@ -201,7 +201,7 @@ export function CreateChannel() {
               <Text color={colors.error}>Too long</Text>
             </Box>
           )}
-          <HelpFooter text="Enter next \u00B7 Esc back" />
+          <HelpFooter text="Enter next · Esc back" />
         </Box>
       )}
 
@@ -221,7 +221,7 @@ export function CreateChannel() {
             <Text>{descTrim}</Text>
           </Box>
           <Text>Press Enter to create.</Text>
-          <HelpFooter text="Enter create \u00B7 Esc edit" />
+          <HelpFooter text="Enter create · Esc edit" />
         </Box>
       )}
 
