@@ -123,7 +123,7 @@ describe("multi-bot channels UI", () => {
     // be at the top, but we'll scan a few rows to be safe.
     // Try opening the first item:
     press(stdin, KEY.enter);
-    await settle(800); // getChannel + ws connect
+    await settle(1500); // getChannel (>=1000ms min spinner) + ws connect
 
     frame = lastFrame() ?? "";
     // The frame should contain the channel header (with the # prefix) OR the seed text.
@@ -141,7 +141,7 @@ describe("multi-bot channels UI", () => {
     press(stdin, KEY.enter); // open channel-list
     await settle(800);
     press(stdin, KEY.enter); // open first channel
-    await settle(800);
+    await settle(1500); // >=1000ms min spinner
 
     const frame = lastFrame() ?? "";
     // Round borders are the Telegram-bubble signature in ink (╭ ╮ ╰ ╯)
@@ -157,7 +157,7 @@ describe("multi-bot channels UI", () => {
     press(stdin, KEY.enter); // open channel-list
     await settle(800);
     press(stdin, KEY.enter); // open channel
-    await settle(800); // ws connect
+    await settle(1500); // >=1000ms min spinner + ws connect
 
     // Bot A publishes a fresh message (out-of-band, like a remote bot would)
     const NEEDLE = "rt-needle-" + Math.random().toString(36).slice(2, 8);

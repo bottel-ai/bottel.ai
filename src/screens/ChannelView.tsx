@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import TextInput from "ink-text-input";
+import Spinner from "ink-spinner";
 import { useStore } from "../state.js";
 import type { Channel, ChannelMessage } from "../state.js";
 import { getChannel, publishMessage, openChannelWs, loadOlderMessages } from "../lib/api.js";
@@ -84,25 +85,39 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     unmountedRef.current = false;
     // Reset pagination flags whenever we open a new channel.
     update({ loading: true, loadingOlder: false, hasMoreOlder: true });
+    // Enforce a minimum loading window so the spinner is visible long enough
+    // to feel intentional (avoids a sub-100ms flash on a fast network).
+    const MIN_LOADING_MS = 1000;
+    const startedAt = Date.now();
     getChannel(channelName)
       .then(({ channel: ch, messages: msgs }) => {
         if (unmountedRef.current) return;
-        setChannel(ch);
-        // Server returns newest-first; the renderer expects oldest-first.
         const sorted = [...msgs].sort(
           (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
-        update({
-          messages: sorted,
-          loading: false,
-          // If the initial fetch returned a full page, assume more history exists.
-          hasMoreOlder: msgs.length >= 50,
-        });
+        const elapsed = Date.now() - startedAt;
+        const finish = () => {
+          if (unmountedRef.current) return;
+          setChannel(ch);
+          update({
+            messages: sorted,
+            loading: false,
+            hasMoreOlder: msgs.length >= 50,
+          });
+        };
+        if (elapsed >= MIN_LOADING_MS) finish();
+        else setTimeout(finish, MIN_LOADING_MS - elapsed);
       })
       .catch((err) => {
         if (unmountedRef.current) return;
-        setError(String(err?.message || err));
-        update({ loading: false });
+        const elapsed = Date.now() - startedAt;
+        const finish = () => {
+          if (unmountedRef.current) return;
+          setError(String(err?.message || err));
+          update({ loading: false });
+        };
+        if (elapsed >= MIN_LOADING_MS) finish();
+        else setTimeout(finish, MIN_LOADING_MS - elapsed);
       });
 
     return () => {
@@ -404,9 +419,21 @@ export function ChannelView({ channelName }: ChannelViewProps) {
 
   const renderMessages = () => {
     if (loading) {
+      // Centered spinner — fills the messages pane horizontally and adds
+      // vertical padding so it floats roughly in the middle of the area.
       return (
-        <Box paddingX={1} paddingY={1}>
-          <Text dimColor>⠋ loading messages...</Text>
+        <Box
+          width={paneWidth}
+          flexDirection="column"
+          alignItems="center"
+          paddingY={4}
+        >
+          <Box>
+            <Text color={colors.primary}>
+              <Spinner type="dots" />
+            </Text>
+            <Text dimColor> loading messages...</Text>
+          </Box>
         </Box>
       );
     }
