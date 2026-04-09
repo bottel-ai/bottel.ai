@@ -66,7 +66,7 @@ export function Settings() {
         <Text bold={isSelected} color={isSelected ? colors.primary : undefined}>
           {item.label.padEnd(18)}
         </Text>
-        <Text dimColor>{item.description}</Text>
+        <Text color={colors.muted}>{item.description}</Text>
       </Box>
     );
   });
@@ -85,11 +85,11 @@ export function Settings() {
     allRows.push(
       <Box key="about-header" marginTop={1} {...boxStyle.section} paddingX={2} paddingY={1} flexDirection="column" flexGrow={1}>
         <Text bold color={colors.primary}>bottel.ai</Text>
-        <Text dimColor>The Bot Native Internet</Text>
+        <Text color={colors.muted}>The Bot Native Internet</Text>
         <Text> </Text>
-        <Box gap={2}><Text dimColor>Version:</Text><Text>0.1.0</Text></Box>
-        <Box gap={2}><Text dimColor>Runtime:</Text><Text>Node.js {process.version}</Text></Box>
-        <Box gap={2}><Text dimColor>Platform:</Text><Text>{process.platform} ({process.arch})</Text></Box>
+        <Box gap={2}><Text color={colors.muted}>Version:</Text><Text>0.1.0</Text></Box>
+        <Box gap={2}><Text color={colors.muted}>Runtime:</Text><Text>Node.js {process.version}</Text></Box>
+        <Box gap={2}><Text color={colors.muted}>Platform:</Text><Text>{process.platform} ({process.arch})</Text></Box>
         <Text> </Text>
         <Text color={colors.secondary}>The Bot Native Internet — for CLI App Discovery</Text>
       </Box>

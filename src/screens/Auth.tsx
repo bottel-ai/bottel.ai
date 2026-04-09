@@ -164,7 +164,7 @@ export function Auth() {
     );
     allRows.push(
       <Box key="pubkey-label" paddingLeft={2}>
-        <Text dimColor>Public Key:</Text>
+        <Text color={colors.muted}>Public Key:</Text>
       </Box>,
     );
     allRows.push(
@@ -175,7 +175,7 @@ export function Auth() {
   } else {
     allRows.push(
       <Box key="status" marginBottom={1} paddingLeft={2}>
-        <Text dimColor>Not logged in</Text>
+        <Text color={colors.muted}>Not logged in</Text>
       </Box>,
     );
   }
@@ -219,7 +219,7 @@ export function Auth() {
           <Text bold={isSelected} color={isSelected ? colors.primary : undefined}>
             {item.label.padEnd(20)}
           </Text>
-          <Text dimColor>{item.description}</Text>
+          <Text color={colors.muted}>{item.description}</Text>
         </Box>,
       );
     });

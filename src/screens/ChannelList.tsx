@@ -115,10 +115,12 @@ export function ChannelList() {
           </Text>
         </Box>
         <Box paddingLeft={3}>
-          <Text dimColor>{truncate(ch.description || "", innerWidth - 6)}</Text>
+          <Text color={colors.muted}>
+            {truncate(ch.description || "", innerWidth - 6)}
+          </Text>
         </Box>
         <Box paddingLeft={3}>
-          <Text dimColor>
+          <Text color={colors.subtle}>
             {statsLeft}
             {rel ? `   · ${rel}` : ""}
           </Text>
@@ -142,20 +144,20 @@ export function ChannelList() {
           <Text bold color={colors.primary}>
             Channels
           </Text>
-          <Text dimColor>sort: {sort}</Text>
+          <Text color={colors.subtle}>sort: {sort}</Text>
         </Box>
 
         {loading && (
           <Box>
-            <Text dimColor>⠋ loading channels...</Text>
+            <Text color={colors.muted}>⠋ loading channels...</Text>
           </Box>
         )}
 
         {!loading && channels.length === 0 && (
           <Box flexDirection="column" alignItems="center" paddingY={1}>
-            <Text dimColor>No channels yet.</Text>
+            <Text color={colors.muted}>No channels yet.</Text>
             <Box marginTop={1}>
-              <Text dimColor>
+              <Text color={colors.muted}>
                 Press{" "}
                 <Text bold color={colors.primary}>
                   c

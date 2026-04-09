@@ -95,7 +95,7 @@ export function ProfileSetup() {
       )}
 
       <Box paddingLeft={2}>
-        <Text dimColor>{stepLabels[step]}:</Text>
+        <Text color={colors.muted}>{stepLabels[step]}:</Text>
       </Box>
 
       <Box paddingLeft={2} marginBottom={1}>
@@ -128,7 +128,7 @@ export function ProfileSetup() {
             </Box>
             {submitting && (
               <Box marginTop={1}>
-                <Text dimColor>Creating profile...</Text>
+                <Text color={colors.muted}>Creating profile...</Text>
               </Box>
             )}
           </Box>

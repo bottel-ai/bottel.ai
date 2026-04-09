@@ -139,7 +139,7 @@ export function CreateChannel() {
       {step === 0 && (
         <Box flexDirection="column">
           <Box marginBottom={1}>
-            <Text dimColor>Step 1 of 3 {"\u2014"} Channel name</Text>
+            <Text color={colors.muted}>Step 1 of 3 {"\u2014"} Channel name</Text>
           </Box>
           <Box
             borderStyle="round"
@@ -156,7 +156,7 @@ export function CreateChannel() {
           </Box>
           <Box marginTop={1}>
             {name === "" ? (
-              <Text dimColor>
+              <Text color={colors.muted}>
                 Lowercase letters, numbers, dashes. Max 50.
               </Text>
             ) : nameValid ? (
@@ -176,7 +176,7 @@ export function CreateChannel() {
       {step === 1 && (
         <Box flexDirection="column">
           <Box marginBottom={1}>
-            <Text dimColor>Step 2 of 3 {"\u2014"} Description</Text>
+            <Text color={colors.muted}>Step 2 of 3 {"\u2014"} Description</Text>
           </Box>
           <Box
             borderStyle="round"
@@ -192,7 +192,7 @@ export function CreateChannel() {
             />
           </Box>
           <Box marginTop={1}>
-            <Text dimColor>
+            <Text color={colors.muted}>
               1{"\u2013"}280 characters {"\u00B7"} {descTrim.length}/280
             </Text>
           </Box>
@@ -208,7 +208,7 @@ export function CreateChannel() {
       {step === 2 && (
         <Box flexDirection="column">
           <Box marginBottom={1}>
-            <Text dimColor>Step 3 of 3 {"\u2014"} Confirm</Text>
+            <Text color={colors.muted}>Step 3 of 3 {"\u2014"} Confirm</Text>
           </Box>
           <Box paddingLeft={2}>
             <Text>Name:        </Text>

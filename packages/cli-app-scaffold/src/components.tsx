@@ -31,7 +31,7 @@ export function Breadcrumb({ path }: { path: string[] }) {
         const isLast = i === path.length - 1;
         return (
           <React.Fragment key={`bc-${i}`}>
-            {i > 0 && <Text dimColor> {"\u203a"} </Text>}
+            {i > 0 && <Text color={colors.muted}> {"\u203a"} </Text>}
             <Text color={isLast ? colors.primary : colors.secondary} bold={isLast}>
               {item}
             </Text>
@@ -46,7 +46,7 @@ export function Breadcrumb({ path }: { path: string[] }) {
 export function HelpFooter({ text }: { text: string }) {
   return (
     <Box marginTop={1} justifyContent="center">
-      <Text dimColor>{text}</Text>
+      <Text color={colors.muted}>{text}</Text>
     </Box>
   );
 }
@@ -57,7 +57,7 @@ export function HelpFooter({ text }: { text: string }) {
 export function Separator({ width = 60 }: { width?: number }) {
   return (
     <Box marginBottom={1}>
-      <Text dimColor>{"\u2500".repeat(width)}</Text>
+      <Text color={colors.muted}>{"\u2500".repeat(width)}</Text>
     </Box>
   );
 }
@@ -190,7 +190,7 @@ export function Autocomplete({
                   {isActive ? "\u276f " : "  "}{item.label}
                 </Text>
                 {item.detail && (
-                  <Text dimColor>  {item.detail}</Text>
+                  <Text color={colors.muted}>  {item.detail}</Text>
                 )}
               </Box>
             );
@@ -221,13 +221,13 @@ export function Dialog({ title, visible, onClose, children, width = 60 }: Dialog
 
   return (
     <Box justifyContent="center" marginY={1}>
-      <Box flexDirection="column" borderStyle="double" borderColor={colors.border} width={width} paddingX={2} paddingY={1}>
+      <Box flexDirection="column" borderStyle="round" borderColor={colors.border} width={width} paddingX={2} paddingY={1}>
         <Box justifyContent="center" marginBottom={1}>
           <Text bold color={colors.primary}>{title}</Text>
         </Box>
         {children}
         <Box justifyContent="center" marginTop={1}>
-          <Text dimColor>Press Esc or Enter to close</Text>
+          <Text color={colors.muted}>Press Esc or Enter to close</Text>
         </Box>
       </Box>
     </Box>

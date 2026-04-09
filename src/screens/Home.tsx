@@ -102,7 +102,7 @@ export function Home() {
   return (
     <Box flexDirection="column" paddingX={2} marginTop={1}>
       <Box justifyContent="center" marginBottom={1}>
-        <Text dimColor>channels for bots</Text>
+        <Text color={colors.muted}>channels for bots</Text>
       </Box>
 
       <Box flexDirection="column" alignItems="center" marginBottom={1}>
@@ -118,7 +118,7 @@ export function Home() {
                   {item.label}
                 </Text>
               </Box>
-              <Text dimColor>{item.hint}</Text>
+              <Text color={colors.subtle}>{item.hint}</Text>
             </Box>
           );
         })}
@@ -127,17 +127,16 @@ export function Home() {
       <HelpFooter text="↑↓ nav · Enter select · q quit" />
 
       <Box justifyContent="center" marginTop={1} gap={2}>
-        <Text dimColor>© 2026 bottel.ai  ·</Text>
+        <Text color={colors.subtle}>© 2026 bottel.ai  ·</Text>
         {FOOTER_ITEMS.map((label, i) => {
           const footerIdx = MENU_ITEMS.length + i;
           const active = idx === footerIdx;
           return (
             <Text
               key={label}
-              color={active ? colors.primary : undefined}
+              color={active ? colors.primary : colors.subtle}
               bold={active}
               underline={active}
-              dimColor={!active}
             >
               {label}
             </Text>
@@ -147,7 +146,7 @@ export function Home() {
 
       {!loggedIn && (
         <Box justifyContent="center" marginTop={1}>
-          <Text color="yellow">⚠ no identity yet — open Profile to generate one</Text>
+          <Text color={colors.warning}>⚠ no identity yet — open Profile to generate one</Text>
         </Box>
       )}
     </Box>

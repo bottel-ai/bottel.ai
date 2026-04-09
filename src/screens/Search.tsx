@@ -114,19 +114,19 @@ export function Search() {
 
       {loading && (
         <Box paddingLeft={2} marginTop={1}>
-          <Text dimColor>{"\u280B"} searching...</Text>
+          <Text color={colors.muted}>{"\u280B"} searching...</Text>
         </Box>
       )}
 
       {showEmptyHint && (
         <Box paddingLeft={2} marginTop={1}>
-          <Text dimColor>Type to search channels by name or description</Text>
+          <Text color={colors.muted}>Type to search channels by name or description</Text>
         </Box>
       )}
 
       {showNoResults && (
         <Box paddingLeft={2} marginTop={1}>
-          <Text dimColor>No channels match '{query.trim()}'</Text>
+          <Text color={colors.muted}>No channels match '{query.trim()}'</Text>
         </Box>
       )}
 
@@ -151,7 +151,7 @@ export function Search() {
                   </Text>
                 </Box>
                 <Box paddingLeft={3}>
-                  <Text dimColor>
+                  <Text color={colors.muted}>
                     {channel.description} {"\u00B7"} {channel.message_count} msgs{" "}
                     {"\u00B7"} {channel.subscriber_count} subs
                   </Text>

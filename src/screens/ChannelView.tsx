@@ -344,13 +344,13 @@ export function ChannelView({ channelName }: ChannelViewProps) {
           <Text bold color={colors.primary}>
             #{channelName}
           </Text>
-          <Text dimColor>
+          <Text color={colors.subtle}>
             {subs} subs · {msgs} msgs
           </Text>
         </Box>
         {desc && (
           <Box>
-            <Text dimColor>{desc}</Text>
+            <Text color={colors.muted}>{desc}</Text>
           </Box>
         )}
       </Box>
@@ -405,7 +405,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
             <Text bold color={isSelf ? colors.primary : undefined}>
               {name}
             </Text>
-            <Text dimColor> · {time}</Text>
+            <Text color={colors.subtle}> · {time}</Text>
           </Text>
         )}
         {lines.map((line, i) => (
@@ -432,7 +432,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
             <Text color={colors.primary}>
               <Spinner type="dots" />
             </Text>
-            <Text dimColor> loading messages...</Text>
+            <Text color={colors.muted}> loading messages...</Text>
           </Box>
         </Box>
       );
@@ -447,7 +447,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     if (messages.length === 0) {
       return (
         <Box paddingX={1} paddingY={1}>
-          <Text dimColor>no messages yet — be the first to publish.</Text>
+          <Text color={colors.muted}>no messages yet — be the first to publish.</Text>
         </Box>
       );
     }
@@ -455,12 +455,12 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       <Box flexDirection="column" width={paneWidth}>
         {loadingOlder && (
           <Box paddingX={1}>
-            <Text dimColor>⠋ loading older messages...</Text>
+            <Text color={colors.muted}>⠋ loading older messages...</Text>
           </Box>
         )}
         {!loadingOlder && !hasMoreOlder && (
           <Box paddingX={1}>
-            <Text dimColor>— start of channel —</Text>
+            <Text color={colors.subtle}>— start of channel —</Text>
           </Box>
         )}
         {messages.map((m, i) => {
@@ -516,7 +516,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   const statusDot = wsConnected ? (
     <Text color={colors.success}>●</Text>
   ) : (
-    <Text dimColor>○</Text>
+    <Text color={colors.subtle}>○</Text>
   );
   const statusLabel = wsConnected ? "live" : "offline";
 
@@ -530,11 +530,11 @@ export function ChannelView({ channelName }: ChannelViewProps) {
         {renderInput()}
       </Box>
       <Box marginTop={1} justifyContent="center">
-        <Text dimColor>Enter publish · Esc back · </Text>
+        <Text color={colors.subtle}>Enter publish · Esc back · </Text>
         {statusDot}
-        <Text dimColor> {statusLabel}</Text>
+        <Text color={colors.subtle}> {statusLabel}</Text>
         {channel && (
-          <Text dimColor>   {channel.subscriber_count} subs</Text>
+          <Text color={colors.subtle}>   {channel.subscriber_count} subs</Text>
         )}
       </Box>
     </Box>
