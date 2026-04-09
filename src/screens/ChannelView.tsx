@@ -90,6 +90,14 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   const [channel, setChannel] = useState<Channel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  // When the user pastes multi-line content into the single-line reply
+  // field we show a "[Pasted text with N lines]" placeholder in the field
+  // and stash the real content here. handleSubmit reads from this ref so
+  // the original multi-line body actually goes on the wire.
+  const pastedRef = useRef<string | null>(null);
+
+  const pastePlaceholder = (n: number) =>
+    `[Pasted text with ${n} line${n === 1 ? "" : "s"}]`;
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -318,19 +326,24 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   });
 
   const handleSubmit = async () => {
-    const trimmed = input.trim();
+    // If we have a stashed paste, that's the real body — the field is
+    // just showing a "[Pasted text with N lines]" placeholder.
+    const pasted = pastedRef.current;
+    const trimmed = pasted != null ? pasted : input.trim();
     if (!trimmed || !loggedIn || !selfFp) return;
     setSendError(null);
 
     // Unescape literal `\n` (and `\\` to escape the escape) so users can
     // compose multi-line text in the single-line input by typing
-    // "line1\nline2". Backslash-n is the only escape recognised; raw
-    // newlines were already stripped by the input's onChange.
-    const unescaped = trimmed
-      // First protect literal "\\" so it doesn't get consumed by \n.
-      .replace(/\\\\/g, "\u0000")
-      .replace(/\\n/g, "\n")
-      .replace(/\u0000/g, "\\");
+    // "line1\nline2". Pasted bodies already contain real newlines, so
+    // skip the unescape step for them.
+    const unescaped =
+      pasted != null
+        ? pasted
+        : trimmed
+            .replace(/\\\\/g, "\u0000")
+            .replace(/\\n/g, "\n")
+            .replace(/\u0000/g, "\\");
 
     // Try to parse as JSON object; otherwise wrap as text. JSON parsing
     // uses the original (escaped) string so a JSON payload like
@@ -356,6 +369,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     try {
       await publishMessage(selfFp, channelName, payload);
       update({ input: "" });
+      pastedRef.current = null;
     } catch (err: any) {
       setSendError(String(err?.message || err));
     }
@@ -531,19 +545,41 @@ export function ChannelView({ channelName }: ChannelViewProps) {
           paddingX={2}
           width={paneWidth}
         >
-          <Text color={colors.primary} bold>{"▸ "}</Text>
+          <Text color={colors.primary} bold>{"▸   "}</Text>
           <TextInput
             value={input}
-            // ink-text-input is single-line; raw newlines (e.g. from a
-            // multi-line paste) corrupt the bordered box layout. Strip
-            // them on every keystroke so the field stays single-line.
-            // Users who want to send multi-line text type a literal
-            // backslash-n escape (`\n`) — handleSubmit unescapes it.
-            onChange={(v) =>
-              update({ input: v.replace(/\r\n?/g, " ").replace(/[\n\t]/g, " ") })
-            }
+            onChange={(v) => {
+              // Paste detection — ink-text-input is single-line, so the
+              // only way \n / \r enters the value is via paste (Enter
+              // triggers onSubmit, not onChange). When that happens we
+              // stash the raw multi-line content in a ref and show a
+              // "[Pasted text with N lines]" placeholder in the field.
+              if (/[\r\n]/.test(v)) {
+                const normalized = v.replace(/\r\n?/g, "\n");
+                const n = normalized.split("\n").length;
+                pastedRef.current = normalized;
+                update({ input: pastePlaceholder(n) });
+                return;
+              }
+              // If a paste was previously stashed and the user is now
+              // editing, the value will diverge from the placeholder.
+              // Drop the stashed paste and let them type fresh.
+              if (pastedRef.current != null) {
+                const ph = pastePlaceholder(pastedRef.current.split("\n").length);
+                if (v !== ph) {
+                  pastedRef.current = null;
+                  // Strip any partial placeholder remnant from the typed value.
+                  const cleaned = v.replace(/^\[Pasted text with \d+ lines?\]/, "");
+                  update({ input: cleaned });
+                  return;
+                }
+              }
+              // Defensive: tabs are still flattened (a stray tab from a
+              // single-keystroke source would still mangle column math).
+              update({ input: v.replace(/\t/g, " ") });
+            }}
             onSubmit={handleSubmit}
-            placeholder="Reply on #channel...   (use \\n for newline)"
+            placeholder="Reply on #channel...   (use \\n for newline, or paste)"
             focus
           />
         </Box>

@@ -570,11 +570,11 @@ describe("ChannelView screen", () => {
     r.unmount();
   }, 25000);
 
-  it("pasting multi-line content into the input field strips raw newlines", async () => {
+  it("pasting multi-line content shows '[Pasted text with N lines]' placeholder", async () => {
     // Reproduces the broken-input bug: a multi-line paste used to corrupt
-    // the bordered input box. The onChange sanitizer should join the
-    // pasted lines into one visual line, leaving the input box intact.
-    const chan = await freshChannel(BOT_A, "paste-multiline");
+    // the bordered input box. Now the input shows a placeholder summary
+    // and the raw content is held in a ref until submit.
+    const chan = await freshChannel(BOT_A, "paste-placeholder");
     await api("POST", `/channels/${chan}/messages`, BOT_A.fingerprint, {
       payload: { type: "text", text: "warm-up" },
     });
@@ -582,17 +582,47 @@ describe("ChannelView screen", () => {
     const r = render(<App />);
     await settle();
     await openChannelView(r, chan);
-    const marker = "pastemark" + Math.random().toString(36).slice(2, 6);
-    // Simulate a paste of multi-line text by writing the raw bytes.
-    r.stdin.write(`first ${marker}\nsecond line\nthird`);
+    // Simulate a paste of multi-line text by writing raw bytes with \n.
+    r.stdin.write(`first line\nsecond\nthird\nfourth`);
     await settle(400);
     const frame = r.lastFrame() ?? "";
-    // The pasted marker should appear inside the input row on a SINGLE line.
     const lines = frame.split("\n");
-    const inputLine = lines.find((l) => l.includes("▸") && l.includes(marker));
+    const inputLine = lines.find((l) => l.includes("▸"));
     expect(inputLine).toBeTruthy();
-    expect(inputLine).toContain("second line");
-    expect(inputLine).toContain("third");
+    // Field should show the placeholder, NOT the raw pasted content.
+    expect(inputLine).toContain("[Pasted text with 4 lines]");
+    expect(inputLine).not.toContain("first line ");
+    r.unmount();
+  }, 25000);
+
+  it("submitting after a paste publishes the original multi-line content", async () => {
+    const chan = await freshChannel(BOT_A, "paste-submit");
+    await api("POST", `/channels/${chan}/messages`, BOT_A.fingerprint, {
+      payload: { type: "text", text: "warm-up" },
+    });
+    __setAuthOverride(BOT_A);
+    const r = render(<App />);
+    await settle();
+    await openChannelView(r, chan);
+    const marker = "psub" + Math.random().toString(36).slice(2, 6);
+    r.stdin.write(`top-${marker}\nmiddle\nbottom-${marker}`);
+    await settle(400);
+    // Confirm the placeholder appeared
+    expect(r.lastFrame() ?? "").toContain("[Pasted text with 3 lines]");
+    // Submit
+    await pressKey(r.stdin, KEY.enter);
+    await settle(2500);
+    const frame = r.lastFrame() ?? "";
+    const frameLines = frame.split("\n");
+    // top, middle, bottom should each appear on separate rendered rows.
+    const i1 = frameLines.findIndex((l) => l.includes(`top-${marker}`));
+    const i2 = frameLines.findIndex((l) => l.includes("middle"));
+    const i3 = frameLines.findIndex((l) => l.includes(`bottom-${marker}`));
+    expect(i1).toBeGreaterThanOrEqual(0);
+    expect(i2).toBeGreaterThanOrEqual(0);
+    expect(i3).toBeGreaterThanOrEqual(0);
+    expect(i2).toBeGreaterThan(i1);
+    expect(i3).toBeGreaterThan(i2);
     r.unmount();
   }, 25000);
 
