@@ -1,172 +1,174 @@
-import { useState, useEffect } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
+import { useEffect, useRef } from "react";
+import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
-import { type App, getApps } from "../lib/api.js";
 import { useStore } from "../state.js";
 import { colors } from "../theme.js";
 import { Cursor, HelpFooter } from "../components.js";
-
-const PAGE_SIZE = 5;
+import { listChannels } from "../lib/api.js";
 
 export function Search() {
   const { state, dispatch, navigate, goBack } = useStore();
-  const { query, selectedIndex, page, inputFocused } = state.search;
-  const { stdout } = useStdout();
-  const termWidth = stdout?.columns ?? 80;
+  const { query, results, selectedIndex, loading } = state.search;
 
-  const [results, setResults] = useState<App[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searchedTerm, setSearchedTerm] = useState("");
-
-  const doSearch = (term: string) => {
-    setLoading(true);
-    setError(null);
-    setSearchedTerm(term.trim());
-    getApps(term.trim() || undefined)
-      .then((apps) => setResults(apps))
-      .catch((err) => setError(String(err)))
-      .finally(() => setLoading(false));
-  };
-
-  // Load on mount — search with query or list all
-  useEffect(() => {
-    doSearch(query);
-  }, []);
-
-  const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages - 1);
-  const pagedResults = results.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
-
-  const update = (s: Partial<typeof state.search>) =>
+  type Slice = typeof state.search;
+  const update = (s: Partial<Slice> | ((cur: Slice) => Partial<Slice>)) =>
     dispatch({ type: "UPDATE_SEARCH", state: s });
 
-  useInput((input, key) => {
+  // selectedIndex === -1 means focus is in the input field.
+  const inputFocused = selectedIndex === -1;
+
+  // Track the most recently searched term for "no results" messaging.
+  const searchedRef = useRef<string>("");
+
+  // Debounced search: whenever `query` changes, kick off a 300ms timer.
+  useEffect(() => {
+    const term = query.trim();
+    if (!term) {
+      searchedRef.current = "";
+      update({ results: [], loading: false });
+      return;
+    }
+    update({ loading: true });
+    const handle = setTimeout(() => {
+      listChannels({ q: term })
+        .then((channels) => {
+          searchedRef.current = term;
+          update({ results: channels, loading: false });
+        })
+        .catch(() => {
+          searchedRef.current = term;
+          update({ results: [], loading: false });
+        });
+    }, 300);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  useInput((_input, key) => {
     if (key.escape) {
-      if (!inputFocused) update({ inputFocused: true });
-      else if (query) update({ query: "", selectedIndex: 0, page: 0 });
-      else goBack();
+      goBack();
       return;
     }
-    if (inputFocused) {
-      if (key.return) { doSearch(query); update({ inputFocused: false, selectedIndex: 0 }); return; }
-      if ((key.downArrow || key.tab) && results.length > 0) update({ inputFocused: false, selectedIndex: 0 });
-      return;
-    }
+
+    // Tab always returns focus to the input, no matter where the cursor is.
     if (key.tab) {
-      update({ inputFocused: true });
+      update({ selectedIndex: -1 });
       return;
     }
-    if (key.upArrow) {
-      if (pagedResults.length > 0) {
-        update({ selectedIndex: (selectedIndex - 1 + pagedResults.length) % pagedResults.length });
+
+    if (inputFocused) {
+      // Moving down from the input into the list.
+      if (key.downArrow && results.length > 0) {
+        update({ selectedIndex: 0 });
       }
+      return;
+    }
+
+    // Focus is in the results list.
+    if (key.upArrow) {
+      update((cur) =>
+        cur.selectedIndex <= 0
+          ? { selectedIndex: -1 }
+          : { selectedIndex: cur.selectedIndex - 1 }
+      );
       return;
     }
     if (key.downArrow) {
-      if (pagedResults.length > 0) {
-        update({ selectedIndex: (selectedIndex + 1) % pagedResults.length });
-      }
+      update((cur) =>
+        cur.selectedIndex < cur.results.length - 1
+          ? { selectedIndex: cur.selectedIndex + 1 }
+          : {}
+      );
       return;
     }
-    if (key.leftArrow && currentPage > 0) { update({ page: currentPage - 1, selectedIndex: 0 }); return; }
-    if (key.rightArrow && currentPage < totalPages - 1) { update({ page: currentPage + 1, selectedIndex: 0 }); return; }
     if (key.return) {
-      const agent = pagedResults[selectedIndex];
-      if (agent) navigate({ name: "agent-detail", agentId: agent.id });
-      return;
-    }
-    if (input && !key.ctrl && !key.meta) {
-      update({ inputFocused: true, query: query + input, selectedIndex: 0, page: 0 });
+      const picked = results[selectedIndex];
+      if (picked) {
+        navigate({ name: "channel-view", channelName: picked.name });
+      }
     }
   });
 
-  const maxTextWidth = Math.max(30, termWidth - 8);
-  const truncate = (s: string, len: number) => s.length > len ? s.slice(0, len - 3) + "..." : s;
-  const compact = termWidth < 60;
+  const showEmptyHint = !query.trim();
+  const showNoResults =
+    !loading &&
+    !!query.trim() &&
+    results.length === 0 &&
+    searchedRef.current === query.trim();
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Box marginBottom={1} gap={2} alignItems="center">
-        <Box>{"bottel.ai".split("").map((ch, i) => (
-          <Text key={i} bold color={[colors.error, colors.warning, colors.primary][i % 3]}>{ch}</Text>
-        ))}</Box>
-        <Box borderStyle="round" borderColor={inputFocused ? colors.primary : colors.border} paddingX={2} flexGrow={1}>
-          <Text color={inputFocused ? colors.primary : undefined}>🔍 </Text>
-          <TextInput
-            value={query}
-            onChange={(v) => update({ query: v, selectedIndex: 0, page: 0 })}
-            placeholder="Search bot native apps and MCP..."
-            focus={inputFocused}
-          />
-        </Box>
+      <Box
+        borderStyle="round"
+        borderColor={inputFocused ? colors.primary : colors.border}
+        paddingX={2}
+      >
+        <Text color={inputFocused ? colors.primary : undefined}>{"> "}</Text>
+        <TextInput
+          value={query}
+          onChange={(v) => update({ query: v, selectedIndex: -1 })}
+          placeholder="Search channels..."
+          focus={inputFocused}
+        />
       </Box>
 
-      <Box marginBottom={1}>
-        <Text dimColor>
-          {loading ? "Searching..." :
-            searchedTerm
-              ? `About ${results.length} result${results.length !== 1 ? "s" : ""} for "${searchedTerm}"` +
-                (totalPages > 1 ? `  ·  Page ${currentPage + 1} of ${totalPages}` : "")
-              : `${results.length} app${results.length !== 1 ? "s" : ""} · sorted by downloads` +
-                (totalPages > 1 ? `  ·  Page ${currentPage + 1} of ${totalPages}` : "")
-          }
-        </Text>
-      </Box>
-
-      {error && <Box paddingLeft={1}><Text color="red">Error: {error}</Text></Box>}
-
-      {!loading && !error && results.length === 0 && query.trim() && (
-        <Box flexDirection="column" paddingLeft={1}>
-          <Text>No results found for <Text bold>"{query}"</Text></Text>
-          <Text dimColor>Try different keywords or check the spelling.</Text>
+      {loading && (
+        <Box paddingLeft={2} marginTop={1}>
+          <Text dimColor>{"\u280B"} searching...</Text>
         </Box>
       )}
 
-      {!loading && !error && pagedResults.map((agent, i) => {
-        const isActive = !inputFocused && i === selectedIndex;
-        return (
-          <Box key={agent.id} flexDirection="column" marginBottom={1} paddingLeft={1}>
-            <Box>
-              <Cursor active={isActive} />
-              <Text color={isActive ? "#48dbfb" : "#54a0ff"} bold underline>
-                {truncate(agent.name, maxTextWidth)}
-              </Text>
-              {agent.verified && <Text color={colors.success}> ✓</Text>}
-            </Box>
-            <Box paddingLeft={3}>
-              {agent.mcpUrl ? (
-                <Text color="#ff9ff3">[MCP] {truncate(agent.mcpUrl, maxTextWidth - 6)}</Text>
-              ) : (
-                <Text color="#2ed573">{truncate(`bottel.ai/apps/${agent.slug}`, maxTextWidth)}</Text>
-              )}
-            </Box>
-            <Box paddingLeft={3}>
-              <Text>{truncate(agent.description, maxTextWidth)}</Text>
-            </Box>
-            <Box paddingLeft={3}>
-              <Text dimColor>{agent.installs.toLocaleString()} installs</Text>
-            </Box>
-          </Box>
-        );
-      })}
+      {showEmptyHint && (
+        <Box paddingLeft={2} marginTop={1}>
+          <Text dimColor>Type to search channels by name or description</Text>
+        </Box>
+      )}
 
-      {/* Google-style pagination logo — 3 color layers cycling */}
-      {!loading && !error && results.length > 0 && (() => {
-        const oos = "o".repeat(Math.max(1, Math.min(totalPages, 10)));
-        const word = `b${oos}ttel.ai`;
-        const layerColors = [colors.error, colors.warning, colors.primary];
-        return (
-          <Box justifyContent="center" marginTop={1}>
-            {word.split("").map((ch, i) => (
-              <Text key={i} color={layerColors[i % 3]} bold>{ch}</Text>
-            ))}
-            {totalPages > 1 && <Text dimColor>  Page {currentPage + 1} of {totalPages}</Text>}
-          </Box>
-        );
-      })()}
+      {showNoResults && (
+        <Box paddingLeft={2} marginTop={1}>
+          <Text dimColor>No channels match '{query.trim()}'</Text>
+        </Box>
+      )}
 
-      <HelpFooter text={inputFocused ? "Enter search · ↑↓/Tab results · Esc back" : `↑↓ nav · Tab search · Enter select${totalPages > 1 ? " · ←→ pages" : ""} · Esc back`} />
+      {results.length > 0 && (
+        <Box flexDirection="column" marginTop={1}>
+          {results.map((channel, i) => {
+            const isActive = !inputFocused && i === selectedIndex;
+            return (
+              <Box
+                key={channel.name}
+                flexDirection="column"
+                marginBottom={1}
+                paddingLeft={1}
+              >
+                <Box>
+                  <Cursor active={isActive} />
+                  <Text
+                    bold
+                    color={isActive ? colors.primary : colors.secondary}
+                  >
+                    #{channel.name}
+                  </Text>
+                </Box>
+                <Box paddingLeft={3}>
+                  <Text dimColor>
+                    {channel.description} {"\u00B7"} {channel.message_count} msgs{" "}
+                    {"\u00B7"} {channel.subscriber_count} subs
+                  </Text>
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+      )}
+
+      <HelpFooter
+        text={
+          inputFocused
+            ? "Type to search \u00B7 \u2193 results \u00B7 Esc back"
+            : "\u2191\u2193 nav \u00B7 Tab focus search \u00B7 Enter open \u00B7 Esc back"
+        }
+      />
     </Box>
   );
 }

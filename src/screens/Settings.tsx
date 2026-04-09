@@ -8,7 +8,6 @@ import { isLoggedIn } from "../lib/auth.js";
 const MENU_ITEMS = [
   { label: "Edit Profile", description: "Change name, bio, visibility" },
   { label: "Auth", description: "Keys, login, logout" },
-  { label: "My Apps", description: "Manage your submitted apps" },
   { label: "About", description: "About bottel.ai" },
   { label: "Back", description: "Return to home" },
 ];
@@ -24,11 +23,11 @@ export function Settings() {
       return;
     }
     if (key.upArrow) {
-      dispatch({ type: "UPDATE_SETTINGS", state: { selectedIndex: (selectedIndex - 1 + MENU_ITEMS.length) % MENU_ITEMS.length } });
+      dispatch({ type: "UPDATE_SETTINGS", state: (s) => ({ selectedIndex: (s.selectedIndex - 1 + MENU_ITEMS.length) % MENU_ITEMS.length }) });
       setMessage(null);
     }
     if (key.downArrow || key.tab) {
-      dispatch({ type: "UPDATE_SETTINGS", state: { selectedIndex: (selectedIndex + 1) % MENU_ITEMS.length } });
+      dispatch({ type: "UPDATE_SETTINGS", state: (s) => ({ selectedIndex: (s.selectedIndex + 1) % MENU_ITEMS.length }) });
       setMessage(null);
     }
     if (key.return) {
@@ -43,13 +42,6 @@ export function Settings() {
           break;
         case "Auth":
           navigate({ name: "auth" });
-          break;
-        case "My Apps":
-          if (isLoggedIn()) {
-            navigate({ name: "my-apps" });
-          } else {
-            setMessage("You must be logged in first. Go to Auth.");
-          }
           break;
         case "About":
           setMessage("about");

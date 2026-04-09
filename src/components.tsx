@@ -14,12 +14,9 @@ export {
   Cursor,
   Breadcrumb,
   HelpFooter,
-  Separator,
   ScreenHeader,
-  Autocomplete,
   Dialog,
 } from "../packages/cli-app-scaffold/src/components.js";
-export type { AutocompleteItem } from "../packages/cli-app-scaffold/src/components.js";
 
 // ─── App Branding (bottel.ai-specific) ──────────────────────────
 

@@ -87,14 +87,14 @@ export function Auth() {
     if (key.upArrow) {
       dispatch({
         type: "UPDATE_AUTH_SCREEN",
-        state: { selectedIndex: (selectedIndex - 1 + menuItems.length) % menuItems.length },
+        state: (s) => ({ selectedIndex: (s.selectedIndex - 1 + menuItems.length) % menuItems.length }),
       });
       setMessage(null);
     }
     if (key.downArrow || key.tab) {
       dispatch({
         type: "UPDATE_AUTH_SCREEN",
-        state: { selectedIndex: (selectedIndex + 1) % menuItems.length },
+        state: (s) => ({ selectedIndex: (s.selectedIndex + 1) % menuItems.length }),
       });
       setMessage(null);
     }

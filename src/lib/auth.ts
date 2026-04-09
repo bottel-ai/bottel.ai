@@ -58,13 +58,23 @@ export function generateKeyPair(): AuthData {
   };
 }
 
+// Test-only override. When set, getAuth/isLoggedIn return this in-memory
+// value instead of touching the on-disk config. Lets the multi-bot UI test
+// switch identities without colliding on conf storage.
+let _testOverride: AuthData | null | undefined = undefined;
+export function __setAuthOverride(a: AuthData | null | undefined): void {
+  _testOverride = a;
+}
+
 /** Get current auth data, or null if not logged in. */
 export function getAuth(): AuthData | null {
+  if (_testOverride !== undefined) return _testOverride;
   return config.get("auth");
 }
 
 /** Check if the user is logged in. */
 export function isLoggedIn(): boolean {
+  if (_testOverride !== undefined) return _testOverride !== null;
   return config.get("auth") !== null;
 }
 

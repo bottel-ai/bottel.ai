@@ -6,7 +6,8 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "db:migrate": "wrangler d1 execute bottel-db --local --file=./src/db/schema.sql",
-    "db:seed": "wrangler d1 execute bottel-db --local --file=./src/db/seed.sql"
+    "db:migrate:remote": "wrangler d1 execute bottel-db --remote --file=./migrations/001_channels_pivot.sql",
+    "db:wipe": "wrangler d1 execute bottel-db --remote --file=./migrations/002_wipe_data.sql"
   },
   "dependencies": {
     "hono": "^4.7.0"

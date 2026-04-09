@@ -5,18 +5,12 @@ import { Logo } from "./components.js";
 import { StoreProvider, useStore } from "./state.js";
 import { Home } from "./screens/Home.js";
 import { Search } from "./screens/Search.js";
-import { AgentDetail } from "./screens/AgentDetail.js";
-import { Settings } from "./screens/Settings.js";
+import { ChannelList } from "./screens/ChannelList.js";
+import { ChannelView } from "./screens/ChannelView.js";
+import { CreateChannel } from "./screens/CreateChannel.js";
 import { Auth } from "./screens/Auth.js";
-import { Submit } from "./screens/Submit.js";
-import { MyApps } from "./screens/MyApps.js";
-import { Trending } from "./screens/Trending.js";
-import { ChatList } from "./screens/ChatList.js";
-import { ChatView } from "./screens/ChatView.js";
+import { Settings } from "./screens/Settings.js";
 import { ProfileSetup } from "./screens/ProfileSetup.js";
-import { Social } from "./screens/Social.js";
-import { PostDetail } from "./screens/PostDetail.js";
-import { BotProfile } from "./screens/BotProfile.js";
 import { isLoggedIn, getAuth } from "./lib/auth.js";
 import { pingOnline } from "./lib/api.js";
 
@@ -24,13 +18,22 @@ const ENABLE_MOUSE = "\x1b[?1000h\x1b[?1002h\x1b[?1006h";
 const DISABLE_MOUSE = "\x1b[?1006l\x1b[?1002l\x1b[?1000l";
 
 function Router() {
-  const { state, dispatch } = useStore();
+  const { state, setScrollControls } = useStore();
   const { stdout } = useStdout();
   const { stdin } = useStdin();
   const scrollRef = useRef<ScrollViewRef>(null);
+
+  // Expose the ScrollView ref via the store so screens (e.g. ChannelView)
+  // can read offset / trigger pagination without owning the ref themselves.
+  useEffect(() => {
+    setScrollControls({
+      getOffset: () => scrollRef.current?.getScrollOffset() ?? 0,
+      getBottom: () => scrollRef.current?.getBottomOffset() ?? 0,
+      scrollTo: (n: number) => scrollRef.current?.scrollTo(n),
+    });
+  }, [setScrollControls]);
   const isHome = state.screen.name === "home";
-  const isSearch = state.screen.name === "search";
-  const hasTextInput = ["search", "submit", "home", "auth", "my-apps", "chat-view", "chat-list", "profile-setup", "social", "post-detail"].includes(state.screen.name);
+  const hasTextInput = ["search", "home", "auth", "channel-view", "channel-create", "profile-setup"].includes(state.screen.name);
 
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
   useEffect(() => {
@@ -44,12 +47,32 @@ function Router() {
     return () => { stdout.off("resize", onResize); };
   }, [stdout]);
 
-  // Scroll to top when screen changes
+  // Scroll behavior:
+  //   - channel-view: stick to the bottom (latest message) on mount and
+  //     whenever a NEW message is appended (live WS arrival or our own
+  //     publish). We key the effect on the LAST message's id rather than
+  //     the array length so that prepending older history (scroll-up
+  //     pagination) does NOT re-trigger the auto-scroll-to-bottom — that
+  //     used to fight ChannelView's re-anchor logic and make the view
+  //     snap back to the bottom right after fetching older messages.
+  //   - everything else: scroll to top on screen change.
+  const isChannelView = state.screen.name === "channel-view";
+  const lastMessageId =
+    state.channelView.messages[state.channelView.messages.length - 1]?.id ?? null;
   useEffect(() => {
+    if (isChannelView) {
+      // Defer one tick so ink has a chance to lay out the new content
+      // before we measure the bottom offset.
+      const t = setTimeout(() => {
+        const bottom = scrollRef.current?.getBottomOffset() ?? 0;
+        scrollRef.current?.scrollTo(bottom);
+      }, 0);
+      return () => clearTimeout(t);
+    }
     scrollRef.current?.scrollToTop();
-  }, [state.screen.name]);
+  }, [state.screen.name, isChannelView, lastMessageId]);
 
-  // Disable mouse tracking on search screen
+  // Disable mouse tracking on text-input screens
   useEffect(() => {
     if (!stdout) return;
     stdout.write(hasTextInput ? DISABLE_MOUSE : ENABLE_MOUSE);
@@ -67,10 +90,8 @@ function Router() {
         const offset = scrollRef.current.getScrollOffset();
         const bottom = scrollRef.current.getBottomOffset();
         if ((button & 0x43) === 0x40) {
-          // Wheel up
           scrollRef.current.scrollTo(Math.max(0, offset - 3));
         } else if ((button & 0x43) === 0x41) {
-          // Wheel down
           scrollRef.current.scrollTo(Math.min(bottom, offset + 3));
         }
       }
@@ -80,7 +101,6 @@ function Router() {
   }, [stdin, hasTextInput]);
 
   // Arrow keys: scroll viewport 1 line when cursor moves
-  // PageUp/PageDown: jump 10 lines
   useInput((_input, key) => {
     if (!scrollRef.current) return;
     const offset = scrollRef.current.getScrollOffset();
@@ -94,29 +114,22 @@ function Router() {
   return (
     <Box flexDirection="column">
       <ScrollView ref={scrollRef} height={termHeight}>
-        {isHome && <Logo key="logo" />}
-        {!isHome && !isSearch && (
+        {isHome ? (
+          <Logo key="logo" />
+        ) : (
           <Box key="mini-logo" paddingX={1} marginBottom={1}>
-            {"bottel.ai".split("").map((ch, i) => (
-              <Text key={`ml-${i}`} bold color={["#ff6b6b", "#feca57", "#54a0ff"][i % 3]}>{ch}</Text>
-            ))}
+            <Text bold>bottel.ai</Text>
           </Box>
         )}
-        {isHome && <Home key="home" />}
-        {isSearch && <Search key="search" />}
-        {state.screen.name === "agent-detail" && (
-          <AgentDetail key={`detail-${state.screen.agentId}`} agentId={state.screen.agentId} />
+        {state.screen.name === "home" && <Home key="home" />}
+        {state.screen.name === "search" && <Search key="search" />}
+        {state.screen.name === "channel-list" && <ChannelList key="channel-list" />}
+        {state.screen.name === "channel-view" && (
+          <ChannelView key={`cv-${state.screen.channelName}`} channelName={state.screen.channelName} />
         )}
-        {state.screen.name === "settings" && <Settings key="settings" />}
+        {state.screen.name === "channel-create" && <CreateChannel key="channel-create" />}
         {state.screen.name === "auth" && <Auth key="auth" />}
-        {state.screen.name === "submit" && <Submit key="submit" />}
-        {state.screen.name === "my-apps" && <MyApps key="my-apps" />}
-        {state.screen.name === "trending" && <Trending key="trending" />}
-        {state.screen.name === "social" && <Social key="social" />}
-        {state.screen.name === "chat-list" && <ChatList key="chat-list" />}
-        {state.screen.name === "chat-view" && <ChatView key={`chat-${state.screen.chatId}`} chatId={state.screen.chatId} />}
-        {state.screen.name === "post-detail" && <PostDetail key={`post-${state.screen.postId}`} postId={state.screen.postId} />}
-        {state.screen.name === "bot-profile" && <BotProfile key={`bp-${state.screen.fingerprint}`} fingerprint={state.screen.fingerprint} />}
+        {state.screen.name === "settings" && <Settings key="settings" />}
         {state.screen.name === "profile-setup" && <ProfileSetup key="profile-setup" />}
       </ScrollView>
     </Box>
@@ -130,14 +143,10 @@ function OnlinePing() {
     if (!auth) return;
     const fp = auth.fingerprint;
 
-    // Ping immediately on start
     pingOnline(fp).catch(() => {});
-
-    // Ping every 60 seconds
     const interval = setInterval(() => {
       pingOnline(fp).catch(() => {});
     }, 60000);
-
     return () => clearInterval(interval);
   }, []);
 

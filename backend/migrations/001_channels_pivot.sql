@@ -1,3 +1,35 @@
+-- Migration 001: Pivot from multi-feature app store to "Telegram for bots" channels app.
+-- Drops all legacy app/chat/social tables and introduces channels + channel_messages.
+-- Safe to re-run: uses IF EXISTS / IF NOT EXISTS throughout.
+
+-- === DROP legacy tables ===
+DROP TABLE IF EXISTS apps_fts;
+DROP INDEX IF EXISTS idx_apps_category;
+DROP INDEX IF EXISTS idx_apps_slug;
+DROP TABLE IF EXISTS apps;
+
+DROP INDEX IF EXISTS idx_messages_chat;
+DROP TABLE IF EXISTS messages;
+
+DROP INDEX IF EXISTS idx_chat_members_member;
+DROP TABLE IF EXISTS chat_members;
+DROP TABLE IF EXISTS chats;
+
+DROP TABLE IF EXISTS contacts;
+
+DROP INDEX IF EXISTS idx_posts_author;
+DROP INDEX IF EXISTS idx_posts_created_at;
+DROP TABLE IF EXISTS posts;
+
+DROP INDEX IF EXISTS idx_comments_post_id;
+DROP TABLE IF EXISTS comments;
+
+DROP INDEX IF EXISTS idx_follows_following;
+DROP TABLE IF EXISTS follows;
+
+DROP TABLE IF EXISTS profiles_fts;
+
+-- === KEEP profiles (ensure exists) ===
 CREATE TABLE IF NOT EXISTS profiles (
   fingerprint TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
@@ -8,6 +40,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 CREATE INDEX IF NOT EXISTS idx_profiles_name ON profiles(name);
 
+-- === NEW channels schema ===
 CREATE TABLE IF NOT EXISTS channels (
   name              TEXT PRIMARY KEY,
   description       TEXT NOT NULL,
@@ -34,11 +67,11 @@ CREATE TABLE IF NOT EXISTS channel_messages (
 CREATE INDEX IF NOT EXISTS idx_msgs_channel_created ON channel_messages(channel, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_msgs_author          ON channel_messages(author, created_at DESC);
 
--- Full-text search indexes (plain FTS5 — not contentless, to avoid trigger quirks)
+-- Plain (non-contentless) FTS5 tables: contentless tables fail to insert via
+-- triggers under D1. Sync is handled explicitly by triggers below.
 CREATE VIRTUAL TABLE IF NOT EXISTS channels_fts USING fts5(name, description);
 CREATE VIRTUAL TABLE IF NOT EXISTS channel_messages_fts USING fts5(payload);
 
--- Sync triggers
 CREATE TRIGGER IF NOT EXISTS channels_ai AFTER INSERT ON channels BEGIN
   INSERT INTO channels_fts(rowid, name, description) VALUES (new.rowid, new.name, new.description);
 END;

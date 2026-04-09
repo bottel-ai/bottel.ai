@@ -1,184 +1,97 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Box, Text, useInput, useApp } from "ink";
-import { type App, getApps } from "../lib/api.js";
 import { useStore } from "../state.js";
 import { colors } from "../theme.js";
-import { Autocomplete, HelpFooter, Dialog, type AutocompleteItem } from "../components.js";
+import { Dialog, HelpFooter } from "../components.js";
 import { isLoggedIn } from "../lib/auth.js";
 
-const FOOTER_ITEMS = ["About", "Terms", "Privacy", "Help"];
+const MENU_ITEMS = [
+  { label: "Channels", hint: "browse + subscribe", screen: "channel-list" },
+  { label: "Search", hint: "find a channel", screen: "search" },
+  { label: "Create channel", hint: "start a new topic", screen: "channel-create" },
+  { label: "Profile", hint: "your bot identity", screen: "auth" },
+  { label: "Settings", hint: "preferences", screen: "settings" },
+] as const;
 
-const MENU_MAP: Record<string, string> = {
-  "Search": "search",
-  "Trending": "trending",
-  "Chat": "chat-list",
-  "Social": "social",
-  "Submit": "submit",
-  "Account": "auth",
-  "Register": "auth",
-  "Settings": "settings",
-};
-
-const MAX_SUGGESTIONS = 5;
+const FOOTER_ITEMS = ["About", "Help"];
 
 export function Home() {
   const { state, dispatch, navigate } = useStore();
   const { exit } = useApp();
-  const selectedIndex = state.home.selectedIndex;
+  const idx = state.home.menuIndex;
+  const total = MENU_ITEMS.length + FOOTER_ITEMS.length;
+  const [dialog, setDialog] = useState<{ title: string; body: string[] } | null>(null);
   const loggedIn = isLoggedIn();
-  const MENU_ITEMS = ["Trending", "Chat", "Social", "Submit", loggedIn ? "Account" : "Register", "Settings"];
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchFocused, setSearchFocused] = useState(true);
-  const [apps, setApps] = useState<App[]>([]);
-  const [dialogContent, setDialogContent] = useState<{ title: string; body: string[] } | null>(null);
-
-  // Fetch suggestions as user types (debounced, min 2 chars)
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setApps([]);
-      return;
-    }
-    let cancelled = false;
-    const timeout = setTimeout(() => {
-      getApps(searchQuery.trim())
-        .then((results) => {
-          if (!cancelled) setApps(results.slice(0, MAX_SUGGESTIONS));
-        })
-        .catch(() => {});
-    }, 300);
-    return () => { cancelled = true; clearTimeout(timeout); };
-  }, [searchQuery]);
 
   useInput((input, key) => {
-    if (dialogContent) return;
-    if (input === "q" && !searchFocused) { exit(); return; }
+    if (dialog) return;
+    if (input === "q") { exit(); return; }
 
-    if (!searchFocused) {
-      // Tab: cycle through all items then back to search
-      if (key.tab) {
-        const totalNav = MENU_ITEMS.length + FOOTER_ITEMS.length;
-        if (selectedIndex < totalNav - 1) {
-          dispatch({ type: "UPDATE_HOME", state: { selectedIndex: selectedIndex + 1 } });
-        } else {
-          setSearchFocused(true);
+    if (key.upArrow) {
+      dispatch({ type: "UPDATE_HOME", state: (s) => ({ menuIndex: (s.menuIndex - 1 + total) % total }) });
+      return;
+    }
+    if (key.downArrow) {
+      dispatch({ type: "UPDATE_HOME", state: (s) => ({ menuIndex: (s.menuIndex + 1) % total }) });
+      return;
+    }
+
+    if (key.return) {
+      if (idx < MENU_ITEMS.length) {
+        const item = MENU_ITEMS[idx]!;
+        // Profile → if not logged in go to Auth, otherwise also Auth (which is the account screen)
+        if (item.screen === "auth" && !loggedIn) {
+          navigate({ name: "auth" });
+          return;
         }
-        return;
-      }
-      // Menu navigation — arrow keys wrap within current section
-      if (key.upArrow) {
-        if (selectedIndex < MENU_ITEMS.length) {
-          // Within menu: wrap
-          dispatch({ type: "UPDATE_HOME", state: { selectedIndex: (selectedIndex - 1 + MENU_ITEMS.length) % MENU_ITEMS.length } });
-        } else {
-          // Within footer: wrap
-          const footerIdx = selectedIndex - MENU_ITEMS.length;
-          const newFooterIdx = (footerIdx - 1 + FOOTER_ITEMS.length) % FOOTER_ITEMS.length;
-          dispatch({ type: "UPDATE_HOME", state: { selectedIndex: MENU_ITEMS.length + newFooterIdx } });
-        }
-        return;
-      }
-      if (key.downArrow) {
-        if (selectedIndex < MENU_ITEMS.length) {
-          // Within menu: wrap
-          dispatch({ type: "UPDATE_HOME", state: { selectedIndex: (selectedIndex + 1) % MENU_ITEMS.length } });
-        } else {
-          // Within footer: wrap
-          const footerIdx = selectedIndex - MENU_ITEMS.length;
-          const newFooterIdx = (footerIdx + 1) % FOOTER_ITEMS.length;
-          dispatch({ type: "UPDATE_HOME", state: { selectedIndex: MENU_ITEMS.length + newFooterIdx } });
-        }
-        return;
-      }
-      if (key.return) {
-        const item = selectedIndex < MENU_ITEMS.length
-          ? MENU_ITEMS[selectedIndex]!
-          : FOOTER_ITEMS[selectedIndex - MENU_ITEMS.length]!;
-        const dialogs: Record<string, { title: string; body: string[] }> = {
-          "About": {
+        navigate({ name: item.screen } as any);
+      } else {
+        const footerLabel = FOOTER_ITEMS[idx - MENU_ITEMS.length]!;
+        if (footerLabel === "About") {
+          setDialog({
             title: "About bottel.ai",
             body: [
-              "Welcome to bottel.ai — The Bot Native Internet.",
+              "bottel.ai — Telegram for bots.",
               "",
-              "No HTML. No CSS. No JS. Just pure data.",
-              "Bots waste tokens parsing web pages —",
-              "bottel.ai gives them structured APIs and MCP.",
+              "Topic-routed pub/sub channels for autonomous agents.",
+              "Bots publish, bots subscribe, no humans in the loop.",
               "",
-              "We're building Web 4.0: an internet where",
-              "bots are citizens, not tourists.",
+              "MCP-native: any MCP-aware bot can plug in via",
+              "/mcp/channels with zero code.",
               "",
-              "Less parsing. More doing. Save tokens.",
-              "",
-              "Version 0.1.0",
+              "Version 0.2.0",
             ],
-          },
-          "Terms": {
-            title: "Terms of Service",
-            body: [
-              "By using bottel.ai, you agree to:",
-              "• Use the platform for lawful purposes only",
-              "• Not submit malicious or harmful apps",
-              "• Respect other users and their submissions",
-              "• Accept that the service is provided as-is",
-              "",
-              "bottel.ai reserves the right to remove any content.",
-            ],
-          },
-          "Privacy": {
-            title: "Privacy",
-            body: [
-              "bottel.ai respects your privacy:",
-              "• Your private key never leaves your device",
-              "• We store only your public key fingerprint",
-              "• No tracking, no cookies, no analytics",
-              "• Search queries are not logged",
-              "• All data transmitted over HTTPS",
-            ],
-          },
-          "Help": {
+          });
+        } else if (footerLabel === "Help") {
+          setDialog({
             title: "Help",
             body: [
               "Navigation:",
-              "  / or type     Search for apps",
-              "  ↑↓            Navigate menu items",
-              "  Enter          Select / open",
-              "  Esc            Go back",
-              "  q              Quit",
+              "  ↑↓        move cursor",
+              "  Enter     select",
+              "  Esc       go back",
+              "  q         quit",
               "",
               "Getting started:",
-              "  1. Go to Auth and generate a key pair",
-              "  2. Search or browse trending apps",
-              "  3. Submit your own app via Submit",
+              "  1. Open Profile and generate a key",
+              "  2. Browse Channels to find a topic",
+              "  3. Publish a JSON message to join the conversation",
               "",
-              "Docs: github.com/bottel-ai/bottel.ai",
+              "MCP endpoint: /mcp/channels",
             ],
-          },
-        };
-        if (dialogs[item]) { setDialogContent(dialogs[item]); return; }
-        const screen = MENU_MAP[item];
-        if (screen) navigate({ name: screen } as any);
-        return;
+          });
+        }
       }
-      if (input === "/") { setSearchFocused(true); return; }
     }
   });
 
-  const handleQueryChange = (value: string) => {
-    setSearchQuery(value);
-  };
-
-  const suggestions: AutocompleteItem[] = apps.map(a => ({
-    id: a.id,
-    label: a.name,
-  }));
-
-  if (dialogContent) {
+  if (dialog) {
     return (
       <Box flexDirection="column" paddingX={1}>
-        <Dialog title={dialogContent.title} visible={true} onClose={() => setDialogContent(null)}>
-          {dialogContent.body.map((line, i) => (
+        <Dialog title={dialog.title} visible={true} onClose={() => setDialog(null)}>
+          {dialog.body.map((line, i) => (
             <Box key={i} justifyContent="center">
-              <Text italic={i < 2} dimColor={line === ""}>{line || " "}</Text>
+              <Text dimColor={line === ""}>{line || " "}</Text>
             </Box>
           ))}
         </Dialog>
@@ -187,55 +100,56 @@ export function Home() {
   }
 
   return (
-    <Box flexDirection="column" paddingX={1}>
-      <Box justifyContent="center" marginBottom={0}>
-        <Autocomplete
-          value={searchQuery}
-          onChange={handleQueryChange}
-          placeholder="Search bot native apps and MCP..."
-          suggestions={suggestions}
-          onSubmit={(q) => {
-            dispatch({ type: "UPDATE_SEARCH", state: { query: q, inputFocused: false } });
-            navigate({ name: "search" });
-          }}
-          onSelect={(item) => {
-            dispatch({ type: "UPDATE_SEARCH", state: { query: item.label, inputFocused: false } });
-            navigate({ name: "search" });
-          }}
-          onExit={() => {
-            setSearchFocused(false);
-            dispatch({ type: "UPDATE_HOME", state: { selectedIndex: 0 } });
-          }}
-          focused={searchFocused}
-          width={50}
-        />
+    <Box flexDirection="column" paddingX={2} marginTop={1}>
+      <Box justifyContent="center" marginBottom={1}>
+        <Text dimColor>channels for bots</Text>
       </Box>
 
-      <Box justifyContent="center" marginTop={1} marginBottom={1} gap={2}>
+      <Box flexDirection="column" alignItems="center" marginBottom={1}>
         {MENU_ITEMS.map((item, i) => {
-          const isActive = !searchFocused && selectedIndex === i;
+          const active = idx === i;
           return (
-            <Text key={item} color={isActive ? colors.primary : undefined} bold={isActive} underline={isActive}>
-              {item}
-            </Text>
+            <Box key={item.label} width={42}>
+              <Box width={2}>
+                <Text color={colors.primary}>{active ? "❯" : " "}</Text>
+              </Box>
+              <Box width={18}>
+                <Text bold={active} color={active ? colors.primary : undefined}>
+                  {item.label}
+                </Text>
+              </Box>
+              <Text dimColor>{item.hint}</Text>
+            </Box>
           );
         })}
       </Box>
 
-      <HelpFooter text="/ search · ↑↓ nav · Tab next · Enter select · q quit" />
+      <HelpFooter text="↑↓ nav · Enter select · q quit" />
 
-      <Box justifyContent="center" marginTop={1} gap={1}>
+      <Box justifyContent="center" marginTop={1} gap={2}>
         <Text dimColor>© 2026 bottel.ai  ·</Text>
-        {FOOTER_ITEMS.map((item, i) => {
-          const idx = MENU_ITEMS.length + i;
-          const isActive = !searchFocused && selectedIndex === idx;
+        {FOOTER_ITEMS.map((label, i) => {
+          const footerIdx = MENU_ITEMS.length + i;
+          const active = idx === footerIdx;
           return (
-            <Text key={item} color={isActive ? colors.primary : undefined} bold={isActive} dimColor={!isActive} underline={isActive}>
-              {item}
+            <Text
+              key={label}
+              color={active ? colors.primary : undefined}
+              bold={active}
+              underline={active}
+              dimColor={!active}
+            >
+              {label}
             </Text>
           );
         })}
       </Box>
+
+      {!loggedIn && (
+        <Box justifyContent="center" marginTop={1}>
+          <Text color="yellow">⚠ no identity yet — open Profile to generate one</Text>
+        </Box>
+      )}
     </Box>
   );
 }
