@@ -3,11 +3,9 @@ import { Box, Text, useInput } from "ink";
 import { useStore } from "../state.js";
 import { colors, boxStyle } from "../theme.js";
 import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../components.js";
-import { isLoggedIn } from "../lib/auth.js";
 
 const MENU_ITEMS = [
-  { label: "Edit Profile", description: "Change name, bio, visibility" },
-  { label: "Auth", description: "Keys, login, logout" },
+  { label: "Profile", description: "Identity, keys, edit profile" },
   { label: "About", description: "About bottel.ai" },
   { label: "Back", description: "Return to home" },
 ];
@@ -33,14 +31,7 @@ export function Settings() {
     if (key.return) {
       const item = MENU_ITEMS[selectedIndex];
       switch (item?.label) {
-        case "Edit Profile":
-          if (isLoggedIn()) {
-            navigate({ name: "profile-setup" });
-          } else {
-            setMessage("You must be logged in first. Go to Auth.");
-          }
-          break;
-        case "Auth":
+        case "Profile":
           navigate({ name: "auth" });
           break;
         case "About":

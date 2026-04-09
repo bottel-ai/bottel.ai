@@ -253,8 +253,11 @@ describe("Home screen", () => {
     for (let i = 0; i < 4; i++) await pressKey(stdin, KEY.down);
     await pressKey(stdin, KEY.enter);
     const f = lastFrame() ?? "";
+    // Settings menu is now: Profile, About, Back. (Edit Profile lives
+    // on the Profile/Auth screen.)
     expect(f).toContain("Settings");
-    expect(f).toContain("Edit Profile");
+    expect(f).toContain("Profile");
+    expect(f).toContain("About");
     unmount();
   });
 
@@ -312,7 +315,8 @@ describe("Search screen", () => {
   it("renders an input field with prompt char", async () => {
     const { lastFrame, unmount } = await openSearch();
     const f = lastFrame() ?? "";
-    expect(f).toContain(">");
+    // Unified terracotta cursor "❯" — same glyph as the home menu cursor.
+    expect(f).toContain("❯");
     expect(f).toMatch(/[╭╮╰╯]/);
     unmount();
   });
@@ -507,8 +511,8 @@ describe("ChannelView screen", () => {
     await settle();
     await openChannelView(r, SEED_CHANNEL);
     const f = r.lastFrame() ?? "";
-    // Editorial input shows a terracotta "▸ " prompt and a placeholder.
-    expect(f).toMatch(/▸|Reply on/);
+    // Editorial input shows a terracotta "❯ " prompt and a placeholder.
+    expect(f).toMatch(/❯|Reply on/);
     r.unmount();
   }, 20000);
 
@@ -588,7 +592,7 @@ describe("ChannelView screen", () => {
     r.stdin.write(burst);
     await settle(400);
     const frame = r.lastFrame() ?? "";
-    const inputLine = frame.split("\n").find((l) => l.includes("▸"));
+    const inputLine = frame.split("\n").find((l) => l.includes("❯"));
     expect(inputLine).toBeTruthy();
     expect(inputLine).toContain(burst);
     r.unmount();
@@ -611,7 +615,7 @@ describe("ChannelView screen", () => {
     await settle(400);
     const frame = r.lastFrame() ?? "";
     const lines = frame.split("\n");
-    const inputLine = lines.find((l) => l.includes("▸"));
+    const inputLine = lines.find((l) => l.includes("❯"));
     expect(inputLine).toBeTruthy();
     // Field should show the placeholder, NOT the raw pasted content.
     expect(inputLine).toContain("[Pasted text with 4 lines]");
@@ -1068,8 +1072,38 @@ describe("Auth screen", () => {
 
   it("Show Full Key displays the entire public key", async () => {
     const { lastFrame, stdin, unmount } = await openAuth(BOT_A);
-    await pressKey(stdin, KEY.enter); // Show Full Key is index 0
+    // Edit Profile is now index 0; Show Full Key is index 1.
+    await pressKey(stdin, KEY.down);
+    await pressKey(stdin, KEY.enter);
     expect(lastFrame() ?? "").toContain("Full Public Key");
+    unmount();
+  });
+
+  it("Regenerate Key shows a confirm prompt; n cancels", async () => {
+    const { lastFrame, stdin, unmount } = await openAuth(BOT_A);
+    // Regenerate Key is index 2 (after Edit Profile and Show Full Key).
+    await pressKey(stdin, KEY.down);
+    await pressKey(stdin, KEY.down);
+    await pressKey(stdin, KEY.enter);
+    await settle(200);
+    const f = lastFrame() ?? "";
+    expect(f.toLowerCase()).toContain("regenerate");
+    expect(f.toLowerCase()).toContain("permanently");
+    // Cancel with "n"
+    await typeText(stdin, "n");
+    await settle(200);
+    // Back at the menu — Show Full Key visible again, no warning text.
+    expect(lastFrame() ?? "").toContain("Show Full Key");
+    expect((lastFrame() ?? "").toLowerCase()).not.toContain("permanently");
+    unmount();
+  });
+
+  it("Edit Profile navigates to profile-setup", async () => {
+    const { lastFrame, stdin, unmount } = await openAuth(BOT_A);
+    // Edit Profile is the first item for logged-in users.
+    await pressKey(stdin, KEY.enter);
+    await settle(500);
+    expect(lastFrame() ?? "").toMatch(/Name:|Edit Profile/);
     unmount();
   });
 
@@ -1101,11 +1135,10 @@ describe("Settings screen", () => {
     return rendered;
   }
 
-  it("renders all 4 menu items", async () => {
+  it("renders all 3 menu items", async () => {
     const { lastFrame, unmount } = await openSettings();
     const f = lastFrame() ?? "";
-    expect(f).toContain("Edit Profile");
-    expect(f).toContain("Auth");
+    expect(f).toContain("Profile");
     expect(f).toContain("About");
     expect(f).toContain("Back");
     unmount();
@@ -1119,9 +1152,9 @@ describe("Settings screen", () => {
     unmount();
   });
 
-  it("Enter on Auth navigates to auth screen", async () => {
+  it("Enter on Profile navigates to the auth screen", async () => {
     const { lastFrame, stdin, unmount } = await openSettings();
-    await pressKey(stdin, KEY.down); // Auth
+    // Profile is the first item.
     await pressKey(stdin, KEY.enter);
     expect(lastFrame() ?? "").toContain("Show Full Key");
     unmount();
@@ -1129,7 +1162,6 @@ describe("Settings screen", () => {
 
   it("Enter on About shows about panel", async () => {
     const { lastFrame, stdin, unmount } = await openSettings();
-    await pressKey(stdin, KEY.down);
     await pressKey(stdin, KEY.down); // About
     await pressKey(stdin, KEY.enter);
     expect((lastFrame() ?? "").toLowerCase()).toContain("bottel.ai");
@@ -1138,19 +1170,9 @@ describe("Settings screen", () => {
 
   it("Enter on Back returns to home", async () => {
     const { lastFrame, stdin, unmount } = await openSettings();
-    for (let i = 0; i < 3; i++) await pressKey(stdin, KEY.down);
+    for (let i = 0; i < 2; i++) await pressKey(stdin, KEY.down);
     await pressKey(stdin, KEY.enter);
     expect(lastFrame() ?? "").toContain("channels for bots");
-    unmount();
-  });
-
-  it("Enter on Edit Profile navigates to profile-setup", async () => {
-    const { lastFrame, stdin, unmount } = await openSettings();
-    await pressKey(stdin, KEY.enter); // Edit Profile first item
-    await settle(500);
-    const f = lastFrame() ?? "";
-    expect(f).toContain("Edit Profile");
-    expect(f).toMatch(/Name:|Bio:|Make Public/);
     unmount();
   });
 });
@@ -1162,8 +1184,10 @@ describe("ProfileSetup screen", () => {
     __setAuthOverride(BOT_A);
     const rendered = render(<App />);
     await settle();
-    for (let i = 0; i < 4; i++) await pressKey(rendered.stdin, KEY.down);
-    await pressKey(rendered.stdin, KEY.enter); // Settings
+    // Home → Profile (auth screen) → Edit Profile (first item)
+    for (let i = 0; i < 3; i++) await pressKey(rendered.stdin, KEY.down);
+    await pressKey(rendered.stdin, KEY.enter); // open Profile/Auth
+    await settle(300);
     await pressKey(rendered.stdin, KEY.enter); // Edit Profile
     await settle(500);
     return rendered;

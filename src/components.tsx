@@ -19,15 +19,91 @@ export {
 } from "../packages/cli-app-scaffold/src/components.js";
 
 // ─── App Branding (bottel.ai-specific) ──────────────────────────
+//
+// Chunky pixel-block wordmark for the home screen, in the warm Claude
+// palette. Letterforms are the "ANSI Shadow" FIGlet font; the bottom
+// rows render in a slightly darker terracotta to give the same visual
+// "drop shadow" effect as a 16-bit pixel-art game logo.
 
-// Logo lines in the warm Claude palette: terracotta → coral → muted olive.
-const LOGO_LINES: [string, string][] = [
-  ["╔═╗ ╔═╗ ╔╦╗ ╔╦╗ ╔═╗ ╦     ╔═╗ ╦", "#c96442"],
-  ["╠═╣ ║ ║  ║   ║  ╠═  ║     ╠═╣ ║", "#d97757"],
-  ["╚═╝ ╚═╝  ╩   ╩  ╚═╝ ╚═╝ ▪ ╩ ╩ ╩", "#7a9b6a"],
-];
+const FONT: Record<string, string[]> = {
+  B: [
+    "██████╗ ",
+    "██╔══██╗",
+    "██████╔╝",
+    "██╔══██╗",
+    "██████╔╝",
+    "╚═════╝ ",
+  ],
+  O: [
+    " ██████╗ ",
+    "██╔═══██╗",
+    "██║   ██║",
+    "██║   ██║",
+    "╚██████╔╝",
+    " ╚═════╝ ",
+  ],
+  T: [
+    "████████╗",
+    "╚══██╔══╝",
+    "   ██║   ",
+    "   ██║   ",
+    "   ██║   ",
+    "   ╚═╝   ",
+  ],
+  E: [
+    "███████╗",
+    "██╔════╝",
+    "█████╗  ",
+    "██╔══╝  ",
+    "███████╗",
+    "╚══════╝",
+  ],
+  L: [
+    "██╗     ",
+    "██║     ",
+    "██║     ",
+    "██║     ",
+    "███████╗",
+    "╚══════╝",
+  ],
+  ".": [
+    "   ",
+    "   ",
+    "   ",
+    "   ",
+    "██╗",
+    "╚═╝",
+  ],
+  A: [
+    " █████╗ ",
+    "██╔══██╗",
+    "███████║",
+    "██╔══██║",
+    "██║  ██║",
+    "╚═╝  ╚═╝",
+  ],
+  I: [
+    "██╗",
+    "██║",
+    "██║",
+    "██║",
+    "██║",
+    "╚═╝",
+  ],
+};
 
-/** Compact multi-color border logo with login status top-right */
+const WORDMARK = "BOTTEL.AI";
+const WORDMARK_ROWS: string[] = [0, 1, 2, 3, 4, 5].map((r) =>
+  WORDMARK.split("")
+    .map((ch) => (FONT[ch] ? FONT[ch][r] : ""))
+    .join(""),
+);
+
+/**
+ * Chunky pixel-block bottel.ai wordmark with login status top-right.
+ * The top four rows are bright coral; the bottom two rows are deeper
+ * terracotta, creating the drop-shadow effect of a retro pixel logo.
+ */
 export function Logo() {
   const loggedIn = isLoggedIn();
   return (
@@ -39,9 +115,18 @@ export function Logo() {
           <Text color={colors.muted}>○ not logged in</Text>
         )}
       </Box>
-      <Box flexDirection="column" alignItems="center" marginTop={2}>
-        {LOGO_LINES.map(([line, color], i) => (
-          <Text key={`logo-${i}`} color={color} bold>{line}</Text>
+      <Box flexDirection="column" alignItems="center" marginTop={1}>
+        {WORDMARK_ROWS.map((row, i) => (
+          <Text
+            key={`logo-${i}`}
+            // Bright coral on the upper half, deeper terracotta on the
+            // lower half + shadow row, mirroring the highlight/shadow
+            // banding in the design reference screenshot.
+            color={i < 3 ? colors.secondary : colors.primary}
+            bold
+          >
+            {row}
+          </Text>
         ))}
         <Box marginTop={1}>
           <Text bold color={colors.primary}>Telegram for bots</Text>

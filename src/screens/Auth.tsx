@@ -13,7 +13,7 @@ import {
   clearAuth,
 } from "../lib/auth.js";
 
-type Mode = "menu" | "import" | "show-key";
+type Mode = "menu" | "import" | "show-key" | "confirm-regen";
 
 const LOGGED_OUT_ITEMS = [
   { label: "Generate Key Pair", description: "Create new Ed25519 key pair" },
@@ -22,6 +22,7 @@ const LOGGED_OUT_ITEMS = [
 ];
 
 const LOGGED_IN_ITEMS = [
+  { label: "Edit Profile", description: "Change name, bio, visibility" },
   { label: "Show Full Key", description: "Display complete public key" },
   { label: "Regenerate Key", description: "Generate new key pair" },
   { label: "Logout", description: "Remove keys" },
@@ -48,6 +49,22 @@ export function Auth() {
   };
 
   useInput((input, key) => {
+    if (mode === "confirm-regen") {
+      // y/Y → regenerate, n/N/Esc → cancel, Enter → cancel (safe default)
+      if (input === "y" || input === "Y") {
+        const authData = generateKeyPair();
+        saveAuth(authData);
+        showMessage(`Key regenerated.\nPublic Key: ${authData.publicKey}`);
+        setMode("menu");
+        refresh();
+        return;
+      }
+      if (input === "n" || input === "N" || key.escape || key.return) {
+        setMode("menu");
+        return;
+      }
+      return;
+    }
     if (mode === "import") {
       if (key.escape) {
         setMode("menu");
@@ -125,17 +142,19 @@ export function Auth() {
         }
       } else {
         switch (item.label) {
+          case "Edit Profile":
+            navigate({ name: "profile-setup" } as Screen);
+            break;
           case "Show Full Key":
             setMode("show-key");
             setMessage(null);
             break;
-          case "Regenerate Key": {
-            const authData = generateKeyPair();
-            saveAuth(authData);
-            showMessage(`Key regenerated!\nPublic Key: ${authData.publicKey}`);
-            refresh();
+          case "Regenerate Key":
+            // Show a confirm prompt — regenerating throws away the
+            // current identity and the user can't recover it.
+            setMode("confirm-regen");
+            setMessage(null);
             break;
-          }
           case "Logout":
             clearAuth();
             showMessage("Logged out successfully.");
@@ -188,7 +207,7 @@ export function Auth() {
     );
     allRows.push(
       <Box key="import-input" paddingLeft={2} marginBottom={1}>
-        <Text color={colors.primary}>{"\u276f "}</Text>
+        <Text color={colors.primary} bold>{"❯ "}</Text>
         <TextInput
           value={importValue}
           onChange={setImportValue}
@@ -210,6 +229,41 @@ export function Auth() {
       </Box>,
     );
     allRows.push(<HelpFooter key="footer" text="Esc/Enter back to menu" />);
+  } else if (mode === "confirm-regen") {
+    allRows.push(
+      <Box
+        key="confirm-regen"
+        flexDirection="column"
+        borderStyle="round"
+        borderColor={colors.warning}
+        paddingX={2}
+        paddingY={1}
+        marginX={2}
+        marginTop={1}
+      >
+        <Text bold color={colors.warning}>
+          ⚠  Regenerate key pair?
+        </Text>
+        <Box marginTop={1}>
+          <Text color={colors.muted}>
+            Your current identity will be permanently replaced.
+          </Text>
+        </Box>
+        <Box>
+          <Text color={colors.muted}>
+            Channels you have published to will not recognize you anymore.
+          </Text>
+        </Box>
+        <Box marginTop={1}>
+          <Text>
+            Press <Text bold color={colors.error}>y</Text> to regenerate, or{" "}
+            <Text bold color={colors.success}>n</Text> /{" "}
+            <Text bold color={colors.success}>Esc</Text> to cancel.
+          </Text>
+        </Box>
+      </Box>,
+    );
+    allRows.push(<HelpFooter key="footer" text="y regenerate · n / Esc cancel" />);
   } else {
     menuItems.forEach((item, i) => {
       const isSelected = i === selectedIndex;

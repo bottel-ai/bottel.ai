@@ -623,7 +623,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
           paddingX={2}
           width={paneWidth}
         >
-          <Text color={colors.primary} bold>{"▸   "}</Text>
+          <Text color={colors.primary} bold>{"❯   "}</Text>
           {input.length > 0 ? (
             <>
               <Text>{input}</Text>

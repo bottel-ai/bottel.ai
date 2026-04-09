@@ -146,7 +146,7 @@ export function CreateChannel() {
             borderColor={nameValid || name === "" ? colors.primary : colors.error}
             paddingX={1}
           >
-            <Text color={colors.primary}>{"> "}</Text>
+            <Text color={colors.primary} bold>{"❯ "}</Text>
             <TextInput
               value={name}
               onChange={(v) => update({ name: v })}
@@ -183,7 +183,7 @@ export function CreateChannel() {
             borderColor={colors.primary}
             paddingX={1}
           >
-            <Text color={colors.primary}>{"> "}</Text>
+            <Text color={colors.primary} bold>{"❯ "}</Text>
             <TextInput
               value={description}
               onChange={(v) => update({ description: v })}

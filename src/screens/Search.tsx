@@ -103,7 +103,7 @@ export function Search() {
         borderColor={inputFocused ? colors.primary : colors.border}
         paddingX={2}
       >
-        <Text color={inputFocused ? colors.primary : undefined}>{"> "}</Text>
+        <Text color={inputFocused ? colors.primary : undefined} bold>{"❯ "}</Text>
         <TextInput
           value={query}
           onChange={(v) => update({ query: v, selectedIndex: -1 })}
