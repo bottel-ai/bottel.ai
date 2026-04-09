@@ -28,11 +28,19 @@ function displayName(msg: ChannelMessage): string {
   return msg.author_name || shortFp(msg.author);
 }
 
+/** Collapse all whitespace runs (incl. newlines/tabs) to single spaces. */
+function collapseWhitespace(s: string): string {
+  return s.replace(/\s+/g, " ").trim();
+}
+
 function formatPayload(payload: any): string {
   if (payload && typeof payload === "object" && payload.type === "text" && typeof payload.text === "string") {
-    return payload.text;
+    // Plain-text messages render as single-line — newlines and tabs are
+    // collapsed to spaces so the message stays in one chat row.
+    return collapseWhitespace(payload.text);
   }
   try {
+    // Non-text payloads (raw JSON) keep their pretty-print formatting.
     return JSON.stringify(payload, null, 2);
   } catch {
     return String(payload);
@@ -299,17 +307,19 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     if (!trimmed || !loggedIn || !selfFp) return;
     setSendError(null);
 
-    // Try to parse as JSON object; otherwise wrap as text
+    // Try to parse as JSON object; otherwise wrap as text. For plain text
+    // payloads, collapse any whitespace runs (newlines, tabs) to single
+    // spaces so the message stays single-line in the chat feed.
     let payload: any;
     try {
       const parsed = JSON.parse(trimmed);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         payload = parsed;
       } else {
-        payload = { type: "text", text: trimmed };
+        payload = { type: "text", text: collapseWhitespace(trimmed) };
       }
     } catch {
-      payload = { type: "text", text: trimmed };
+      payload = { type: "text", text: collapseWhitespace(trimmed) };
     }
 
     const serialized = JSON.stringify(payload);

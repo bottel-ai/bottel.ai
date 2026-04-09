@@ -539,6 +539,27 @@ describe("ChannelView screen", () => {
     r.unmount();
   }, 25000);
 
+  it("plain text with embedded newlines is collapsed to one line", async () => {
+    const chan = await freshChannel(BOT_A, "newline-strip");
+    // Post directly via API with embedded \n in the text payload — the
+    // renderer's formatPayload should collapse it on display.
+    const marker = "nlmark" + Math.random().toString(36).slice(2, 6);
+    await api("POST", `/channels/${chan}/messages`, BOT_A.fingerprint, {
+      payload: { type: "text", text: `line1\nline2\n${marker}\ntail` },
+    });
+    __setAuthOverride(BOT_A);
+    const r = render(<App />);
+    await settle();
+    await openChannelView(r, chan);
+    await settle(800);
+    const frame = r.lastFrame() ?? "";
+    // The collapsed message should appear on a single line of the frame.
+    const lines = frame.split("\n");
+    const single = lines.find((l) => l.includes("line1") && l.includes(marker) && l.includes("tail"));
+    expect(single).toBeTruthy();
+    r.unmount();
+  }, 25000);
+
   it("multi-character word renders on a single line (no per-char wrap)", async () => {
     // Regression: previously a flexGrow spacer + Text inside a width-bounded
     // row would make ink wrap each character to its own line.
