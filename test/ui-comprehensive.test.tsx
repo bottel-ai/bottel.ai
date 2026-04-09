@@ -570,6 +570,30 @@ describe("ChannelView screen", () => {
     r.unmount();
   }, 25000);
 
+  it("fast typing does not drop characters from the reply field", async () => {
+    // Regression: ink-text-input is controlled and dropped chars when
+    // stdin events arrived faster than React commits. The custom
+    // useInput-based field appends to a ref synchronously, so even a
+    // single big stdin write must land in the input verbatim.
+    const chan = await freshChannel(BOT_A, "fasttype");
+    await api("POST", `/channels/${chan}/messages`, BOT_A.fingerprint, {
+      payload: { type: "text", text: "warm-up" },
+    });
+    __setAuthOverride(BOT_A);
+    const r = render(<App />);
+    await settle();
+    await openChannelView(r, chan);
+    const burst = "the-quick-brown-fox-jumps-over-the-lazy-dog-1234567890";
+    // One big stdin write — closest analog to typing faster than React commits.
+    r.stdin.write(burst);
+    await settle(400);
+    const frame = r.lastFrame() ?? "";
+    const inputLine = frame.split("\n").find((l) => l.includes("▸"));
+    expect(inputLine).toBeTruthy();
+    expect(inputLine).toContain(burst);
+    r.unmount();
+  }, 25000);
+
   it("pasting multi-line content shows '[Pasted text with N lines]' placeholder", async () => {
     // Reproduces the broken-input bug: a multi-line paste used to corrupt
     // the bordered input box. Now the input shows a placeholder summary

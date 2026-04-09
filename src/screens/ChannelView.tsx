@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
-import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
 import { useStore } from "../state.js";
 import type { Channel, ChannelMessage } from "../state.js";
@@ -306,23 +305,102 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   }, [channelName, loggedIn, selfFp, state.channelView.messages]);
 
   // ─── Input handling ────────────────────────────────────────
+  //
+  // We own the reply field directly via useInput + a ref instead of
+  // using ink-text-input. ink-text-input is controlled — it computes
+  // newValue from its current `value` prop and emits onChange. When
+  // stdin events arrive faster than React commits, multiple onChange
+  // callbacks all fire with the same stale prop and characters get
+  // dropped on the floor.
+  //
+  // Owning the field via a ref means every keystroke is appended
+  // SYNCHRONOUSLY before the next event handler runs — no race, no
+  // dropped chars. The React `input` slice is just a mirror of the
+  // ref so the renderer can re-render when needed.
 
-  useInput((_inputCh, key) => {
+  const inputBufRef = useRef<string>("");
+  // Keep the ref in sync if the store's input value is reset elsewhere
+  // (e.g. handleSubmit setting it to "").
+  if (inputBufRef.current !== input && pastedRef.current == null) {
+    // Only sync from store → ref when there's no pending paste, so the
+    // store can clear the field after publish.
+    if (input === "") inputBufRef.current = "";
+  }
+
+  const flushInputToStore = () => {
+    update({ input: inputBufRef.current });
+  };
+
+  useInput((char, key) => {
     if (key.escape) {
-      if (!input) {
+      if (!inputBufRef.current && pastedRef.current == null) {
         goBack();
       } else {
-        update({ input: "" });
+        inputBufRef.current = "";
+        pastedRef.current = null;
+        flushInputToStore();
       }
       return;
     }
+
     // Scroll-up-to-load-more: when the viewport is already at the top,
     // an Up arrow or PageUp fetches the previous page of history.
     if ((key.upArrow || key.pageUp) && hasMoreOlder && !loadingOlder) {
       if (scroll.getOffset() <= 0) {
         void loadOlder();
+        return;
       }
     }
+    // Up/Down/PageUp/PageDown otherwise: let App's global scroll handler
+    // do its thing — don't insert these as text input.
+    if (key.upArrow || key.downArrow || key.pageUp || key.pageDown) return;
+
+    if (key.return) {
+      void handleSubmit();
+      return;
+    }
+
+    if (key.backspace || key.delete) {
+      if (pastedRef.current != null) {
+        // Backspacing while a paste is pending discards it.
+        pastedRef.current = null;
+        inputBufRef.current = "";
+      } else {
+        inputBufRef.current = inputBufRef.current.slice(0, -1);
+      }
+      flushInputToStore();
+      return;
+    }
+
+    if (!char) return;
+
+    // Multi-char input with CR/LF = paste of multi-line content. A bare
+    // single-char "\n" is treated as Enter (and would normally arrive
+    // via key.return anyway).
+    if (char.length > 1 && /[\r\n]/.test(char)) {
+      const normalized = char.replace(/\r\n?/g, "\n");
+      const n = normalized.split("\n").length;
+      pastedRef.current = normalized;
+      inputBufRef.current = pastePlaceholder(n);
+      flushInputToStore();
+      return;
+    }
+    if (char === "\n" || char === "\r") {
+      void handleSubmit();
+      return;
+    }
+
+    // Typing while a paste is pending discards the paste and starts fresh.
+    if (pastedRef.current != null) {
+      pastedRef.current = null;
+      inputBufRef.current = char.replace(/\t/g, " ");
+      flushInputToStore();
+      return;
+    }
+
+    // Normal append. Tabs are flattened so they can't mangle column math.
+    inputBufRef.current += char.replace(/\t/g, " ");
+    flushInputToStore();
   });
 
   const handleSubmit = async () => {
@@ -546,42 +624,16 @@ export function ChannelView({ channelName }: ChannelViewProps) {
           width={paneWidth}
         >
           <Text color={colors.primary} bold>{"▸   "}</Text>
-          <TextInput
-            value={input}
-            onChange={(v) => {
-              // Paste detection — ink-text-input is single-line, so the
-              // only way \n / \r enters the value is via paste (Enter
-              // triggers onSubmit, not onChange). When that happens we
-              // stash the raw multi-line content in a ref and show a
-              // "[Pasted text with N lines]" placeholder in the field.
-              if (/[\r\n]/.test(v)) {
-                const normalized = v.replace(/\r\n?/g, "\n");
-                const n = normalized.split("\n").length;
-                pastedRef.current = normalized;
-                update({ input: pastePlaceholder(n) });
-                return;
-              }
-              // If a paste was previously stashed and the user is now
-              // editing, the value will diverge from the placeholder.
-              // Drop the stashed paste and let them type fresh.
-              if (pastedRef.current != null) {
-                const ph = pastePlaceholder(pastedRef.current.split("\n").length);
-                if (v !== ph) {
-                  pastedRef.current = null;
-                  // Strip any partial placeholder remnant from the typed value.
-                  const cleaned = v.replace(/^\[Pasted text with \d+ lines?\]/, "");
-                  update({ input: cleaned });
-                  return;
-                }
-              }
-              // Defensive: tabs are still flattened (a stray tab from a
-              // single-keystroke source would still mangle column math).
-              update({ input: v.replace(/\t/g, " ") });
-            }}
-            onSubmit={handleSubmit}
-            placeholder="Reply on #channel...   (use \\n for newline, or paste)"
-            focus
-          />
+          {input.length > 0 ? (
+            <>
+              <Text>{input}</Text>
+              <Text color={colors.primary}>{"▏"}</Text>
+            </>
+          ) : (
+            <Text color={colors.subtle}>
+              Reply on #channel...   (use \n for newline, or paste)
+            </Text>
+          )}
         </Box>
         {sendError && (
           <Box paddingX={1}>
