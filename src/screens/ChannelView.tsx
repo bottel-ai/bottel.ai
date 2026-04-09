@@ -332,12 +332,15 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     const subs = channel?.subscriber_count ?? 0;
     const msgs = channel?.message_count ?? messages.length;
     const desc = channel?.description || "";
+    // Editorial-style channel header card: round-bordered, terracotta
+    // channel name on the left, stone-gray metadata on the right.
     return (
       <Box
         flexDirection="column"
         borderStyle="round"
         borderColor={colors.border}
         paddingX={2}
+        paddingY={0}
         width={paneWidth}
       >
         <Box justifyContent="space-between">
@@ -357,22 +360,26 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     );
   };
 
+  // Editorial conversation rendering — Claude.ai style.
+  //
+  // No alignment tricks, no flex spacers, no per-character wrap risks.
+  // Each message is a sender header (bold, terracotta for "You") followed
+  // by a body indented under it. Generous vertical spacing separates
+  // author groups; consecutive messages from the same author within 60s
+  // collapse into a single block. A terracotta accent character on the
+  // body row marks "self" without right-aligning.
   const renderBubble = (msg: ChannelMessage, showHeader: boolean) => {
     const isSelf = !!selfFp && msg.author === selfFp;
     const time = hhmm(msg.created_at);
     const name = isSelf ? "You" : displayName(msg);
     const body = formatPayload(msg.payload);
-    const bodyColor = isSelf ? colors.primary : undefined;
 
-    // Wrap long lines manually so no single line exceeds the available
-    // width. Then bake the leading spaces into the string itself and
-    // render one line per <Text>. This avoids ink's flex-wrapping bug
-    // where a Text inside a flexGrow row gets a 1-column width and ends
-    // up rendering one character per line.
-    const rightGutter = 2;
-    const leftGutter = 2;
-    const maxLineWidth = Math.max(8, paneWidth - leftGutter - rightGutter);
-
+    // Pre-wrap long lines manually so ink never has to soft-wrap. Without
+    // this, a single line longer than the parent's available width would
+    // get wrapped to column 0, escaping the indented block.
+    const indent = 2;
+    const bodyIndent = 4;
+    const maxLineWidth = Math.max(20, paneWidth - bodyIndent - 2);
     const rawLines = body.split("\n");
     const lines: string[] = [];
     for (const raw of rawLines) {
@@ -385,33 +392,27 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       }
     }
 
-    // Compute alignment padding per visible line.
-    const padFor = (lineLen: number) => {
-      if (isSelf) {
-        return Math.max(0, paneWidth - rightGutter - lineLen);
-      }
-      return leftGutter;
-    };
-
     return (
       <Box
         key={msg.id}
         flexDirection="column"
-        marginTop={showHeader ? 1 : 0}
+        // Wide gap between author groups, tight within a group.
+        marginTop={showHeader ? 2 : 0}
+        paddingLeft={indent}
       >
         {showHeader && (
-          <Text>
-            <Text>{" ".repeat(padFor(name.length + 3 + time.length))}</Text>
+          <Box>
             <Text bold color={isSelf ? colors.primary : undefined}>
               {name}
             </Text>
-            <Text color={colors.subtle}> · {time}</Text>
-          </Text>
+            <Text color={colors.subtle}>{"  " + time}</Text>
+          </Box>
         )}
         {lines.map((line, i) => (
-          <Text key={i} color={bodyColor}>
-            {" ".repeat(padFor(line.length)) + line}
-          </Text>
+          <Box key={i}>
+            <Text color={isSelf ? colors.primary : colors.subtle}>{"▎ "}</Text>
+            <Text color={isSelf ? colors.primary : undefined}>{line}</Text>
+          </Box>
         ))}
       </Box>
     );
@@ -495,12 +496,12 @@ export function ChannelView({ channelName }: ChannelViewProps) {
           paddingX={2}
           width={paneWidth}
         >
-          <Text color={colors.primary}>{"> "}</Text>
+          <Text color={colors.primary} bold>{"▸ "}</Text>
           <TextInput
             value={input}
             onChange={(v) => update({ input: v })}
             onSubmit={handleSubmit}
-            placeholder="Type a JSON payload or plain text..."
+            placeholder="Reply on #channel..."
             focus
           />
         </Box>
@@ -526,16 +527,18 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       <Box marginTop={1} flexDirection="column">
         {renderMessages()}
       </Box>
-      <Box marginTop={1} flexDirection="column">
+      <Box marginTop={2} flexDirection="column">
         {renderInput()}
       </Box>
-      <Box marginTop={1} justifyContent="center">
-        <Text color={colors.subtle}>Enter publish · Esc back · </Text>
-        {statusDot}
-        <Text color={colors.subtle}> {statusLabel}</Text>
-        {channel && (
-          <Text color={colors.subtle}>   {channel.subscriber_count} subs</Text>
-        )}
+      <Box marginTop={1} justifyContent="space-between" paddingX={1}>
+        <Box>
+          {statusDot}
+          <Text color={colors.subtle}>
+            {" " + statusLabel}
+            {channel ? `  ·  ${channel.subscriber_count} subscriber${channel.subscriber_count === 1 ? "" : "s"}` : ""}
+          </Text>
+        </Box>
+        <Text color={colors.subtle}>Enter to publish  ·  Esc to leave</Text>
       </Box>
     </Box>
   );

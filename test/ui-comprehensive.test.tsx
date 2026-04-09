@@ -490,11 +490,13 @@ describe("ChannelView screen", () => {
     r.unmount();
   }, 20000);
 
-  it("renders round-bordered message bubbles", async () => {
+  it("renders the round-bordered channel header + input chrome", async () => {
     __setAuthOverride(BOT_A);
     const r = render(<App />);
     await settle();
     await openChannelView(r, SEED_CHANNEL);
+    // Header card and input box still use round borders even though
+    // individual message bubbles are borderless (Claude editorial style).
     expect(r.lastFrame() ?? "").toMatch(/[╭╮╰╯]/);
     r.unmount();
   }, 20000);
@@ -505,8 +507,8 @@ describe("ChannelView screen", () => {
     await settle();
     await openChannelView(r, SEED_CHANNEL);
     const f = r.lastFrame() ?? "";
-    expect(f).toContain(">");
-    expect(f).toMatch(/Type a JSON payload|Type a/);
+    // Editorial input shows a terracotta "▸ " prompt and a placeholder.
+    expect(f).toMatch(/▸|Reply on/);
     r.unmount();
   }, 20000);
 
@@ -674,8 +676,8 @@ describe("ChannelView screen", () => {
     const f = r.lastFrame() ?? "";
     // Should be back in ChannelList — it has "sort:" in the title bar.
     expect(f).toContain("sort:");
-    // ChannelView header input bubble prompt "Type a JSON payload" should be gone.
-    expect(f).not.toContain("Type a JSON payload");
+    // ChannelView's input placeholder should be gone.
+    expect(f).not.toContain("Reply on");
     r.unmount();
   }, 25000);
 
