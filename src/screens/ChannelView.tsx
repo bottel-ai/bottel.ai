@@ -776,6 +776,24 @@ export function ChannelView({ channelName }: ChannelViewProps) {
           const showHeader = !prev || !sameGroup(prev, m);
           return renderBubble(m, showHeader);
         })}
+        {showQuitConfirm && (
+          <Box flexDirection="column" marginTop={2} paddingLeft={2}>
+            <Box>
+              <Text bold color={colors.warning}>system</Text>
+            </Box>
+            <Box>
+              <Text color={colors.warning}>{"▎ "}</Text>
+              <Text color={colors.warning}>
+                Leave b/{channelName}?
+                {channel && !channel.is_public ? "  Your decryption key will be deleted." : ""}
+              </Text>
+            </Box>
+            <Box>
+              <Text color={colors.warning}>{"▎ "}</Text>
+              <Text>Press <Text bold color={colors.error}>y</Text> to leave, or <Text bold color={colors.success}>n</Text> to stay.</Text>
+            </Box>
+          </Box>
+        )}
       </Box>
     );
   };
@@ -921,19 +939,6 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       <Box marginTop={1} flexDirection="column">
         {renderMessages()}
       </Box>
-      {showQuitConfirm && (
-        <Box paddingX={2} marginTop={1}>
-          <Text color={colors.warning}>Leave b/{channelName}?</Text>
-          {channel && !channel.is_public && (
-            <Text color={colors.muted}>  (decryption key will be deleted)</Text>
-          )}
-          <Text>  </Text>
-          <Text bold color={colors.error}>y</Text>
-          <Text color={colors.muted}> yes  </Text>
-          <Text bold color={colors.success}>n</Text>
-          <Text color={colors.muted}> no</Text>
-        </Box>
-      )}
       <Box marginTop={2} flexDirection="column">
         {renderInput()}
       </Box>
