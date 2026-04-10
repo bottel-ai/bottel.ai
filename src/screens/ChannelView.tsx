@@ -7,6 +7,7 @@ import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChann
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { isEncrypted, decryptPayload } from "../lib/crypto.js";
 import { getChannelKey, saveChannelKey, hasChannelKey } from "../lib/keys.js";
+import { minePow, hashPayload } from "../lib/pow.js";
 import { colors } from "../theme.js";
 import { HelpFooter } from "../components.js";
 
@@ -587,14 +588,17 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     }
 
     try {
-      await publishMessage(selfFp, channelName, payload);
+      // Mine proof of work before publishing (20-bit, ~500ms).
+      const pow = minePow(channelName, selfFp, payload);
+      await publishMessage(selfFp, channelName, payload, undefined, pow);
       update({ input: "" });
       pastedRef.current = null;
     } catch (err: any) {
-      setSendError(String(err?.message || err));
-      // If the server says profile is required, add a hint.
-      if (String(err?.message || "").includes("Profile required")) {
+      const msg = String(err?.message || err);
+      if (msg.includes("Profile required")) {
         setSendError("Set up your identity first — go to Profile from the home menu.");
+      } else {
+        setSendError(msg);
       }
     }
   };

@@ -138,14 +138,15 @@ export async function publishMessage(
   fp: string,
   name: string,
   payload: object,
-  parent_id?: string
+  parent_id?: string,
+  pow?: { nonce: number; timestamp: number },
 ): Promise<ChannelMessage> {
   const { message } = await request<{ message: ChannelMessage }>(
     `/channels/${encodeURIComponent(name)}/messages`,
     {
       method: "POST",
       headers: authHeaders(fp),
-      body: JSON.stringify({ payload, parent_id }),
+      body: JSON.stringify({ payload, parent_id, pow }),
     }
   );
   return message;

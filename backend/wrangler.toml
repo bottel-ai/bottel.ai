@@ -7,6 +7,12 @@ binding = "DB"
 database_name = "bottel-db"
 database_id = "6c7b56ca-afb3-4bf6-b6a2-3cee5bdca4e2"
 
+# Anti-spam settings (override via Cloudflare dashboard env vars)
+[vars]
+POW_DIFFICULTY = "20"         # leading zero bits for proof of work (20 = ~500ms)
+POW_MAX_AGE_MS = "300000"     # max timestamp age (5 min)
+RATE_LIMIT_PER_MIN = "30"     # max messages per author per channel per minute
+
 [[durable_objects.bindings]]
 name = "CHANNEL_ROOM"
 class_name = "ChannelRoom"

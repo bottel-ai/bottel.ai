@@ -33,6 +33,8 @@ import {
   RESERVED_CHANNEL_NAMES,
 } from "./mcp.js";
 import { generateChannelKey, encryptPayload } from "./crypto.js";
+import { verifyPow } from "./pow.js";
+import { getConfig } from "./config.js";
 
 // Re-export the Durable Object class so wrangler can bind it.
 export { ChannelRoom } from "./channel-room.js";
@@ -306,14 +308,42 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
 
   const name = c.req.param("name")!;
   const fp = c.get("fingerprint");
-  const body = await c.req.json<{ payload: any; signature?: string; parent_id?: string }>();
+  const body = await c.req.json<{
+    payload: any;
+    signature?: string;
+    parent_id?: string;
+    pow?: { nonce: number; timestamp: number };
+  }>();
+
+  const cfg = getConfig(c.env as any);
+
+  // ── Proof of Work verification ────────────────────────────────
+  if (!body.pow) {
+    return c.json({ error: "Proof of work required. Include a pow field with {nonce, timestamp}." }, 400);
+  }
+  const payloadHash = await (async () => {
+    const json = JSON.stringify(body.payload);
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(json));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  })();
+  const powErr = await verifyPow(name, fp, body.pow, payloadHash, {
+    difficulty: cfg.powDifficulty,
+    maxAgeMs: cfg.powMaxAgeMs,
+  });
+  if (powErr) {
+    return c.json({ error: powErr }, 400);
+  }
+
+  // ── Rate limit ────────────────────────────────────────────────
+  if (!checkRateLimit(fp, name, cfg.rateLimitPerMin)) {
+    return c.json({ error: `Rate limit exceeded (${cfg.rateLimitPerMin} msg/min/channel)` }, 429);
+  }
 
   // Check if the channel has an encryption key (private channel).
   const chEnc = await c.env.DB.prepare("SELECT encryption_key, is_public FROM channels WHERE name = ?")
     .bind(name).first<{ encryption_key: string | null; is_public: number }>();
 
   // Private channels: only approved (active) members can post.
-  // Reading is open because messages are encrypted at rest.
   if (chEnc && !chEnc.is_public) {
     const membership = await c.env.DB.prepare(
       "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'active'"
@@ -324,16 +354,9 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
   }
 
   if (chEnc?.encryption_key) {
-    // Encrypt the payload before publishing. We store the raw "enc:..."
-    // string directly in the payload column — not wrapped in an object.
-    // This bypasses publishMessage (which requires an object payload)
-    // and does the INSERT + broadcast inline.
     const encPayload = await encryptPayload(JSON.stringify(body.payload), chEnc.encryption_key);
     if (encPayload.length > 8192) {
       return c.json({ error: "encrypted payload too large" }, 400);
-    }
-    if (!checkRateLimit(fp, name)) {
-      return c.json({ error: "Rate limit exceeded (60 msg/min/channel)" }, 429);
     }
     const id = crypto.randomUUID();
     const created_at = new Date().toISOString();
