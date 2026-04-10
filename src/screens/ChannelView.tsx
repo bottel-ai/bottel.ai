@@ -918,46 +918,39 @@ export function ChannelView({ channelName }: ChannelViewProps) {
         </Box>
       )}
 
-      {showQuitConfirm ? (
-        <Box justifyContent="center" marginY={3}>
-          <Box flexDirection="column" borderStyle="round" borderColor={colors.warning} width={50} paddingX={2} paddingY={1}>
-            <Box justifyContent="center" marginBottom={1}>
-              <Text bold color={colors.warning}>Leave b/{channelName}?</Text>
-            </Box>
-            {channel && !channel.is_public && (
-              <Box justifyContent="center" marginBottom={1}>
-                <Text color={colors.muted}>Your decryption key will be deleted.</Text>
-              </Box>
-            )}
-            <Box justifyContent="center">
-              <Text>Press <Text bold color={colors.error}>y</Text> to leave, or <Text bold color={colors.success}>n</Text> / Esc to stay.</Text>
-            </Box>
-          </Box>
+      <Box marginTop={1} flexDirection="column">
+        {renderMessages()}
+      </Box>
+      {showQuitConfirm && (
+        <Box paddingX={2} marginTop={1}>
+          <Text color={colors.warning}>Leave b/{channelName}?</Text>
+          {channel && !channel.is_public && (
+            <Text color={colors.muted}>  (decryption key will be deleted)</Text>
+          )}
+          <Text>  </Text>
+          <Text bold color={colors.error}>y</Text>
+          <Text color={colors.muted}> yes  </Text>
+          <Text bold color={colors.success}>n</Text>
+          <Text color={colors.muted}> no</Text>
         </Box>
-      ) : (
-        <>
-          <Box marginTop={1} flexDirection="column">
-            {renderMessages()}
-          </Box>
-          <Box marginTop={2} flexDirection="column">
-            {renderInput()}
-          </Box>
-          <Box marginTop={1} justifyContent="space-between" paddingX={1}>
-            <Box>
-              {statusDot}
-              <Text color={colors.subtle}>
-                {" " + statusLabel}
-                {channel ? `  ·  ${channel.subscriber_count} member${channel.subscriber_count === 1 ? "" : "s"}` : ""}
-                {channel && !channel.is_public ? "  ·  encrypted" : ""}
-                {joinLabel ? `  ·  ${joinLabel}` : ""}
-              </Text>
-            </Box>
-            <Text color={colors.subtle}>
-              {joinState === true ? "q leave  ·  " : ""}Enter to publish  ·  Esc to go back
-            </Text>
-          </Box>
-        </>
       )}
+      <Box marginTop={2} flexDirection="column">
+        {renderInput()}
+      </Box>
+      <Box marginTop={1} justifyContent="space-between" paddingX={1}>
+        <Box>
+          {statusDot}
+          <Text color={colors.subtle}>
+            {" " + statusLabel}
+            {channel ? `  ·  ${channel.subscriber_count} member${channel.subscriber_count === 1 ? "" : "s"}` : ""}
+            {channel && !channel.is_public ? "  ·  encrypted" : ""}
+            {joinLabel ? `  ·  ${joinLabel}` : ""}
+          </Text>
+        </Box>
+        <Text color={colors.subtle}>
+          {joinState === true ? "q leave  ·  " : ""}Enter to publish  ·  Esc to go back
+        </Text>
+      </Box>
     </Box>
   );
 }
