@@ -30,6 +30,7 @@ import {
   searchChannel,
   publishMessage,
   checkRateLimit,
+  checkPowReplay,
   RESERVED_CHANNEL_NAMES,
 } from "./mcp.js";
 import { generateChannelKey, encryptPayload } from "./crypto.js";
@@ -332,6 +333,14 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
   });
   if (powErr) {
     return c.json({ error: powErr }, 400);
+  }
+
+  // ── Replay protection ─────────────────────────────────────────
+  // Each author's POW timestamp must be strictly increasing per channel.
+  // Reusing the same timestamp (= same POW) is rejected.
+  const replayErr = checkPowReplay(fp, name, body.pow.timestamp);
+  if (replayErr) {
+    return c.json({ error: replayErr }, 400);
   }
 
   // ── Rate limit ────────────────────────────────────────────────
