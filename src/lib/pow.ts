@@ -7,7 +7,7 @@
  */
 import crypto from "node:crypto";
 
-const DEFAULT_DIFFICULTY = 20;
+const DEFAULT_DIFFICULTY = 18;
 
 /**
  * Build the challenge string (must match server's buildChallenge).
@@ -46,16 +46,21 @@ function hasLeadingZeros(hash: Buffer, bits: number): boolean {
   return count >= bits;
 }
 
+// How many hashes to compute before yielding the event loop.
+// Lower = smoother spinner animation, higher = faster mining.
+const YIELD_INTERVAL = 4096;
+
 /**
  * Mine a valid nonce for the given parameters.
- * Returns { nonce, timestamp } to include in the publish request.
+ * Async — yields the event loop every YIELD_INTERVAL iterations so
+ * ink can update the spinner animation during mining.
  */
-export function minePow(
+export async function minePow(
   channel: string,
   author: string,
   payload: any,
   difficulty: number = DEFAULT_DIFFICULTY,
-): { nonce: number; timestamp: number } {
+): Promise<{ nonce: number; timestamp: number }> {
   const timestamp = Date.now();
   const payloadHash = hashPayload(payload);
   const challenge = buildChallenge(channel, author, timestamp, payloadHash);
@@ -68,5 +73,9 @@ export function minePow(
       return { nonce, timestamp };
     }
     nonce++;
+    // Yield every N iterations so the event loop can paint spinner frames.
+    if (nonce % YIELD_INTERVAL === 0) {
+      await new Promise<void>((r) => setImmediate(r));
+    }
   }
 }

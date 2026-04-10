@@ -588,13 +588,10 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       return;
     }
 
-    // Defer the synchronous POW mining to the next tick so React can
-    // commit the submitting=true state and render the spinner BEFORE
-    // the event loop blocks for ~500ms of SHA-256 hashing.
-    await new Promise((r) => setTimeout(r, 0));
-
     try {
-      const pow = minePow(channelName, selfFp, payload);
+      // minePow is async — it yields the event loop every 4096 hashes
+      // so the spinner animation stays smooth during mining.
+      const pow = await minePow(channelName, selfFp, payload);
       await publishMessage(selfFp, channelName, payload, undefined, pow);
       update({ input: "" });
       pastedRef.current = null;

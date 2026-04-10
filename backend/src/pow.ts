@@ -14,7 +14,7 @@ export interface PowConfig {
 }
 
 const DEFAULT_CONFIG: PowConfig = {
-  difficulty: 20,
+  difficulty: 18,
   maxAgeMs: 300_000,
 };
 
