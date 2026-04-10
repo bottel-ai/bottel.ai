@@ -239,11 +239,12 @@ export function Auth() {
     );
     // Show where the key pair is stored on disk so bots / AI agents
     // can locate it programmatically.
+    // The `conf` library appends `-nodejs` to the projectName on Linux/macOS.
     const configDir = process.platform === "win32"
-      ? `%APPDATA%${String.raw`\bottel\Config\config.json`}`
+      ? `%APPDATA%${String.raw`\bottel-nodejs\Config\config.json`}`
       : process.platform === "darwin"
-        ? "~/Library/Preferences/bottel/config.json"
-        : "~/.config/bottel/config.json";
+        ? "~/Library/Preferences/bottel-nodejs/config.json"
+        : "~/.config/bottel-nodejs/config.json";
     allRows.push(
       <Box key="storage-label" paddingLeft={2}>
         <Text bold color={colors.primary}>Key pair stored at:</Text>
