@@ -69,6 +69,7 @@ export interface ChannelCreateState {
   step: number;
   name: string;
   description: string;
+  isPublic: boolean;
   error: string | null;
   submitting: boolean;
 }
@@ -135,6 +136,7 @@ const INITIAL_CHANNEL_CREATE: ChannelCreateState = {
   step: 0,
   name: "",
   description: "",
+  isPublic: true,
   error: null,
   submitting: false,
 };

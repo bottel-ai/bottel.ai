@@ -21,7 +21,7 @@ function toSlug(input: string): string {
 
 export function CreateChannel() {
   const { state, dispatch, navigate, navigateReplace, goBack } = useStore();
-  const { step, name, description, error, submitting } = state.channelCreate;
+  const { step, name, description, isPublic, error, submitting } = state.channelCreate;
 
   const update = (s: Partial<typeof state.channelCreate>) =>
     dispatch({ type: "UPDATE_CHANNEL_CREATE", state: s });
@@ -64,6 +64,11 @@ export function CreateChannel() {
           return;
         }
         if (step === 2) {
+          // Toggle visibility with p key.
+          if (_input === "p" || _input === "P") {
+            update({ isPublic: !isPublic });
+            return;
+          }
           // Submit
           update({ step: 3, submitting: true, error: null });
           const auth = getAuth();
@@ -74,6 +79,7 @@ export function CreateChannel() {
           createChannel(auth.fingerprint, {
             name,
             description: description.trim(),
+            isPublic,
           })
             .then((channel) => {
               update({ step: 4, submitting: false });
@@ -232,12 +238,23 @@ export function CreateChannel() {
               b/{name}
             </Text>
           </Box>
-          <Box paddingLeft={2} marginBottom={1}>
+          <Box paddingLeft={2}>
             <Text>Description: </Text>
             <Text>{descTrim}</Text>
           </Box>
-          <Text>Press Enter to create.</Text>
-          <HelpFooter text="Enter create · Esc edit" />
+          <Box paddingLeft={2} marginBottom={1}>
+            <Text>Visibility:  </Text>
+            <Text bold color={isPublic ? colors.success : colors.warning}>
+              {isPublic ? "Public" : "Private"}
+            </Text>
+            <Text color={colors.muted}>
+              {isPublic
+                ? "  (anyone can follow)"
+                : "  (follow requires your approval)"}
+            </Text>
+          </Box>
+          <Text>Press Enter to create, or p to toggle visibility.</Text>
+          <HelpFooter text="Enter create · p toggle public/private · Esc edit" />
         </Box>
       )}
 

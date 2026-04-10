@@ -31,8 +31,6 @@ export class ChannelRoom {
   sessions: Map<WebSocket, SessionData> = new Map();
   // Timestamps (ms) of recent broadcasts for rate limiting.
   private broadcastTimestamps: number[] = [];
-  // Last value we wrote to D1.subscriber_count, to skip redundant UPDATEs.
-  private lastSyncedCount: number | null = null;
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -57,16 +55,6 @@ export class ChannelRoom {
 
       const fingerprint = url.searchParams.get("fp") ?? "anon";
 
-      // Capture the channel name once (DO is keyed by name but doesn't know
-      // it until something tells it). Persist for use after hibernation.
-      const channelFromPath = this.parseChannelFromPath(url.pathname);
-      if (channelFromPath) {
-        const stored = await this.state.storage.get<string>("channel");
-        if (!stored) {
-          await this.state.storage.put("channel", channelFromPath);
-        }
-      }
-
       const pair = new WebSocketPair();
       const [client, server] = [pair[0], pair[1]];
 
@@ -75,9 +63,6 @@ export class ChannelRoom {
       const session: SessionData = { fingerprint };
       server.serializeAttachment(session);
       this.sessions.set(server, session);
-
-      // Persist subscriber count to D1 (one cheap UPDATE on join).
-      await this.syncSubscriberCount();
 
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -131,12 +116,10 @@ export class ChannelRoom {
     } catch {
       // already closed
     }
-    await this.syncSubscriberCount();
   }
 
   async webSocketError(ws: WebSocket, _error: unknown): Promise<void> {
     this.sessions.delete(ws);
-    await this.syncSubscriberCount();
   }
 
   // --- Public helpers ---
@@ -144,9 +127,6 @@ export class ChannelRoom {
   /**
    * Fan out a pre-serialized JSON string to every connected client.
    * Returns the number of sockets we attempted to send to.
-   * Also opportunistically prunes dead sockets and syncs the subscriber
-   * count to D1 if it changed — this is the self-healing path that covers
-   * delayed `webSocketClose` events.
    */
   broadcast(message: string): number {
     let count = 0;
@@ -161,8 +141,6 @@ export class ChannelRoom {
     }
     if (dead.length > 0) {
       for (const ws of dead) this.sessions.delete(ws);
-      // Fire-and-forget sync; the broadcast response shouldn't wait on D1.
-      void this.syncSubscriberCount();
     }
     return count;
   }
@@ -173,54 +151,6 @@ export class ChannelRoom {
   }
 
   // --- Internal ---
-
-  /**
-   * Extract the channel name from a `/channels/:name/ws` URL path.
-   * Returns null if the pattern doesn't match.
-   */
-  private parseChannelFromPath(pathname: string): string | null {
-    const m = pathname.match(/\/channels\/([^/]+)\/ws$/);
-    return m ? decodeURIComponent(m[1]!) : null;
-  }
-
-  /**
-   * Persist the live subscriber count to D1. Called on accept and close
-   * events only — no timers, no polling. Failures are swallowed because
-   * the count is decorative; the live broadcast path is unaffected.
-   */
-  private async syncSubscriberCount(): Promise<void> {
-    const count = this.subscriberCount();
-    // Always push live presence to connected sockets so the UI count is
-    // accurate without polling. Cheap (one WS frame per socket).
-    if (this.lastSyncedCount !== count) {
-      this.broadcastPresence(count);
-    }
-    try {
-      const channel = await this.state.storage.get<string>("channel");
-      if (!channel) return;
-      // Skip the UPDATE if D1 already reflects this number.
-      if (this.lastSyncedCount === count) return;
-      await this.env.DB
-        .prepare("UPDATE channels SET subscriber_count = ? WHERE name = ?")
-        .bind(count, channel)
-        .run();
-      this.lastSyncedCount = count;
-    } catch {
-      // best-effort: subscriber count is non-critical metadata
-    }
-  }
-
-  /** Push the current subscriber count to all connected clients. */
-  private broadcastPresence(count: number): void {
-    const frame = JSON.stringify({ type: "presence", subscribers: count });
-    for (const ws of this.state.getWebSockets()) {
-      try {
-        ws.send(frame);
-      } catch {
-        // dead socket; will be cleaned up on next broadcast cycle
-      }
-    }
-  }
 
   /** Returns true and records a broadcast if within the rate limit. */
   private allowBroadcast(): boolean {

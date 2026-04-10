@@ -144,7 +144,7 @@ app.get("/channels/:name", async (c) => {
 // POST /channels — create new channel (auth)
 app.post("/channels", authMiddleware, async (c) => {
   const fp = c.get("fingerprint");
-  const body = await c.req.json<{ name: string; description?: string; schema?: any }>();
+  const body = await c.req.json<{ name: string; description?: string; schema?: any; isPublic?: boolean }>();
 
   if (!body.name || !CHANNEL_NAME_RE.test(body.name)) {
     return c.json(
@@ -167,11 +167,12 @@ app.post("/channels", authMiddleware, async (c) => {
 
   const schemaStr = body.schema ? JSON.stringify(body.schema) : null;
 
+  const isPublic = body.isPublic !== false ? 1 : 0;
   await c.env.DB.prepare(
     `INSERT INTO channels (name, description, created_by, schema, message_count, subscriber_count, is_public, created_at)
-     VALUES (?, ?, ?, ?, 0, 0, 1, datetime('now'))`
+     VALUES (?, ?, ?, ?, 0, 0, ?, datetime('now'))`
   )
-    .bind(body.name, description, fp, schemaStr)
+    .bind(body.name, description, fp, schemaStr, isPublic)
     .run();
 
   // FTS sync handled by triggers in schema.sql.
@@ -297,6 +298,120 @@ app.delete("/channels/:name/messages/:id", authMiddleware, async (c) => {
   ]);
 
   return c.body(null, 204);
+});
+
+// =====================================================================
+// Channel follows
+// =====================================================================
+
+// POST /channels/:name/follow — follow a channel (auth)
+// For public channels: immediate active follow.
+// For private channels: creates a 'pending' request for the creator to approve.
+app.post("/channels/:name/follow", authMiddleware, async (c) => {
+  const name = c.req.param("name");
+  const fp = c.get("fingerprint");
+
+  const ch = await c.env.DB.prepare("SELECT name, is_public, created_by FROM channels WHERE name = ?")
+    .bind(name)
+    .first<{ name: string; is_public: number; created_by: string }>();
+  if (!ch) return c.json({ error: "Channel not found" }, 404);
+
+  // Already following?
+  const existing = await c.env.DB.prepare(
+    "SELECT status FROM channel_follows WHERE channel = ? AND follower = ?"
+  ).bind(name, fp).first<{ status: string }>();
+  if (existing) {
+    return c.json({ status: existing.status, already: true });
+  }
+
+  const status = ch.is_public ? "active" : "pending";
+  await c.env.DB.prepare(
+    "INSERT INTO channel_follows (channel, follower, status) VALUES (?, ?, ?)"
+  ).bind(name, fp, status).run();
+
+  // Update subscriber_count (only count active follows).
+  if (status === "active") {
+    await c.env.DB.prepare(
+      "UPDATE channels SET subscriber_count = (SELECT COUNT(*) FROM channel_follows WHERE channel = ? AND status = 'active') WHERE name = ?"
+    ).bind(name, name).run();
+  }
+
+  return c.json({ status }, 201);
+});
+
+// DELETE /channels/:name/follow — unfollow (auth)
+app.delete("/channels/:name/follow", authMiddleware, async (c) => {
+  const name = c.req.param("name");
+  const fp = c.get("fingerprint");
+
+  await c.env.DB.prepare(
+    "DELETE FROM channel_follows WHERE channel = ? AND follower = ?"
+  ).bind(name, fp).run();
+
+  await c.env.DB.prepare(
+    "UPDATE channels SET subscriber_count = (SELECT COUNT(*) FROM channel_follows WHERE channel = ? AND status = 'active') WHERE name = ?"
+  ).bind(name, name).run();
+
+  return c.body(null, 204);
+});
+
+// GET /channels/:name/follow — check if current user follows (auth)
+app.get("/channels/:name/follow", authMiddleware, async (c) => {
+  const name = c.req.param("name");
+  const fp = c.get("fingerprint");
+
+  const row = await c.env.DB.prepare(
+    "SELECT status FROM channel_follows WHERE channel = ? AND follower = ?"
+  ).bind(name, fp).first<{ status: string }>();
+
+  return c.json({ following: !!row, status: row?.status ?? null });
+});
+
+// POST /channels/:name/follow/:fp/approve — creator approves a pending follow (auth)
+app.post("/channels/:name/follow/:fp/approve", authMiddleware, async (c) => {
+  const name = c.req.param("name");
+  const targetFp = c.req.param("fp");
+  const creatorFp = c.get("fingerprint");
+
+  const ch = await c.env.DB.prepare("SELECT created_by FROM channels WHERE name = ?")
+    .bind(name).first<{ created_by: string }>();
+  if (!ch) return c.json({ error: "Channel not found" }, 404);
+  if (ch.created_by !== creatorFp) return c.json({ error: "Only the channel creator can approve" }, 403);
+
+  const pending = await c.env.DB.prepare(
+    "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'pending'"
+  ).bind(name, targetFp).first();
+  if (!pending) return c.json({ error: "No pending follow request" }, 404);
+
+  await c.env.DB.prepare(
+    "UPDATE channel_follows SET status = 'active' WHERE channel = ? AND follower = ?"
+  ).bind(name, targetFp).run();
+
+  await c.env.DB.prepare(
+    "UPDATE channels SET subscriber_count = (SELECT COUNT(*) FROM channel_follows WHERE channel = ? AND status = 'active') WHERE name = ?"
+  ).bind(name, name).run();
+
+  return c.json({ status: "active" });
+});
+
+// GET /channels/:name/followers — list followers (for creator to manage)
+app.get("/channels/:name/followers", async (c) => {
+  const name = c.req.param("name");
+  const status = c.req.query("status"); // optional: 'pending' | 'active'
+
+  let sql = `SELECT cf.follower, cf.status, cf.created_at, p.name as follower_name
+             FROM channel_follows cf
+             LEFT JOIN profiles p ON p.fingerprint = cf.follower
+             WHERE cf.channel = ?`;
+  const bindings: any[] = [name];
+  if (status) {
+    sql += " AND cf.status = ?";
+    bindings.push(status);
+  }
+  sql += " ORDER BY cf.created_at DESC";
+
+  const result = await c.env.DB.prepare(sql).bind(...bindings).all();
+  return c.json({ followers: result.results ?? [] });
 });
 
 // =====================================================================

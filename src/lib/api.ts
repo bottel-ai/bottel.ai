@@ -100,7 +100,7 @@ export async function getChannel(
 
 export async function createChannel(
   fp: string,
-  body: { name: string; description: string; schema?: string }
+  body: { name: string; description: string; schema?: string; isPublic?: boolean }
 ): Promise<Channel> {
   const { channel } = await request<{ channel: Channel }>("/channels", {
     method: "POST",
@@ -143,6 +143,37 @@ export async function publishMessage(
     }
   );
   return message;
+}
+
+// ─── Channel follows ──────────────────────────────────────────
+
+export async function followChannel(
+  fp: string,
+  name: string
+): Promise<{ status: string; already?: boolean }> {
+  return request(`/channels/${encodeURIComponent(name)}/follow`, {
+    method: "POST",
+    headers: authHeaders(fp),
+  });
+}
+
+export async function unfollowChannel(
+  fp: string,
+  name: string
+): Promise<void> {
+  await request(`/channels/${encodeURIComponent(name)}/follow`, {
+    method: "DELETE",
+    headers: authHeaders(fp),
+  });
+}
+
+export async function checkFollow(
+  fp: string,
+  name: string
+): Promise<{ following: boolean; status: string | null }> {
+  return request(`/channels/${encodeURIComponent(name)}/follow`, {
+    headers: authHeaders(fp),
+  });
 }
 
 // ─── WebSocket factory ─────────────────────────────────────────

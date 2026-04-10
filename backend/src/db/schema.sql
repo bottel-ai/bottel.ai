@@ -56,3 +56,17 @@ END;
 CREATE TRIGGER IF NOT EXISTS channel_messages_ad AFTER DELETE ON channel_messages BEGIN
   DELETE FROM channel_messages_fts WHERE rowid = old.rowid;
 END;
+
+-- Channel follows: persistent subscriptions (replaces the transient WS-based
+-- subscriber count). For public channels status is always 'active'. For private
+-- channels the creator must approve, so status starts as 'pending'.
+CREATE TABLE IF NOT EXISTS channel_follows (
+  channel     TEXT NOT NULL,
+  follower    TEXT NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'active',   -- 'active' | 'pending'
+  created_at  TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (channel, follower),
+  FOREIGN KEY (channel) REFERENCES channels(name)
+);
+CREATE INDEX IF NOT EXISTS idx_follows_channel ON channel_follows(channel, status);
+CREATE INDEX IF NOT EXISTS idx_follows_follower ON channel_follows(follower);

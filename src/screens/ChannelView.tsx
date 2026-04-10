@@ -3,7 +3,7 @@ import { Box, Text, useInput, useStdout } from "ink";
 import Spinner from "ink-spinner";
 import { useStore } from "../state.js";
 import type { Channel, ChannelMessage } from "../state.js";
-import { getChannel, publishMessage, openChannelWs, loadOlderMessages } from "../lib/api.js";
+import { getChannel, publishMessage, openChannelWs, loadOlderMessages, followChannel, checkFollow } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { colors } from "../theme.js";
 import { HelpFooter } from "../components.js";
@@ -89,6 +89,10 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   const [channel, setChannel] = useState<Channel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  // Follow state: null = loading, false = not followed, true = followed,
+  // "pending" = follow request pending (private channel)
+  const [followState, setFollowState] = useState<boolean | "pending" | null>(null);
+  const [showFollowPrompt, setShowFollowPrompt] = useState(false);
   // When the user pastes multi-line content into the single-line reply
   // field we show a "[Pasted text with N lines]" placeholder in the field
   // and stash the real content here. handleSubmit reads from this ref so
@@ -113,6 +117,9 @@ export function ChannelView({ channelName }: ChannelViewProps) {
 
   useEffect(() => {
     unmountedRef.current = false;
+    // Reset follow state for new channel.
+    setFollowState(null);
+    setShowFollowPrompt(false);
     // Reset pagination flags whenever we open a new channel.
     update({ loading: true, loadingOlder: false, hasMoreOlder: true });
     // Enforce a minimum loading window so the spinner is visible long enough
@@ -134,6 +141,20 @@ export function ChannelView({ channelName }: ChannelViewProps) {
             loading: false,
             hasMoreOlder: msgs.length >= 50,
           });
+          // Check follow status after loading.
+          if (loggedIn && selfFp) {
+            checkFollow(selfFp, channelName)
+              .then(({ following, status }) => {
+                if (unmountedRef.current) return;
+                if (following) {
+                  setFollowState(status === "pending" ? "pending" : true);
+                } else {
+                  setFollowState(false);
+                  setShowFollowPrompt(true);
+                }
+              })
+              .catch(() => setFollowState(false));
+          }
         };
         if (elapsed >= MIN_LOADING_MS) finish();
         else setTimeout(finish, MIN_LOADING_MS - elapsed);
@@ -332,7 +353,34 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     update({ input: inputBufRef.current });
   };
 
+  const handleFollow = async () => {
+    if (!loggedIn || !selfFp) return;
+    try {
+      const { status } = await followChannel(selfFp, channelName);
+      setFollowState(status === "pending" ? "pending" : true);
+      setShowFollowPrompt(false);
+      // Refresh channel to get updated subscriber_count.
+      const result = await getChannel(channelName);
+      if (result) setChannel(result.channel);
+    } catch {
+      setShowFollowPrompt(false);
+    }
+  };
+
   useInput((char, key) => {
+    // Follow prompt intercept: y = follow, n/Esc = dismiss.
+    if (showFollowPrompt) {
+      if (char === "y" || char === "Y") {
+        void handleFollow();
+        return;
+      }
+      if (char === "n" || char === "N" || key.escape) {
+        setShowFollowPrompt(false);
+        return;
+      }
+      return; // swallow all other keys while the prompt is showing
+    }
+
     if (key.escape) {
       if (!inputBufRef.current && pastedRef.current == null) {
         goBack();
@@ -652,9 +700,43 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   );
   const statusLabel = wsConnected ? "live" : "offline";
 
+  const followLabel = followState === true
+    ? "following"
+    : followState === "pending"
+      ? "pending approval"
+      : "";
+
   return (
     <Box flexDirection="column" paddingX={1}>
       {renderHeader()}
+
+      {/* Follow prompt — shown on first visit to an unfollowed channel */}
+      {showFollowPrompt && (
+        <Box
+          borderStyle="round"
+          borderColor={colors.primary}
+          paddingX={2}
+          paddingY={0}
+          marginTop={1}
+          width={paneWidth}
+        >
+          <Text>Follow </Text>
+          <Text bold color={colors.primary}>b/{channelName}</Text>
+          <Text>?  </Text>
+          <Text bold color={colors.success}>y</Text>
+          <Text color={colors.muted}> yes  </Text>
+          <Text bold color={colors.error}>n</Text>
+          <Text color={colors.muted}> no</Text>
+        </Box>
+      )}
+
+      {/* Pending follow notice for private channels */}
+      {followState === "pending" && !showFollowPrompt && (
+        <Box paddingX={2} marginTop={1}>
+          <Text color={colors.warning}>⏳ Follow request pending — waiting for channel creator approval</Text>
+        </Box>
+      )}
+
       <Box marginTop={1} flexDirection="column">
         {renderMessages()}
       </Box>
@@ -666,7 +748,8 @@ export function ChannelView({ channelName }: ChannelViewProps) {
           {statusDot}
           <Text color={colors.subtle}>
             {" " + statusLabel}
-            {channel ? `  ·  ${channel.subscriber_count} subscriber${channel.subscriber_count === 1 ? "" : "s"}` : ""}
+            {channel ? `  ·  ${channel.subscriber_count} follower${channel.subscriber_count === 1 ? "" : "s"}` : ""}
+            {followLabel ? `  ·  ${followLabel}` : ""}
           </Text>
         </Box>
         <Text color={colors.subtle}>Enter to publish  ·  Esc to leave</Text>
