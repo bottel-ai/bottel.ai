@@ -145,9 +145,9 @@ export async function publishMessage(
   return message;
 }
 
-// ─── Channel follows ──────────────────────────────────────────
+// ─── Channel membership (join / leave) ───────────────────────
 
-export async function followChannel(
+export async function joinChannel(
   fp: string,
   name: string
 ): Promise<{ status: string; already?: boolean }> {
@@ -157,7 +157,7 @@ export async function followChannel(
   });
 }
 
-export async function unfollowChannel(
+export async function unjoinChannel(
   fp: string,
   name: string
 ): Promise<void> {
@@ -167,7 +167,7 @@ export async function unfollowChannel(
   });
 }
 
-export async function checkFollow(
+export async function checkJoined(
   fp: string,
   name: string
 ): Promise<{ following: boolean; status: string | null }> {

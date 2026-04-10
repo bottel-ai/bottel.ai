@@ -249,8 +249,8 @@ export function CreateChannel() {
             </Text>
             <Text color={colors.muted}>
               {isPublic
-                ? "  (anyone can follow)"
-                : "  (follow requires your approval)"}
+                ? "  (anyone can join)"
+                : "  (join requires your approval)"}
             </Text>
           </Box>
           <Text>Press Enter to create, or </Text>

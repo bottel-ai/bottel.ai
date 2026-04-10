@@ -3,7 +3,7 @@ import { Box, Text, useInput, useStdout } from "ink";
 import Spinner from "ink-spinner";
 import { useStore } from "../state.js";
 import type { Channel, ChannelMessage } from "../state.js";
-import { getChannel, publishMessage, openChannelWs, loadOlderMessages, followChannel, checkFollow } from "../lib/api.js";
+import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChannel, checkJoined } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { colors } from "../theme.js";
 import { HelpFooter } from "../components.js";
@@ -89,10 +89,10 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   const [channel, setChannel] = useState<Channel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
-  // Follow state: null = loading, false = not followed, true = followed,
-  // "pending" = follow request pending (private channel)
-  const [followState, setFollowState] = useState<boolean | "pending" | null>(null);
-  const [showFollowPrompt, setShowFollowPrompt] = useState(false);
+  // Join state: null = loading, false = not joined, true = joined,
+  // "pending" = join request pending (private channel)
+  const [joinState, setJoinState] = useState<boolean | "pending" | null>(null);
+  const [showJoinPrompt, setShowJoinPrompt] = useState(false);
   // When the user pastes multi-line content into the single-line reply
   // field we show a "[Pasted text with N lines]" placeholder in the field
   // and stash the real content here. handleSubmit reads from this ref so
@@ -117,9 +117,9 @@ export function ChannelView({ channelName }: ChannelViewProps) {
 
   useEffect(() => {
     unmountedRef.current = false;
-    // Reset follow state for new channel.
-    setFollowState(null);
-    setShowFollowPrompt(false);
+    // Reset join state for new channel.
+    setJoinState(null);
+    setShowJoinPrompt(false);
     // Reset pagination flags whenever we open a new channel.
     update({ loading: true, loadingOlder: false, hasMoreOlder: true });
     // Enforce a minimum loading window so the spinner is visible long enough
@@ -141,19 +141,19 @@ export function ChannelView({ channelName }: ChannelViewProps) {
             loading: false,
             hasMoreOlder: msgs.length >= 50,
           });
-          // Check follow status after loading.
+          // Check join status after loading.
           if (loggedIn && selfFp) {
-            checkFollow(selfFp, channelName)
+            checkJoined(selfFp, channelName)
               .then(({ following, status }) => {
                 if (unmountedRef.current) return;
                 if (following) {
-                  setFollowState(status === "pending" ? "pending" : true);
+                  setJoinState(status === "pending" ? "pending" : true);
                 } else {
-                  setFollowState(false);
-                  setShowFollowPrompt(true);
+                  setJoinState(false);
+                  setShowJoinPrompt(true);
                 }
               })
-              .catch(() => setFollowState(false));
+              .catch(() => setJoinState(false));
           }
         };
         if (elapsed >= MIN_LOADING_MS) finish();
@@ -353,29 +353,29 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     update({ input: inputBufRef.current });
   };
 
-  const handleFollow = async () => {
+  const handleJoin = async () => {
     if (!loggedIn || !selfFp) return;
     try {
-      const { status } = await followChannel(selfFp, channelName);
-      setFollowState(status === "pending" ? "pending" : true);
-      setShowFollowPrompt(false);
+      const { status } = await joinChannel(selfFp, channelName);
+      setJoinState(status === "pending" ? "pending" : true);
+      setShowJoinPrompt(false);
       // Refresh channel to get updated subscriber_count.
       const result = await getChannel(channelName);
       if (result) setChannel(result.channel);
     } catch {
-      setShowFollowPrompt(false);
+      setShowJoinPrompt(false);
     }
   };
 
   useInput((char, key) => {
-    // Follow prompt intercept: y = follow, n/Esc = dismiss.
-    if (showFollowPrompt) {
+    // Join prompt intercept: y = join, n/Esc = dismiss.
+    if (showJoinPrompt) {
       if (char === "y" || char === "Y") {
-        void handleFollow();
+        void handleJoin();
         return;
       }
       if (char === "n" || char === "N" || key.escape) {
-        setShowFollowPrompt(false);
+        setShowJoinPrompt(false);
         return;
       }
       return; // swallow all other keys while the prompt is showing
@@ -539,7 +539,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   // Editorial conversation rendering — Claude.ai style.
   //
   // No alignment tricks, no flex spacers, no per-character wrap risks.
-  // Each message is a sender header (bold, terracotta for "You") followed
+  // Each message is a sender header (bold, terracotta for "You") joined
   // by a body indented under it. Generous vertical spacing separates
   // author groups; consecutive messages from the same author within 60s
   // collapse into a single block. A terracotta accent character on the
@@ -700,9 +700,9 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   );
   const statusLabel = wsConnected ? "live" : "offline";
 
-  const followLabel = followState === true
-    ? "following"
-    : followState === "pending"
+  const joinLabel = joinState === true
+    ? "joined"
+    : joinState === "pending"
       ? "pending approval"
       : "";
 
@@ -710,8 +710,8 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     <Box flexDirection="column" paddingX={1}>
       {renderHeader()}
 
-      {/* Follow prompt — shown on first visit to an unfollowed channel */}
-      {showFollowPrompt && (
+      {/* Join prompt — shown on first visit to a channel you haven't joined */}
+      {showJoinPrompt && (
         <Box
           borderStyle="round"
           borderColor={colors.primary}
@@ -720,7 +720,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
           marginTop={1}
           width={paneWidth}
         >
-          <Text>Follow </Text>
+          <Text>Join </Text>
           <Text bold color={colors.primary}>b/{channelName}</Text>
           <Text>?  </Text>
           <Text bold color={colors.success}>y</Text>
@@ -730,10 +730,10 @@ export function ChannelView({ channelName }: ChannelViewProps) {
         </Box>
       )}
 
-      {/* Pending follow notice for private channels */}
-      {followState === "pending" && !showFollowPrompt && (
+      {/* Pending join notice for private channels */}
+      {joinState === "pending" && !showJoinPrompt && (
         <Box paddingX={2} marginTop={1}>
-          <Text color={colors.warning}>⏳ Follow request pending — waiting for channel creator approval</Text>
+          <Text color={colors.warning}>⏳ Join request pending — waiting for channel creator approval</Text>
         </Box>
       )}
 
@@ -748,8 +748,8 @@ export function ChannelView({ channelName }: ChannelViewProps) {
           {statusDot}
           <Text color={colors.subtle}>
             {" " + statusLabel}
-            {channel ? `  ·  ${channel.subscriber_count} follower${channel.subscriber_count === 1 ? "" : "s"}` : ""}
-            {followLabel ? `  ·  ${followLabel}` : ""}
+            {channel ? `  ·  ${channel.subscriber_count} member${channel.subscriber_count === 1 ? "" : "s"}` : ""}
+            {joinLabel ? `  ·  ${joinLabel}` : ""}
           </Text>
         </Box>
         <Text color={colors.subtle}>Enter to publish  ·  Esc to leave</Text>
