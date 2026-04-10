@@ -7,7 +7,7 @@
  */
 import crypto from "node:crypto";
 
-const DEFAULT_DIFFICULTY = 20;
+const DEFAULT_DIFFICULTY = 18;
 
 /**
  * Build the challenge string (must match server's buildChallenge).
