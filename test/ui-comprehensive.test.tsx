@@ -1057,8 +1057,8 @@ describe("Auth screen", () => {
   it("logged-out shows generate/import options", async () => {
     const { lastFrame, unmount } = await openAuth(null);
     const f = lastFrame() ?? "";
-    expect(f).toContain("Generate Key Pair");
-    expect(f).toContain("Import Key");
+    expect(f).toContain("Create Identity");
+    expect(f).toContain("Import Identity");
     unmount();
   });
 
@@ -1068,11 +1068,11 @@ describe("Auth screen", () => {
     unmount();
   });
 
-  it("logged-in shows Show Full Key, Regenerate, Logout", async () => {
+  it("logged-in shows Show Identity, Regenerate, Logout", async () => {
     const { lastFrame, unmount } = await openAuth(BOT_A);
     const f = lastFrame() ?? "";
-    expect(f).toContain("Show Full Key");
-    expect(f).toContain("Regenerate Key");
+    expect(f).toContain("Show Identity");
+    expect(f).toContain("Reset Identity");
     expect(f).toContain("Logout");
     unmount();
   });
@@ -1083,30 +1083,30 @@ describe("Auth screen", () => {
     unmount();
   });
 
-  it("Show Full Key displays the entire public key", async () => {
+  it("Show Identity displays the entire public key", async () => {
     const { lastFrame, stdin, unmount } = await openAuth(BOT_A);
-    // Edit Profile is now index 0; Show Full Key is index 1.
+    // Edit Profile is now index 0; Show Identity is index 1.
     await pressKey(stdin, KEY.down);
     await pressKey(stdin, KEY.enter);
     expect(lastFrame() ?? "").toContain("Full Public Key");
     unmount();
   });
 
-  it("Regenerate Key shows a confirm prompt; n cancels", async () => {
+  it("Reset Identity shows a confirm prompt; n cancels", async () => {
     const { lastFrame, stdin, unmount } = await openAuth(BOT_A);
-    // Regenerate Key is index 2 (after Edit Profile and Show Full Key).
+    // Reset Identity is index 2 (after Edit Profile and Show Identity).
     await pressKey(stdin, KEY.down);
     await pressKey(stdin, KEY.down);
     await pressKey(stdin, KEY.enter);
     await settle(200);
     const f = lastFrame() ?? "";
-    expect(f.toLowerCase()).toContain("regenerate");
+    expect(f.toLowerCase()).toContain("reset");
     expect(f.toLowerCase()).toContain("permanently");
     // Cancel with "n"
     await typeText(stdin, "n");
     await settle(200);
-    // Back at the menu — Show Full Key visible again, no warning text.
-    expect(lastFrame() ?? "").toContain("Show Full Key");
+    // Back at the menu — Show Identity visible again, no warning text.
+    expect(lastFrame() ?? "").toContain("Show Identity");
     expect((lastFrame() ?? "").toLowerCase()).not.toContain("permanently");
     unmount();
   });
@@ -1169,7 +1169,7 @@ describe("Settings screen", () => {
     const { lastFrame, stdin, unmount } = await openSettings();
     // Profile is the first item.
     await pressKey(stdin, KEY.enter);
-    expect(lastFrame() ?? "").toContain("Show Full Key");
+    expect(lastFrame() ?? "").toContain("Show Identity");
     unmount();
   });
 
