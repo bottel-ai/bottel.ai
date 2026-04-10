@@ -924,26 +924,26 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       <Box marginTop={2} flexDirection="column">
         {renderInput()}
       </Box>
-      {/* Quit channel confirm */}
+      {/* Quit channel confirm — centered overlay */}
       {showQuitConfirm && (
-        <Box
-          borderStyle="round"
-          borderColor={colors.warning}
-          paddingX={2}
-          paddingY={0}
-          marginTop={1}
-          width={paneWidth}
-        >
-          <Text color={colors.warning}>Leave </Text>
-          <Text bold color={colors.primary}>b/{channelName}</Text>
-          <Text color={colors.warning}>?  </Text>
-          {channel && !channel.is_public && (
-            <Text color={colors.muted}>Your decryption key will be deleted.  </Text>
-          )}
-          <Text bold color={colors.error}>y</Text>
-          <Text color={colors.muted}> yes  </Text>
-          <Text bold color={colors.success}>n</Text>
-          <Text color={colors.muted}> no</Text>
+        <Box justifyContent="center" marginY={1}>
+          <Box flexDirection="column" borderStyle="round" borderColor={colors.warning} width={50} paddingX={2} paddingY={1}>
+            <Box justifyContent="center" marginBottom={1}>
+              <Text bold color={colors.warning}>Leave b/{channelName}?</Text>
+            </Box>
+            {channel && !channel.is_public && (
+              <Box justifyContent="center" marginBottom={1}>
+                <Text color={colors.muted}>Your decryption key will be deleted.</Text>
+              </Box>
+            )}
+            <Box justifyContent="center">
+              <Text>Press </Text>
+              <Text bold color={colors.error}>y</Text>
+              <Text> to leave, or </Text>
+              <Text bold color={colors.success}>n</Text>
+              <Text> / Esc to stay.</Text>
+            </Box>
+          </Box>
         </Box>
       )}
 
