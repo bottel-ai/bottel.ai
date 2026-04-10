@@ -588,8 +588,12 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       return;
     }
 
+    // Defer the synchronous POW mining to the next tick so React can
+    // commit the submitting=true state and render the spinner BEFORE
+    // the event loop blocks for ~500ms of SHA-256 hashing.
+    await new Promise((r) => setTimeout(r, 0));
+
     try {
-      // Mine proof of work before publishing (18-bit, ~150ms).
       const pow = minePow(channelName, selfFp, payload);
       await publishMessage(selfFp, channelName, payload, undefined, pow);
       update({ input: "" });
