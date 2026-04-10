@@ -174,6 +174,16 @@ export async function unjoinChannel(
   });
 }
 
+export async function deleteChannel(
+  fp: string,
+  name: string
+): Promise<void> {
+  await request(`/channels/${encodeURIComponent(name)}`, {
+    method: "DELETE",
+    headers: authHeaders(fp),
+  });
+}
+
 export async function leaveChannel(
   fp: string,
   name: string

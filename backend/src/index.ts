@@ -422,6 +422,29 @@ app.get("/channels/:name/ws", async (c) => {
   return room.fetch(new Request(doUrl.toString(), c.req.raw));
 });
 
+// DELETE /channels/:name — delete channel (creator only, auth + profile)
+app.delete("/channels/:name", authMiddleware, async (c) => {
+  const profileErr = await requireProfile(c);
+  if (profileErr) return profileErr;
+
+  const name = c.req.param("name");
+  const fp = c.get("fingerprint");
+
+  const ch = await c.env.DB.prepare("SELECT created_by FROM channels WHERE name = ?")
+    .bind(name).first<{ created_by: string }>();
+  if (!ch) return c.json({ error: "Channel not found" }, 404);
+  if (ch.created_by !== fp) return c.json({ error: "Only the channel creator can delete it" }, 403);
+
+  // Delete in FK order: follows → messages → FTS → channel.
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM channel_follows WHERE channel = ?").bind(name),
+    c.env.DB.prepare("DELETE FROM channel_messages WHERE channel = ?").bind(name),
+    c.env.DB.prepare("DELETE FROM channels WHERE name = ?").bind(name),
+  ]);
+
+  return c.body(null, 204);
+});
+
 // POST /channels/:name/search?q=
 app.post("/channels/:name/search", async (c) => {
   const name = c.req.param("name");

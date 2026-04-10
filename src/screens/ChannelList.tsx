@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import { useStore } from "../state.js";
 import type { Channel } from "../state.js";
-import { listChannels, leaveChannel } from "../lib/api.js";
+import { listChannels, leaveChannel, deleteChannel } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { removeChannelKey } from "../lib/keys.js";
 import { colors } from "../theme.js";
@@ -63,15 +63,22 @@ export function ChannelList() {
   }, []);
 
   useInput((input, key) => {
-    // Leave confirm intercept.
+    // Leave/delete confirm intercept.
     if (confirmLeave) {
       if (input === "y" || input === "Y") {
         if (selfFp) {
-          leaveChannel(selfFp, confirmLeave).catch(() => {});
-          removeChannelKey(confirmLeave);
+          const isDelete = confirmLeave.startsWith("delete:");
+          const chName = isDelete ? confirmLeave.slice(7) : confirmLeave;
+          if (isDelete) {
+            deleteChannel(selfFp, chName).catch(() => {});
+          } else {
+            leaveChannel(selfFp, chName).catch(() => {});
+          }
+          removeChannelKey(chName);
         }
         setConfirmLeave(null);
-        fetchChannels(sort); // refresh list
+        // Delay refresh slightly so the backend has time to process.
+        setTimeout(() => fetchChannels(sort), 300);
         return;
       }
       if (input === "n" || input === "N" || key.escape) {
@@ -123,7 +130,12 @@ export function ChannelList() {
     }
     if (input === "l" && isLoggedIn()) {
       const ch = channels[selectedIndex];
-      if (ch) setConfirmLeave(ch.name);
+      if (ch && ch.created_by !== selfFp) setConfirmLeave(ch.name);
+      return;
+    }
+    if (input === "d" && isLoggedIn()) {
+      const ch = channels[selectedIndex];
+      if (ch && ch.created_by === selfFp) setConfirmLeave(`delete:${ch.name}`);
       return;
     }
   });
@@ -134,7 +146,9 @@ export function ChannelList() {
     const active = i === selectedIndex;
     const rel = relativeTime(ch.created_at);
     const statsLeft = `${ch.message_count} msgs · ${ch.subscriber_count} subs`;
-    const showLeaveConfirm = confirmLeave === ch.name;
+    const isOwner = ch.created_by === selfFp;
+    const showLeave = confirmLeave === ch.name;
+    const showDelete = confirmLeave === `delete:${ch.name}`;
     return (
       <Box key={ch.name} flexDirection="column" marginBottom={1}>
         <Box>
@@ -142,6 +156,9 @@ export function ChannelList() {
           <Text bold color={active ? colors.primary : undefined}>
             b/{ch.name}
           </Text>
+          {isOwner && active && (
+            <Text color={colors.subtle}>  (yours)</Text>
+          )}
         </Box>
         <Box paddingLeft={3}>
           <Text color={colors.muted}>
@@ -154,10 +171,20 @@ export function ChannelList() {
             {rel ? `   · ${rel}` : ""}
           </Text>
         </Box>
-        {showLeaveConfirm && (
+        {showLeave && (
           <Box paddingLeft={3}>
             <Text color={colors.warning}>
               Leave b/{ch.name}?{!ch.is_public ? "  Key will be deleted." : ""}  </Text>
+            <Text bold color={colors.error}>y</Text>
+            <Text color={colors.muted}> yes  </Text>
+            <Text bold color={colors.success}>n</Text>
+            <Text color={colors.muted}> no</Text>
+          </Box>
+        )}
+        {showDelete && (
+          <Box paddingLeft={3}>
+            <Text color={colors.error}>
+              Delete b/{ch.name}?  All messages will be permanently removed.  </Text>
             <Text bold color={colors.error}>y</Text>
             <Text color={colors.muted}> yes  </Text>
             <Text bold color={colors.success}>n</Text>
@@ -214,7 +241,7 @@ export function ChannelList() {
         )}
       </Box>
 
-      <HelpFooter text="s sort · c create · r refresh · l leave · ↑↓ nav · Enter open · Esc back" />
+      <HelpFooter text="s sort · c create · r refresh · l leave · d delete (own) · ↑↓ nav · Enter open · Esc back" />
     </Box>
   );
 }
