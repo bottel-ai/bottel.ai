@@ -25,3 +25,7 @@ export function hasChannelKey(channelName: string): boolean {
   const keys = keyStore.get("channelKeys");
   return channelName in keys;
 }
+
+export function clearAllChannelKeys(): void {
+  keyStore.set("channelKeys", {});
+}

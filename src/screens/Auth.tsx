@@ -13,6 +13,7 @@ import {
   clearAuth,
 } from "../lib/auth.js";
 import { updateProfile } from "../lib/api.js";
+import { clearAllChannelKeys } from "../lib/keys.js";
 
 type Mode = "menu" | "import" | "show-key" | "confirm-regen";
 
@@ -55,7 +56,17 @@ export function Auth() {
       if (input === "y" || input === "Y") {
         const authData = generateKeyPair();
         saveAuth(authData);
+        // Clear all saved channel encryption keys — the old identity's
+        // memberships are gone, so the keys are useless.
+        clearAllChannelKeys();
         showMessage(`Identity reset.\nPublic Key: ${authData.publicKey}`);
+        // Auto-create a profile for the new identity.
+        const shortFp = authData.fingerprint.replace("SHA256:", "").substring(0, 8);
+        updateProfile(authData.fingerprint, {
+          name: `bot_${shortFp}`,
+          bio: "",
+          public: true,
+        }).catch(() => {});
         setMode("menu");
         refresh();
         return;

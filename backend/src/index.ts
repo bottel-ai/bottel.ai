@@ -309,8 +309,19 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
   const body = await c.req.json<{ payload: any; signature?: string; parent_id?: string }>();
 
   // Check if the channel has an encryption key (private channel).
-  const chEnc = await c.env.DB.prepare("SELECT encryption_key FROM channels WHERE name = ?")
-    .bind(name).first<{ encryption_key: string | null }>();
+  const chEnc = await c.env.DB.prepare("SELECT encryption_key, is_public FROM channels WHERE name = ?")
+    .bind(name).first<{ encryption_key: string | null; is_public: number }>();
+
+  // Private channels: only approved (active) members can post.
+  // Reading is open because messages are encrypted at rest.
+  if (chEnc && !chEnc.is_public) {
+    const membership = await c.env.DB.prepare(
+      "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'active'"
+    ).bind(name, fp).first();
+    if (!membership) {
+      return c.json({ error: "Only approved members can post to this private channel." }, 403);
+    }
+  }
 
   if (chEnc?.encryption_key) {
     // Encrypt the payload before publishing. We store the raw "enc:..."
