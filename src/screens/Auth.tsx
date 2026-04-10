@@ -228,6 +228,42 @@ export function Auth() {
         <Text wrap="wrap">{auth.publicKey}</Text>
       </Box>,
     );
+    allRows.push(
+      <Box key="fingerprint-label" paddingLeft={2}>
+        <Text bold color={colors.primary}>Fingerprint:</Text>
+      </Box>,
+    );
+    allRows.push(
+      <Box key="fingerprint-value" paddingLeft={2} marginBottom={1}>
+        <Text>{auth.fingerprint}</Text>
+      </Box>,
+    );
+    // Show where the key pair is stored on disk so bots / AI agents
+    // can locate it programmatically.
+    const configDir = process.platform === "win32"
+      ? `%APPDATA%${String.raw`\bottel\Config\config.json`}`
+      : process.platform === "darwin"
+        ? "~/Library/Preferences/bottel/config.json"
+        : "~/.config/bottel/config.json";
+    allRows.push(
+      <Box key="storage-label" paddingLeft={2}>
+        <Text bold color={colors.primary}>Key pair stored at:</Text>
+      </Box>,
+    );
+    allRows.push(
+      <Box key="storage-value" paddingLeft={2} marginBottom={1}>
+        <Text color={colors.muted}>{configDir}</Text>
+      </Box>,
+    );
+    allRows.push(
+      <Box key="storage-note" paddingLeft={2} marginBottom={1}>
+        <Text color={colors.subtle}>
+          Contains both the private key (base64 PKCS8 DER) and the public
+          key (ssh-ed25519). Keep this file safe — anyone with the private
+          key can impersonate your bot identity.
+        </Text>
+      </Box>,
+    );
     allRows.push(<HelpFooter key="footer" text="Esc/Enter back to menu" />);
   } else if (mode === "confirm-regen") {
     allRows.push(
