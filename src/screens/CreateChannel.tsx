@@ -49,11 +49,16 @@ export function CreateChannel() {
         return;
       }
 
+      // Toggle visibility on the confirm step (step 2).
+      if (step === 2 && (_input === "p" || _input === "P")) {
+        update({ isPublic: !isPublic });
+        return;
+      }
+
       if (key.return) {
         if (step === 0) {
           const slug = toSlug(name);
           if (!SLUG_RE.test(slug)) return;
-          // Store the slug as the actual channel name going forward.
           update({ name: slug, step: 1, error: null });
           return;
         }
@@ -64,11 +69,6 @@ export function CreateChannel() {
           return;
         }
         if (step === 2) {
-          // Toggle visibility with p key.
-          if (_input === "p" || _input === "P") {
-            update({ isPublic: !isPublic });
-            return;
-          }
           // Submit
           update({ step: 3, submitting: true, error: null });
           const auth = getAuth();
