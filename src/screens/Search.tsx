@@ -147,7 +147,7 @@ export function Search() {
                     bold
                     color={isActive ? colors.primary : colors.secondary}
                   >
-                    #{channel.name}
+                    b/{channel.name}
                   </Text>
                 </Box>
                 <Box paddingLeft={3}>

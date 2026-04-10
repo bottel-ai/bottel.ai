@@ -111,7 +111,7 @@ export function ChannelList() {
         <Box>
           <Cursor active={active} />
           <Text bold color={active ? colors.primary : undefined}>
-            #{ch.name}
+            b/{ch.name}
           </Text>
         </Box>
         <Box paddingLeft={3}>

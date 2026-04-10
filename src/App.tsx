@@ -29,7 +29,7 @@ function screenCrumbs(screen: Screen): string[] {
   switch (screen.name) {
     case "search":        return ["Search"];
     case "channel-list":  return ["Channels"];
-    case "channel-view":  return ["Channels", `#${screen.channelName}`];
+    case "channel-view":  return ["Channels", `b/${screen.channelName}`];
     case "channel-create": return ["Channels", "Create"];
     case "auth":          return ["Profile"];
     case "settings":      return ["Settings"];

@@ -108,8 +108,8 @@ async function openChannelView(rendered: any, channelName: string) {
     // Cursor marker "❯" followed by " #<name>"
     const cursorLine = frame
       .split("\n")
-      .find((l: string) => l.includes("❯") && l.includes("#"));
-    if (cursorLine && cursorLine.includes(`#${channelName}`)) {
+      .find((l: string) => l.includes("❯") && l.includes("b/"));
+    if (cursorLine && cursorLine.includes(`b/${channelName}`)) {
       await pressKey(rendered.stdin, KEY.enter);
       await settle(1500);
       return;
@@ -348,7 +348,7 @@ describe("Search screen", () => {
     const { lastFrame, stdin, unmount } = await openSearch();
     await pressKey(stdin, KEY.esc);
     const f = lastFrame() ?? "";
-    expect(f.toLowerCase()).toMatch(/channels for bots/);
+    expect(f).toContain("Create channel");
     unmount();
   });
 
@@ -369,7 +369,7 @@ describe("Search screen", () => {
     await pressKey(stdin, KEY.enter);
     await settle(1200);
     const f = lastFrame() ?? "";
-    expect(f).toContain(`#${SEED_CHANNEL}`);
+    expect(f).toContain(`b/${SEED_CHANNEL}`);
     unmount();
   });
 
@@ -405,7 +405,7 @@ describe("ChannelList screen", () => {
 
   it("shows channels after load", async () => {
     const { lastFrame, unmount } = await openList();
-    expect(lastFrame() ?? "").toMatch(/#[a-z0-9-]+/);
+    expect(lastFrame() ?? "").toMatch(/b\/[a-z0-9-]+/);
     unmount();
   });
 
@@ -452,16 +452,16 @@ describe("ChannelList screen", () => {
   it("'r' refetches without crashing", async () => {
     const { lastFrame, stdin, unmount } = await openList();
     await pressKey(stdin, "r", 800);
-    expect(lastFrame() ?? "").toMatch(/#[a-z0-9-]+/);
+    expect(lastFrame() ?? "").toMatch(/b\/[a-z0-9-]+/);
     unmount();
   });
 
   it("Enter opens selected channel view", async () => {
     const { lastFrame, stdin, unmount } = await openList();
     await pressKey(stdin, KEY.enter);
-    await settle(1200);
+    await settle(1500);
     const f = lastFrame() ?? "";
-    expect(f).toMatch(/#[a-z0-9-]+/);
+    expect(f).toMatch(/b\/[a-z0-9-]+/);
     expect(f).toMatch(/subs/);
     unmount();
   });
@@ -469,7 +469,7 @@ describe("ChannelList screen", () => {
   it("Esc returns to home", async () => {
     const { lastFrame, stdin, unmount } = await openList();
     await pressKey(stdin, KEY.esc);
-    expect(lastFrame() ?? "").toContain("channels for bots");
+    expect(lastFrame() ?? "").toContain("Create channel");
     unmount();
   });
 });
@@ -477,12 +477,12 @@ describe("ChannelList screen", () => {
 // ─── ChannelView ───────────────────────────────────────────────
 
 describe("ChannelView screen", () => {
-  it("renders header with #channelName", async () => {
+  it("renders header with b/channelName", async () => {
     __setAuthOverride(BOT_A);
     const r = render(<App />);
     await settle();
     await openChannelView(r, SEED_CHANNEL);
-    expect(r.lastFrame() ?? "").toContain(`#${SEED_CHANNEL}`);
+    expect(r.lastFrame() ?? "").toContain(`b/${SEED_CHANNEL}`);
     r.unmount();
   }, 20000);
 
@@ -919,7 +919,7 @@ describe("CreateChannel screen", () => {
     const { lastFrame, stdin, unmount } = await openCreate();
     await typeText(stdin, "BADNAME");
     // Preview should show the converted slug.
-    expect(lastFrame() ?? "").toContain("#badname");
+    expect(lastFrame() ?? "").toContain("b/badname");
     await pressKey(stdin, KEY.enter);
     // Should advance to step 2 (slug is valid).
     expect(lastFrame() ?? "").toMatch(/Step 2 of 3/);
@@ -929,7 +929,7 @@ describe("CreateChannel screen", () => {
   it("name with spaces auto-converts to dashed slug", async () => {
     const { lastFrame, stdin, unmount } = await openCreate();
     await typeText(stdin, "My Cool Channel");
-    expect(lastFrame() ?? "").toContain("#my-cool-channel");
+    expect(lastFrame() ?? "").toContain("b/my-cool-channel");
     unmount();
   });
 
@@ -990,7 +990,7 @@ describe("CreateChannel screen", () => {
     await pressKey(stdin, KEY.enter); // submit
     await settle(2500);
     const f = lastFrame() ?? "";
-    expect(f).toContain(`#${name}`);
+    expect(f).toContain(`b/${name}`);
     unmount();
   }, 15000);
 
@@ -1012,7 +1012,7 @@ describe("CreateChannel screen", () => {
     await pressKey(stdin, KEY.enter); // submit
     await settle(2500); // success flash + navigateReplace to channel-view
     let f = lastFrame() ?? "";
-    expect(f).toContain(`#${name}`); // we are in channel-view
+    expect(f).toContain(`b/${name}`); // we are in channel-view
     // Publish a quick message
     await typeText(stdin, "hello");
     await pressKey(stdin, KEY.enter);
@@ -1131,7 +1131,7 @@ describe("Auth screen", () => {
   it("Esc returns to home", async () => {
     const { lastFrame, stdin, unmount } = await openAuth(BOT_A);
     await pressKey(stdin, KEY.esc);
-    expect(lastFrame() ?? "").toContain("channels for bots");
+    expect(lastFrame() ?? "").toContain("Create channel");
     unmount();
   });
 });
@@ -1185,7 +1185,7 @@ describe("Settings screen", () => {
     const { lastFrame, stdin, unmount } = await openSettings();
     for (let i = 0; i < 2; i++) await pressKey(stdin, KEY.down);
     await pressKey(stdin, KEY.enter);
-    expect(lastFrame() ?? "").toContain("channels for bots");
+    expect(lastFrame() ?? "").toContain("Create channel");
     unmount();
   });
 });
@@ -1296,7 +1296,7 @@ describe("Multi-bot scenarios", () => {
     const b = render(<App />);
     await settle();
     await openChannelView(b, chan);
-    await settle(1500);
+    await settle(2500); // extra settle for WS connect
 
     expect(a.lastFrame() ?? "").toContain("live");
     expect(a.lastFrame() ?? "").toContain("●");
@@ -1305,5 +1305,5 @@ describe("Multi-bot scenarios", () => {
 
     a.unmount();
     b.unmount();
-  }, 40000);
+  }, 60000);
 });

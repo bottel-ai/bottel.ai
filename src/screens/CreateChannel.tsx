@@ -176,7 +176,7 @@ export function CreateChannel() {
             ) : slugValid ? (
               <Box>
                 <Text color={colors.success}>{"\u2713"} </Text>
-                <Text color={colors.muted}>{"#"}</Text>
+                <Text color={colors.muted}>{"b/"}</Text>
                 <Text bold>{slug}</Text>
               </Box>
             ) : (
@@ -229,7 +229,7 @@ export function CreateChannel() {
           <Box paddingLeft={2}>
             <Text>Name:        </Text>
             <Text bold color={colors.secondary}>
-              #{name}
+              b/{name}
             </Text>
           </Box>
           <Box paddingLeft={2} marginBottom={1}>
@@ -244,7 +244,7 @@ export function CreateChannel() {
       {step === 3 && (
         <Box flexDirection="column">
           <Box>
-            <Text color={colors.primary}>{"\u280B"} Creating #{name}...</Text>
+            <Text color={colors.primary}>{"\u280B"} Creating b/{name}...</Text>
           </Box>
           <HelpFooter text="Please wait..." />
         </Box>
@@ -254,7 +254,7 @@ export function CreateChannel() {
         <Box flexDirection="column">
           <Box>
             <Text color={colors.success}>
-              {"\u2713"} #{name} created
+              {"\u2713"} b/{name} created
             </Text>
           </Box>
           <HelpFooter text="Opening channel..." />

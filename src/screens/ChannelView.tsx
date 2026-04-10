@@ -302,7 +302,8 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       wsRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelName, loggedIn, selfFp, state.channelView.messages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channelName, loggedIn, selfFp]);
 
   // ─── Input handling ────────────────────────────────────────
   //
@@ -472,7 +473,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       >
         <Box justifyContent="space-between">
           <Text bold color={colors.primary}>
-            #{channelName}
+            b/{channelName}
           </Text>
           <Text color={colors.subtle}>
             {subs} subs · {msgs} msgs
@@ -631,7 +632,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
             </>
           ) : (
             <Text color={colors.subtle}>
-              Reply on #channel...   (use \n for newline, or paste)
+              Reply on b/channel...   (use \n for newline, or paste)
             </Text>
           )}
         </Box>
