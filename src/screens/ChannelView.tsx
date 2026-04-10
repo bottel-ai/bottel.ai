@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
+import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
+import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import { useStore } from "../state.js";
 import type { Channel, ChannelMessage } from "../state.js";
 import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChannel, checkJoined, fetchChannelKey, getFollowers, approveFollower } from "../lib/api.js";
@@ -85,18 +86,29 @@ function sameGroup(a: ChannelMessage, b: ChannelMessage): boolean {
 
 interface ChannelViewProps {
   channelName: string;
+  termHeight: number;
+  termWidth: number;
 }
 
-export function ChannelView({ channelName }: ChannelViewProps) {
-  const { state, dispatch, goBack, scroll } = useStore();
+export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewProps) {
+  const { state, dispatch, goBack } = useStore();
   const { messages, input, loading, wsConnected, loadingOlder, hasMoreOlder } =
     state.channelView;
-  const { stdout } = useStdout();
-  const termWidth = stdout?.columns ?? 80;
   // Use the full terminal width (minus a 2-col gutter for outer paddingX).
   // Previously capped at 90, which left bubbles right-aligned to a narrower
   // pane than the header and input — making them look "shifted".
   const paneWidth = Math.max(50, termWidth - 2);
+
+  // Internal ScrollView ref for the messages area.
+  const msgScrollRef = useRef<ScrollViewRef>(null);
+
+  // Calculate the height available for the scrollable messages area.
+  const headerLines = 3;
+  const inputLines = 3;
+  const footerLines = 1;
+  const margins = 6; // various marginTop values
+  const fixedChrome = headerLines + inputLines + footerLines + margins;
+  const scrollHeight = Math.max(5, termHeight - fixedChrome);
 
   const [channel, setChannel] = useState<Channel | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -249,7 +261,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     if (loadingOlder || !hasMoreOlder) return;
     if (messages.length === 0) return;
     const oldest = messages[0]!;
-    pendingAnchor.current = scroll.getBottom();
+    pendingAnchor.current = msgScrollRef.current?.getBottomOffset() ?? 0;
     update({ loadingOlder: true });
     try {
       const older = await loadOlderMessages(channelName, oldest.created_at, 50);
@@ -279,15 +291,25 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       const anchored = pendingAnchor.current;
       pendingAnchor.current = null;
       if (anchored == null) return;
-      const newBottom = scroll.getBottom();
+      const newBottom = msgScrollRef.current?.getBottomOffset() ?? 0;
       const delta = newBottom - anchored;
       // Move the viewport down by the height of the newly prepended block.
-      const target = Math.max(0, scroll.getOffset() + delta);
-      scroll.scrollTo(target);
+      const target = Math.max(0, (msgScrollRef.current?.getScrollOffset() ?? 0) + delta);
+      msgScrollRef.current?.scrollTo(target);
     }, 0);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length]);
+
+  // Scroll to bottom when the last message changes (new message arrives).
+  const lastMsgId = messages[messages.length - 1]?.id ?? null;
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const bottom = msgScrollRef.current?.getBottomOffset() ?? 0;
+      msgScrollRef.current?.scrollTo(bottom);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [lastMsgId]);
 
   // ─── WebSocket lifecycle ───────────────────────────────────
 
@@ -490,14 +512,16 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     // Scroll-up-to-load-more: when the viewport is already at the top,
     // an Up arrow or PageUp fetches the previous page of history.
     if ((key.upArrow || key.pageUp) && hasMoreOlder && !loadingOlder) {
-      if (scroll.getOffset() <= 0) {
+      if ((msgScrollRef.current?.getScrollOffset() ?? 0) <= 0) {
         void loadOlder();
         return;
       }
     }
-    // Up/Down/PageUp/PageDown otherwise: let App's global scroll handler
-    // do its thing — don't insert these as text input.
-    if (key.upArrow || key.downArrow || key.pageUp || key.pageDown) return;
+    // Up/Down/PageUp/PageDown: scroll the internal messages ScrollView.
+    if (key.upArrow) { msgScrollRef.current?.scrollBy(-1); return; }
+    if (key.downArrow) { msgScrollRef.current?.scrollBy(1); return; }
+    if (key.pageUp) { msgScrollRef.current?.scrollBy(-10); return; }
+    if (key.pageDown) { msgScrollRef.current?.scrollBy(10); return; }
 
     if (key.return) {
       void handleSubmit();
@@ -893,10 +917,12 @@ export function ChannelView({ channelName }: ChannelViewProps) {
         </Box>
       )}
 
-      <Box marginTop={1} flexDirection="column">
+      {/* Scrollable messages area — only this part scrolls */}
+      <ScrollView ref={msgScrollRef} height={scrollHeight}>
         {renderMessages()}
-      </Box>
-      <Box marginTop={2} flexDirection="column">
+      </ScrollView>
+
+      <Box marginTop={1} flexDirection="column">
         {renderInput()}
       </Box>
       <Box marginTop={1} justifyContent="space-between" paddingX={1}>

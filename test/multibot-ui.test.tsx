@@ -16,6 +16,7 @@ process.env.BOTTEL_API_URL = "http://localhost:8787";
 
 import { App } from "../src/App.js";
 import { __setAuthOverride } from "../src/lib/auth.js";
+import { minePow } from "../src/lib/pow.js";
 
 const BOT_A = {
   privateKey: "x",
@@ -76,8 +77,10 @@ describe("multi-bot channels UI", () => {
       description: "multi-bot UI integration room",
     });
     // Bot A publishes one seed message so Bot B has something to see on first render
+    const seedPayload = { type: "text", text: "hello from bot A" };
+    const seedPow = await minePow(ROOM, BOT_A.fingerprint, seedPayload);
     await fetchJson("POST", `/channels/${ROOM}/messages`, BOT_A.fingerprint, {
-      payload: { type: "text", text: "hello from bot A" },
+      payload: seedPayload, pow: seedPow,
     });
   });
 
@@ -161,8 +164,10 @@ describe("multi-bot channels UI", () => {
 
     // Bot A publishes a fresh message (out-of-band, like a remote bot would)
     const NEEDLE = "rt-needle-" + Math.random().toString(36).slice(2, 8);
+    const needlePayload = { type: "text", text: NEEDLE };
+    const needlePow = await minePow(ROOM, BOT_A.fingerprint, needlePayload);
     await fetchJson("POST", `/channels/${ROOM}/messages`, BOT_A.fingerprint, {
-      payload: { type: "text", text: NEEDLE },
+      payload: needlePayload, pow: needlePow,
     });
 
     // Wait for the WebSocket to deliver and React to re-render

@@ -160,23 +160,33 @@ function Router() {
 
   return (
     <Box flexDirection="column">
-      <ScrollView ref={scrollRef} height={termHeight}>
-        {isHome ? (
-          <Logo key="logo" />
-        ) : (
+      {/* Channel-view has its own scroll — render outside the global ScrollView */}
+      {state.screen.name === "channel-view" ? (
+        <Box flexDirection="column" height={termHeight}>
           <SubPageHeader screen={state.screen} termWidth={termWidth} />
-        )}
-        {state.screen.name === "home" && <Home key="home" />}
-        {state.screen.name === "search" && <Search key="search" />}
-        {state.screen.name === "channel-list" && <ChannelList key="channel-list" />}
-        {state.screen.name === "channel-view" && (
-          <ChannelView key={`cv-${state.screen.channelName}`} channelName={state.screen.channelName} />
-        )}
-        {state.screen.name === "channel-create" && <CreateChannel key="channel-create" />}
-        {state.screen.name === "auth" && <Auth key="auth" />}
-        {state.screen.name === "settings" && <Settings key="settings" />}
-        {state.screen.name === "profile-setup" && <ProfileSetup key="profile-setup" />}
-      </ScrollView>
+          <ChannelView
+            key={`cv-${state.screen.channelName}`}
+            channelName={state.screen.channelName}
+            termHeight={termHeight}
+            termWidth={termWidth}
+          />
+        </Box>
+      ) : (
+        <ScrollView ref={scrollRef} height={termHeight}>
+          {isHome ? (
+            <Logo key="logo" />
+          ) : (
+            <SubPageHeader screen={state.screen} termWidth={termWidth} />
+          )}
+          {state.screen.name === "home" && <Home key="home" />}
+          {state.screen.name === "search" && <Search key="search" />}
+          {state.screen.name === "channel-list" && <ChannelList key="channel-list" />}
+          {state.screen.name === "channel-create" && <CreateChannel key="channel-create" />}
+          {state.screen.name === "auth" && <Auth key="auth" />}
+          {state.screen.name === "settings" && <Settings key="settings" />}
+          {state.screen.name === "profile-setup" && <ProfileSetup key="profile-setup" />}
+        </ScrollView>
+      )}
     </Box>
   );
 }

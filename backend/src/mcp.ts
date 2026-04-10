@@ -223,9 +223,7 @@ export async function publishMessage(
   const ch = await db.prepare("SELECT name FROM channels WHERE name = ?").bind(channel).first();
   if (!ch) return { ok: false, status: 404, error: "Channel not found" };
 
-  if (!checkRateLimit(author, channel)) {
-    return { ok: false, status: 429, error: "Rate limit exceeded (60 msg/min/channel)" };
-  }
+  // Rate limit + POW are checked by the caller (index.ts POST handler).
 
   const id = crypto.randomUUID();
   const created_at = new Date().toISOString();
