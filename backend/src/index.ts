@@ -16,8 +16,10 @@ import {
   getChannel,
   searchChannel,
   publishMessage,
+  checkRateLimit,
   RESERVED_CHANNEL_NAMES,
 } from "./mcp.js";
+import { generateChannelKey, encryptPayload } from "./crypto.js";
 
 // Re-export the Durable Object class so wrangler can bind it.
 export { ChannelRoom } from "./channel-room.js";
@@ -168,19 +170,41 @@ app.post("/channels", authMiddleware, async (c) => {
   const schemaStr = body.schema ? JSON.stringify(body.schema) : null;
 
   const isPublic = body.isPublic !== false ? 1 : 0;
+  const encryptionKey = isPublic ? null : await generateChannelKey();
+
   await c.env.DB.prepare(
-    `INSERT INTO channels (name, description, created_by, schema, message_count, subscriber_count, is_public, created_at)
-     VALUES (?, ?, ?, ?, 0, 0, ?, datetime('now'))`
+    `INSERT INTO channels (name, description, created_by, schema, message_count, subscriber_count, is_public, encryption_key, created_at)
+     VALUES (?, ?, ?, ?, 0, 0, ?, ?, datetime('now'))`
   )
-    .bind(body.name, description, fp, schemaStr, isPublic)
+    .bind(body.name, description, fp, schemaStr, isPublic, encryptionKey)
     .run();
+
+  // Auto-follow: creator becomes an active member of their own channel.
+  // For private channels this ensures they can always fetch the key via GET /channels/:name/key.
+  await c.env.DB.prepare(
+    "INSERT OR IGNORE INTO channel_follows (channel, follower, status) VALUES (?, ?, 'active')"
+  ).bind(body.name, fp).run();
+
+  await c.env.DB.prepare(
+    "UPDATE channels SET subscriber_count = (SELECT COUNT(*) FROM channel_follows WHERE channel = ? AND status = 'active') WHERE name = ?"
+  ).bind(body.name, body.name).run();
 
   // FTS sync handled by triggers in schema.sql.
 
   const channel = await c.env.DB.prepare("SELECT * FROM channels WHERE name = ?")
     .bind(body.name)
     .first();
-  return c.json({ channel }, 201);
+
+  // Return key to the creator for private channels; never expose encryption_key in the channel object.
+  const response: any = { channel };
+  if (encryptionKey) {
+    response.key = encryptionKey;
+  }
+  // Strip encryption_key from the channel object so it's not leaked via the response body.
+  if (channel && (channel as any).encryption_key !== undefined) {
+    delete (channel as any).encryption_key;
+  }
+  return c.json(response, 201);
 });
 
 // GET /channels/:name/messages?since=&before=&limit=
@@ -227,6 +251,42 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
   const name = c.req.param("name")!;
   const fp = c.get("fingerprint");
   const body = await c.req.json<{ payload: any; signature?: string; parent_id?: string }>();
+
+  // Check if the channel has an encryption key (private channel).
+  const chEnc = await c.env.DB.prepare("SELECT encryption_key FROM channels WHERE name = ?")
+    .bind(name).first<{ encryption_key: string | null }>();
+
+  if (chEnc?.encryption_key) {
+    // Encrypt the payload before publishing. We store the raw "enc:..."
+    // string directly in the payload column — not wrapped in an object.
+    // This bypasses publishMessage (which requires an object payload)
+    // and does the INSERT + broadcast inline.
+    const encPayload = await encryptPayload(JSON.stringify(body.payload), chEnc.encryption_key);
+    if (encPayload.length > 8192) {
+      return c.json({ error: "encrypted payload too large" }, 400);
+    }
+    if (!checkRateLimit(fp, name)) {
+      return c.json({ error: "Rate limit exceeded (60 msg/min/channel)" }, 429);
+    }
+    const id = crypto.randomUUID();
+    const created_at = new Date().toISOString();
+    await c.env.DB.batch([
+      c.env.DB.prepare(
+        "INSERT INTO channel_messages (id, channel, author, payload, signature, parent_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      ).bind(id, name, fp, encPayload, body.signature ?? null, body.parent_id ?? null, created_at),
+      c.env.DB.prepare("UPDATE channels SET message_count = message_count + 1 WHERE name = ?").bind(name),
+    ]);
+    const message = { id, channel: name, author: fp, payload: encPayload, signature: body.signature ?? null, parent_id: body.parent_id ?? null, created_at };
+    try {
+      const room = c.env.CHANNEL_ROOM.get(c.env.CHANNEL_ROOM.idFromName(name));
+      await room.fetch(new Request("https://do/broadcast", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(message),
+      }));
+    } catch {}
+    return c.json({ message }, 201);
+  }
 
   const r = await publishMessage(
     c.env.DB,
@@ -391,8 +451,34 @@ app.post("/channels/:name/follow/:fp/approve", authMiddleware, async (c) => {
     "UPDATE channels SET subscriber_count = (SELECT COUNT(*) FROM channel_follows WHERE channel = ? AND status = 'active') WHERE name = ?"
   ).bind(name, name).run();
 
-  return c.json({ status: "active" });
+  // Return the encryption key so the newly approved member can decrypt messages.
+  const chKey = await c.env.DB.prepare("SELECT encryption_key FROM channels WHERE name = ?")
+    .bind(name).first<{ encryption_key: string | null }>();
+
+  return c.json({ status: "active", key: chKey?.encryption_key ?? null });
 });
+
+// GET /channels/:name/key — re-fetch decryption key for approved members (auth)
+app.get("/channels/:name/key", authMiddleware, async (c) => {
+  const name = c.req.param("name");
+  const fp = c.get("fingerprint");
+
+  // Check the user is an active member
+  const membership = await c.env.DB.prepare(
+    "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'active'"
+  ).bind(name, fp).first();
+  if (!membership) return c.json({ error: "Not an active member" }, 403);
+
+  const ch = await c.env.DB.prepare("SELECT encryption_key FROM channels WHERE name = ?")
+    .bind(name).first<{ encryption_key: string | null }>();
+  if (!ch) return c.json({ error: "Channel not found" }, 404);
+
+  return c.json({ key: ch.encryption_key });
+});
+
+// NOTE: If a PUT/PATCH endpoint for channels is ever added, `is_public` MUST NOT be changeable.
+// Changing a channel's visibility after creation would break encryption invariants
+// (public channels have no key; private channels always have one).
 
 // GET /channels/:name/followers — list followers (for creator to manage)
 app.get("/channels/:name/followers", async (c) => {

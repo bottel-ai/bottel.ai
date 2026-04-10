@@ -3,8 +3,10 @@ import { Box, Text, useInput, useStdout } from "ink";
 import Spinner from "ink-spinner";
 import { useStore } from "../state.js";
 import type { Channel, ChannelMessage } from "../state.js";
-import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChannel, checkJoined } from "../lib/api.js";
+import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChannel, checkJoined, fetchChannelKey } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
+import { isEncrypted, decryptPayload } from "../lib/crypto.js";
+import { getChannelKey, saveChannelKey, hasChannelKey } from "../lib/keys.js";
 import { colors } from "../theme.js";
 import { HelpFooter } from "../components.js";
 
@@ -46,7 +48,16 @@ function sanitizeBody(s: string): string {
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
 }
 
-function formatPayload(payload: any): string {
+function formatPayload(payload: any, channelKey?: string | null): string {
+  if (isEncrypted(payload)) {
+    if (!channelKey) return "[encrypted message]";
+    try {
+      const decrypted = decryptPayload(payload, channelKey);
+      return formatPayload(JSON.parse(decrypted));
+    } catch {
+      return "[decryption failed]";
+    }
+  }
   if (payload && typeof payload === "object" && payload.type === "text" && typeof payload.text === "string") {
     // Multi-line text is preserved verbatim. The renderer splits on \n
     // and emits one row per line, each with the accent prefix and the
@@ -89,6 +100,8 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   const [channel, setChannel] = useState<Channel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  // Encryption key for private channels (null = not available / public channel).
+  const [channelKey, setChannelKey] = useState<string | null>(null);
   // Join state: null = loading, false = not joined, true = joined,
   // "pending" = join request pending (private channel)
   const [joinState, setJoinState] = useState<boolean | "pending" | null>(null);
@@ -141,6 +154,24 @@ export function ChannelView({ channelName }: ChannelViewProps) {
             loading: false,
             hasMoreOlder: msgs.length >= 50,
           });
+          // Load encryption key for private channels.
+          if (!ch.is_public) {
+            if (hasChannelKey(channelName)) {
+              setChannelKey(getChannelKey(channelName));
+            } else if (loggedIn && selfFp) {
+              fetchChannelKey(selfFp, channelName)
+                .then((key) => {
+                  if (unmountedRef.current) return;
+                  if (key) {
+                    saveChannelKey(channelName, key);
+                    setChannelKey(key);
+                  }
+                })
+                .catch(() => {
+                  // 403 or network error — no key available.
+                });
+            }
+          }
           // Check join status after loading.
           if (loggedIn && selfFp) {
             checkJoined(selfFp, channelName)
@@ -362,6 +393,17 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       // Refresh channel to get updated subscriber_count.
       const result = await getChannel(channelName);
       if (result) setChannel(result.channel);
+      // For private channels, try to fetch the encryption key after approval.
+      if (status !== "pending" && channel && !channel.is_public) {
+        fetchChannelKey(selfFp, channelName)
+          .then((key) => {
+            if (key) {
+              saveChannelKey(channelName, key);
+              setChannelKey(key);
+            }
+          })
+          .catch(() => {});
+      }
     } catch {
       setShowJoinPrompt(false);
     }
@@ -521,7 +563,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       >
         <Box justifyContent="space-between">
           <Text bold color={colors.primary}>
-            b/{channelName}
+            {channel && !channel.is_public ? "\u{1F512} " : ""}b/{channelName}
           </Text>
           <Text color={colors.subtle}>
             {subs} subs · {msgs} msgs
@@ -548,7 +590,8 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     const isSelf = !!selfFp && msg.author === selfFp;
     const time = hhmm(msg.created_at);
     const name = isSelf ? "You" : displayName(msg);
-    const body = formatPayload(msg.payload);
+    const body = formatPayload(msg.payload, channelKey);
+    const isEncMsg = isEncrypted(msg.payload) && !channelKey;
 
     // Pre-wrap long lines manually so ink never has to soft-wrap. Without
     // this, a single line longer than the parent's available width would
@@ -587,7 +630,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
         {lines.map((line, i) => (
           <Box key={i}>
             <Text color={isSelf ? colors.primary : colors.subtle}>{"▎ "}</Text>
-            <Text color={isSelf ? colors.primary : undefined}>{line}</Text>
+            <Text color={isEncMsg ? colors.muted : isSelf ? colors.primary : undefined}>{line}</Text>
           </Box>
         ))}
       </Box>
@@ -737,6 +780,13 @@ export function ChannelView({ channelName }: ChannelViewProps) {
         </Box>
       )}
 
+      {/* Private channel encryption notice */}
+      {channel && !channel.is_public && (
+        <Box paddingX={2} marginTop={1}>
+          <Text color={colors.muted}>{"\u{1F512}"} This is a private channel. Messages are encrypted.</Text>
+        </Box>
+      )}
+
       <Box marginTop={1} flexDirection="column">
         {renderMessages()}
       </Box>
@@ -749,6 +799,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
           <Text color={colors.subtle}>
             {" " + statusLabel}
             {channel ? `  ·  ${channel.subscriber_count} member${channel.subscriber_count === 1 ? "" : "s"}` : ""}
+            {channel && !channel.is_public ? "  ·  encrypted" : ""}
             {joinLabel ? `  ·  ${joinLabel}` : ""}
           </Text>
         </Box>

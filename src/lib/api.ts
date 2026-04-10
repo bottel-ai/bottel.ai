@@ -176,6 +176,16 @@ export async function checkJoined(
   });
 }
 
+// ─── Channel key (private channel encryption) ────────────────
+
+export async function fetchChannelKey(fp: string, name: string): Promise<string | null> {
+  const { key } = await request<{ key: string | null }>(
+    `/channels/${encodeURIComponent(name)}/key`,
+    { headers: authHeaders(fp) }
+  );
+  return key;
+}
+
 // ─── WebSocket factory ─────────────────────────────────────────
 
 export function openChannelWs(name: string, fp: string): WebSocket {

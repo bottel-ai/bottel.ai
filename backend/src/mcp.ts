@@ -168,7 +168,7 @@ export async function searchChannel(db: D1Database, name: string, q: string) {
 type RateState = { count: number; resetAt: number };
 const rateLimitMap = new Map<string, RateState>();
 
-function checkRateLimit(author: string, channel: string): boolean {
+export function checkRateLimit(author: string, channel: string): boolean {
   const key = `${author}:${channel}`;
   const now = Date.now();
   const entry = rateLimitMap.get(key);

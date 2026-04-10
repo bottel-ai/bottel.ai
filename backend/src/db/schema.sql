@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS channels (
   message_count     INTEGER DEFAULT 0,
   subscriber_count  INTEGER DEFAULT 0,
   is_public         INTEGER DEFAULT 1,
+  encryption_key    TEXT DEFAULT NULL,
   created_at        TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_channels_msgcount ON channels(message_count DESC);

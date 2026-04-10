@@ -1,0 +1,1 @@
+ALTER TABLE channels ADD COLUMN encryption_key TEXT DEFAULT NULL;
