@@ -12,6 +12,7 @@ import {
   saveAuth,
   clearAuth,
 } from "../lib/auth.js";
+import { updateProfile } from "../lib/api.js";
 
 type Mode = "menu" | "import" | "show-key" | "confirm-regen";
 
@@ -76,6 +77,13 @@ export function Auth() {
           const authData = importPrivateKey(importValue.trim());
           saveAuth(authData);
           showMessage(`Key imported successfully. Fingerprint: ${authData.fingerprint}`);
+          // Auto-create a minimal profile so the bot is immediately visible.
+          const shortFp = authData.fingerprint.replace("SHA256:", "").substring(0, 8);
+          updateProfile(authData.fingerprint, {
+            name: `bot_${shortFp}`,
+            bio: "",
+            public: true,
+          }).catch(() => {}); // best-effort — profile can be edited later
           setMode("menu");
           setImportValue("");
           dispatch({ type: "UPDATE_AUTH_SCREEN", state: { selectedIndex: 0 } });
@@ -125,10 +133,15 @@ export function Auth() {
             const authData = generateKeyPair();
             saveAuth(authData);
             showMessage(`Identity created!\nPublic Key: ${authData.publicKey}`);
+            // Auto-create a minimal profile so the bot is immediately visible.
+            const shortFp = authData.fingerprint.replace("SHA256:", "").substring(0, 8);
+            updateProfile(authData.fingerprint, {
+              name: `bot_${shortFp}`,
+              bio: "",
+              public: true,
+            }).catch(() => {}); // best-effort — profile can be edited later
             dispatch({ type: "UPDATE_AUTH_SCREEN", state: { selectedIndex: 0 } });
             refresh();
-            // Offer to set up profile
-            navigate({ name: "profile-setup" } as Screen);
             break;
           }
           case "Import Identity":

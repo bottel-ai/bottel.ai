@@ -91,10 +91,13 @@ export function CreateChannel() {
               }, 600);
             })
             .catch((err: Error) => {
+              const msg = err.message || "Failed to create channel";
               update({
                 step: 0,
                 submitting: false,
-                error: err.message || "Failed to create channel",
+                error: msg.includes("Profile required")
+                  ? "Set up your identity first — go to Profile from the home menu."
+                  : msg,
               });
             });
           return;

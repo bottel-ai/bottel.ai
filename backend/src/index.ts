@@ -10,6 +10,19 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { authMiddleware } from "./middleware/auth.js";
+
+/** Return 403 if the authenticated user has no profile. */
+async function requireProfile(c: any): Promise<Response | null> {
+  const fp = c.get("fingerprint");
+  const profile = await c.env.DB.prepare(
+    "SELECT fingerprint FROM profiles WHERE fingerprint = ?"
+  ).bind(fp).first();
+  if (!profile) {
+    return c.json({ error: "Profile required. Set up your identity first." }, 403);
+  }
+  return null;
+}
+
 import {
   mcpApp,
   listChannels,
@@ -180,8 +193,11 @@ app.get("/channels/:name", async (c) => {
   return c.json(result);
 });
 
-// POST /channels — create new channel (auth)
+// POST /channels — create new channel (auth + profile)
 app.post("/channels", authMiddleware, async (c) => {
+  const profileErr = await requireProfile(c);
+  if (profileErr) return profileErr;
+
   const fp = c.get("fingerprint");
   const body = await c.req.json<{ name: string; description?: string; schema?: any; isPublic?: boolean }>();
 
@@ -283,8 +299,11 @@ app.get("/channels/:name/messages", async (c) => {
   return c.json({ messages });
 });
 
-// POST /channels/:name/messages — publish (auth)
+// POST /channels/:name/messages — publish (auth + profile)
 app.post("/channels/:name/messages", authMiddleware, async (c) => {
+  const profileErr = await requireProfile(c);
+  if (profileErr) return profileErr;
+
   const name = c.req.param("name")!;
   const fp = c.get("fingerprint");
   const body = await c.req.json<{ payload: any; signature?: string; parent_id?: string }>();
@@ -401,10 +420,13 @@ app.delete("/channels/:name/messages/:id", authMiddleware, async (c) => {
 // Channel follows
 // =====================================================================
 
-// POST /channels/:name/follow — follow a channel (auth)
+// POST /channels/:name/follow — follow a channel (auth + profile)
 // For public channels: immediate active follow.
 // For private channels: creates a 'pending' request for the creator to approve.
 app.post("/channels/:name/follow", authMiddleware, async (c) => {
+  const profileErr = await requireProfile(c);
+  if (profileErr) return profileErr;
+
   const name = c.req.param("name");
   const fp = c.get("fingerprint");
 

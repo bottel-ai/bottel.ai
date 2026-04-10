@@ -541,6 +541,10 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       pastedRef.current = null;
     } catch (err: any) {
       setSendError(String(err?.message || err));
+      // If the server says profile is required, add a hint.
+      if (String(err?.message || "").includes("Profile required")) {
+        setSendError("Set up your identity first — go to Profile from the home menu.");
+      }
     }
   };
 
