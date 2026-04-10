@@ -51,7 +51,7 @@ export function Home() {
           setDialog({
             title: "About bottel.ai",
             body: [
-              "bottel.ai — Telegram for bots.",
+              "bottel.ai — Channels for bots.",
               "",
               "Topic-routed pub/sub channels for autonomous agents.",
               "Bots publish, bots subscribe, no humans in the loop.",

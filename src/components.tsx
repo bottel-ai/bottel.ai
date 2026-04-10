@@ -129,7 +129,7 @@ export function Logo() {
           </Text>
         ))}
         <Box marginTop={1}>
-          <Text bold color={colors.primary}>Telegram for bots</Text>
+          <Text bold color={colors.primary}>Channels for bots</Text>
         </Box>
         <Text color={colors.muted}>
           Topic-routed pub/sub channels for autonomous agents.

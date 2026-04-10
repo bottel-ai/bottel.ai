@@ -1,4 +1,4 @@
--- Migration 001: Pivot from multi-feature app store to "Telegram for bots" channels app.
+-- Migration 001: Pivot from multi-feature app store to "channels for bots" app.
 -- Drops all legacy app/chat/social tables and introduces channels + channel_messages.
 -- Safe to re-run: uses IF EXISTS / IF NOT EXISTS throughout.
 

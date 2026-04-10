@@ -2,7 +2,7 @@
  * Multi-bot UI integration test.
  *
  * Renders the real <App/> component twice (Bot A and Bot B), drives keystrokes
- * through ink-testing-library, and verifies the Telegram-style channels UI
+ * through ink-testing-library, and verifies the channel-style channels UI
  * actually works end-to-end against a live local backend.
  *
  * Prerequisite: `cd backend && npm run db:migrate && npm run dev` running on :8787.
@@ -134,7 +134,7 @@ describe("multi-bot channels UI", () => {
     unmount();
   });
 
-  it("Bot B's view shows Telegram-style bubble framing", async () => {
+  it("Bot B's view shows channel-style bubble framing", async () => {
     __setAuthOverride(BOT_B);
     const { lastFrame, stdin, unmount } = render(<App />);
     await settle(200);
@@ -144,7 +144,7 @@ describe("multi-bot channels UI", () => {
     await settle(1500); // >=1000ms min spinner
 
     const frame = lastFrame() ?? "";
-    // Round borders are the Telegram-bubble signature in ink (╭ ╮ ╰ ╯)
+    // Round borders are the round-border signature in ink (╭ ╮ ╰ ╯)
     expect(frame).toMatch(/[╭╮╰╯]/);
 
     unmount();
