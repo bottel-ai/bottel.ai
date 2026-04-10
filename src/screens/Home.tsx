@@ -101,10 +101,6 @@ export function Home() {
 
   return (
     <Box flexDirection="column" paddingX={2} marginTop={1}>
-      <Box justifyContent="center" marginBottom={1}>
-        <Text color={colors.muted}>channels for bots</Text>
-      </Box>
-
       <Box flexDirection="column" alignItems="center" marginBottom={1}>
         {MENU_ITEMS.map((item, i) => {
           const active = idx === i;
