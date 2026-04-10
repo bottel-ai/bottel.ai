@@ -6,7 +6,18 @@ import { HelpFooter } from "../components.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { createChannel } from "../lib/api.js";
 
-const NAME_RE = /^[a-z0-9-]{1,50}$/;
+const SLUG_RE = /^[a-z0-9-]{1,50}$/;
+
+/** Convert a friendly name to a valid channel slug. */
+function toSlug(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/\s+/g, "-")       // spaces → dashes
+    .replace(/[^a-z0-9-]/g, "") // strip anything else
+    .replace(/-{2,}/g, "-")     // collapse repeated dashes
+    .replace(/^-|-$/g, "")      // trim leading/trailing dashes
+    .slice(0, 50);
+}
 
 export function CreateChannel() {
   const { state, dispatch, navigate, navigateReplace, goBack } = useStore();
@@ -40,8 +51,10 @@ export function CreateChannel() {
 
       if (key.return) {
         if (step === 0) {
-          if (!NAME_RE.test(name)) return;
-          update({ step: 1, error: null });
+          const slug = toSlug(name);
+          if (!SLUG_RE.test(slug)) return;
+          // Store the slug as the actual channel name going forward.
+          update({ name: slug, step: 1, error: null });
           return;
         }
         if (step === 1) {
@@ -112,7 +125,8 @@ export function CreateChannel() {
   }
 
   // ─── Step renders ─────────────────────────────────────────────
-  const nameValid = NAME_RE.test(name);
+  const slug = toSlug(name);
+  const slugValid = slug.length > 0 && SLUG_RE.test(slug);
   const descTrim = description.trim();
   const descValid = descTrim.length >= 1 && descTrim.length <= 280;
 
@@ -143,29 +157,31 @@ export function CreateChannel() {
           </Box>
           <Box
             borderStyle="round"
-            borderColor={nameValid || name === "" ? colors.primary : colors.error}
+            borderColor={slugValid || name === "" ? colors.primary : colors.error}
             paddingX={1}
           >
             <Text color={colors.primary} bold>{"❯ "}</Text>
             <TextInput
               value={name}
               onChange={(v) => update({ name: v })}
-              placeholder="weather-data"
+              placeholder="Weather Data"
               focus={true}
             />
           </Box>
           <Box marginTop={1}>
             {name === "" ? (
               <Text color={colors.muted}>
-                Lowercase letters, numbers, dashes. Max 50.
+                Type a name — it will be auto-converted to a channel slug.
               </Text>
-            ) : nameValid ? (
-              <Text color={colors.success}>
-                {"\u2713"} valid
-              </Text>
+            ) : slugValid ? (
+              <Box>
+                <Text color={colors.success}>{"\u2713"} </Text>
+                <Text color={colors.muted}>{"#"}</Text>
+                <Text bold>{slug}</Text>
+              </Box>
             ) : (
               <Text color={colors.error}>
-                lowercase letters, numbers, dashes only {"\u00B7"} max 50 chars
+                Name must produce at least one letter or number.
               </Text>
             )}
           </Box>

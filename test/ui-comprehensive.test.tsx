@@ -914,18 +914,29 @@ describe("CreateChannel screen", () => {
     unmount();
   });
 
-  it("invalid uppercase name blocks advance on Enter", async () => {
+  it("uppercase name auto-converts to valid slug and advances", async () => {
+    // Typing "BADNAME" now auto-converts to "badname" which is valid.
     const { lastFrame, stdin, unmount } = await openCreate();
     await typeText(stdin, "BADNAME");
+    // Preview should show the converted slug.
+    expect(lastFrame() ?? "").toContain("#badname");
     await pressKey(stdin, KEY.enter);
-    expect(lastFrame() ?? "").toMatch(/Step 1 of 3/);
+    // Should advance to step 2 (slug is valid).
+    expect(lastFrame() ?? "").toMatch(/Step 2 of 3/);
     unmount();
   });
 
-  it("invalid name shows validation error hint", async () => {
+  it("name with spaces auto-converts to dashed slug", async () => {
     const { lastFrame, stdin, unmount } = await openCreate();
-    await typeText(stdin, "Bad Name!");
-    expect((lastFrame() ?? "").toLowerCase()).toMatch(/lowercase letters|dashes/);
+    await typeText(stdin, "My Cool Channel");
+    expect(lastFrame() ?? "").toContain("#my-cool-channel");
+    unmount();
+  });
+
+  it("all-symbols name shows validation error (empty slug)", async () => {
+    const { lastFrame, stdin, unmount } = await openCreate();
+    await typeText(stdin, "!!!@@@");
+    expect((lastFrame() ?? "").toLowerCase()).toMatch(/must produce at least one/);
     unmount();
   });
 
