@@ -256,9 +256,7 @@ export function CreateChannel() {
                 : "  (join requires your approval)"}
             </Text>
           </Box>
-          <Text>Press Enter to create, or </Text>
-          <Text bold color={colors.primary}>p</Text>
-          <Text> to toggle visibility.</Text>
+          <Text>Press Enter to create, or <Text bold color={colors.primary}>p</Text> to toggle visibility.</Text>
           <HelpFooter text="Enter create · p toggle public/private · Esc edit" />
         </Box>
       )}
