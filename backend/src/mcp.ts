@@ -215,7 +215,15 @@ export async function publishMessage(
     db.prepare("UPDATE channels SET message_count = message_count + 1 WHERE name = ?").bind(channel),
   ]);
 
-  const message = { id, channel, author, payload, signature: signature ?? null, parent_id: parent_id ?? null, created_at };
+  // Look up the author's profile name so the WS broadcast includes it.
+  // Without this, WS-delivered messages would fall back to the raw
+  // fingerprint hash in the UI while REST-loaded messages show the name.
+  const profile = await db.prepare(
+    "SELECT name FROM profiles WHERE fingerprint = ?"
+  ).bind(author).first<{ name: string }>();
+  const author_name = profile?.name ?? null;
+
+  const message = { id, channel, author, author_name, payload, signature: signature ?? null, parent_id: parent_id ?? null, created_at };
 
   // Broadcast to DO (fire-and-forget).
   try {

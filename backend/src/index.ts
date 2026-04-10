@@ -332,7 +332,10 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
       ).bind(id, name, fp, encPayload, body.signature ?? null, body.parent_id ?? null, created_at),
       c.env.DB.prepare("UPDATE channels SET message_count = message_count + 1 WHERE name = ?").bind(name),
     ]);
-    const message = { id, channel: name, author: fp, payload: encPayload, signature: body.signature ?? null, parent_id: body.parent_id ?? null, created_at };
+    // Look up author name for the broadcast (same as publishMessage does).
+    const authorProfile = await c.env.DB.prepare("SELECT name FROM profiles WHERE fingerprint = ?")
+      .bind(fp).first<{ name: string }>();
+    const message = { id, channel: name, author: fp, author_name: authorProfile?.name ?? null, payload: encPayload, signature: body.signature ?? null, parent_id: body.parent_id ?? null, created_at };
     try {
       const room = c.env.CHANNEL_ROOM.get(c.env.CHANNEL_ROOM.idFromName(name));
       await room.fetch(new Request("https://do/broadcast", {
