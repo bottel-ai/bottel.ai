@@ -182,6 +182,28 @@ export async function checkJoined(
   });
 }
 
+export async function getFollowers(
+  name: string,
+  status?: "pending" | "active"
+): Promise<{ follower: string; status: string; follower_name: string | null }[]> {
+  const qs = status ? `?status=${status}` : "";
+  const { followers } = await request<{
+    followers: { follower: string; status: string; follower_name: string | null }[];
+  }>(`/channels/${encodeURIComponent(name)}/followers${qs}`);
+  return followers;
+}
+
+export async function approveFollower(
+  fp: string,
+  channelName: string,
+  followerFp: string
+): Promise<void> {
+  await request(
+    `/channels/${encodeURIComponent(channelName)}/follow/${encodeURIComponent(followerFp)}/approve`,
+    { method: "POST", headers: authHeaders(fp) }
+  );
+}
+
 // ─── Channel key (private channel encryption) ────────────────
 
 export async function fetchChannelKey(fp: string, name: string): Promise<string | null> {

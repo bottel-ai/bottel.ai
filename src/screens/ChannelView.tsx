@@ -3,7 +3,7 @@ import { Box, Text, useInput, useStdout } from "ink";
 import Spinner from "ink-spinner";
 import { useStore } from "../state.js";
 import type { Channel, ChannelMessage } from "../state.js";
-import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChannel, checkJoined, fetchChannelKey } from "../lib/api.js";
+import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChannel, checkJoined, fetchChannelKey, getFollowers, approveFollower } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { isEncrypted, decryptPayload } from "../lib/crypto.js";
 import { getChannelKey, saveChannelKey, hasChannelKey } from "../lib/keys.js";
@@ -106,6 +106,12 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   // "pending" = join request pending (private channel)
   const [joinState, setJoinState] = useState<boolean | "pending" | null>(null);
   const [showJoinPrompt, setShowJoinPrompt] = useState(false);
+  // Pending join requests (only loaded for private channel owners).
+  const [pendingRequests, setPendingRequests] = useState<
+    { follower: string; follower_name: string | null }[]
+  >([]);
+  const [pendingIdx, setPendingIdx] = useState(0);
+  const [showPending, setShowPending] = useState(false);
   // When the user pastes multi-line content into the single-line reply
   // field we show a "[Pasted text with N lines]" placeholder in the field
   // and stash the real content here. handleSubmit reads from this ref so
@@ -171,6 +177,16 @@ export function ChannelView({ channelName }: ChannelViewProps) {
                   // 403 or network error — no key available.
                 });
             }
+          }
+          // Load pending join requests if this user owns a private channel.
+          if (loggedIn && selfFp && !ch.is_public && ch.created_by === selfFp) {
+            getFollowers(channelName, "pending")
+              .then((list) => {
+                if (unmountedRef.current) return;
+                setPendingRequests(list);
+                if (list.length > 0) setShowPending(true);
+              })
+              .catch(() => {});
           }
           // Check join status after loading.
           if (loggedIn && selfFp) {
@@ -410,6 +426,41 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   };
 
   useInput((char, key) => {
+    // Pending requests panel: arrow keys to navigate, Enter to approve, Esc to dismiss.
+    if (showPending && pendingRequests.length > 0) {
+      if (key.upArrow) {
+        setPendingIdx((i) => Math.max(0, i - 1));
+        return;
+      }
+      if (key.downArrow) {
+        setPendingIdx((i) => Math.min(pendingRequests.length - 1, i + 1));
+        return;
+      }
+      if (key.return) {
+        const req = pendingRequests[pendingIdx];
+        if (req && selfFp) {
+          approveFollower(selfFp, channelName, req.follower)
+            .then(() => {
+              setPendingRequests((prev) => {
+                const next = prev.filter((_, i) => i !== pendingIdx);
+                if (next.length === 0) setShowPending(false);
+                return next;
+              });
+              setPendingIdx((i) => Math.max(0, i - 1));
+              // Refresh channel to update member count.
+              getChannel(channelName).then((r) => r && setChannel(r.channel)).catch(() => {});
+            })
+            .catch(() => {});
+        }
+        return;
+      }
+      if (key.escape) {
+        setShowPending(false);
+        return;
+      }
+      return;
+    }
+
     // Join prompt intercept: y = join, n/Esc = dismiss.
     if (showJoinPrompt) {
       if (char === "y" || char === "Y") {
@@ -781,6 +832,40 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       {joinState === "pending" && !showJoinPrompt && (
         <Box paddingX={2} marginTop={1}>
           <Text color={colors.warning}>⏳ Join request pending — waiting for channel creator approval</Text>
+        </Box>
+      )}
+
+      {/* Pending join requests — visible only to the channel owner */}
+      {showPending && pendingRequests.length > 0 && (
+        <Box
+          flexDirection="column"
+          borderStyle="round"
+          borderColor={colors.warning}
+          paddingX={2}
+          paddingY={0}
+          marginTop={1}
+          width={paneWidth}
+        >
+          <Box marginBottom={1}>
+            <Text bold color={colors.warning}>
+              {pendingRequests.length} pending join request{pendingRequests.length === 1 ? "" : "s"}
+            </Text>
+          </Box>
+          {pendingRequests.map((req, i) => {
+            const active = i === pendingIdx;
+            const label = req.follower_name || req.follower.replace("SHA256:", "").substring(0, 12);
+            return (
+              <Box key={req.follower}>
+                <Text color={colors.primary}>{active ? "❯ " : "  "}</Text>
+                <Text bold={active} color={active ? colors.primary : undefined}>
+                  {label}
+                </Text>
+              </Box>
+            );
+          })}
+          <Box marginTop={1}>
+            <Text color={colors.muted}>↑↓ nav · Enter approve · Esc dismiss</Text>
+          </Box>
         </Box>
       )}
 
