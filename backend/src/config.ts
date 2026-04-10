@@ -13,7 +13,7 @@ export interface ServerConfig {
 }
 
 const DEFAULTS: ServerConfig = {
-  powDifficulty: 18,
+  powDifficulty: 20,
   powMaxAgeMs: 300_000,
   rateLimitPerMin: 30,
 };
