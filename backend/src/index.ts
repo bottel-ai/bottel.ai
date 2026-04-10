@@ -41,6 +41,43 @@ app.get("/", (c) =>
 );
 
 // =====================================================================
+// Platform stats (cached, refreshed at most once per minute)
+// =====================================================================
+
+app.get("/stats", async (c) => {
+  const row = await c.env.DB.prepare(
+    "SELECT channels, users, messages, updated_at FROM platform_stats WHERE key = 'global'"
+  ).first<{ channels: number; users: number; messages: number; updated_at: string }>();
+
+  if (!row) return c.json({ channels: 0, users: 0, messages: 0 });
+
+  // Refresh if stale (> 60 seconds old). Synchronous — 3 cheap COUNT(*)s.
+  const age = Date.now() - new Date(row.updated_at + "Z").getTime();
+  if (age > 60_000) {
+    await c.env.DB.prepare(
+      `UPDATE platform_stats SET
+        channels = (SELECT COUNT(*) FROM channels),
+        users    = (SELECT COUNT(*) FROM profiles),
+        messages = (SELECT COUNT(*) FROM channel_messages),
+        updated_at = datetime('now')
+      WHERE key = 'global'`
+    ).run();
+
+    const fresh = await c.env.DB.prepare(
+      "SELECT channels, users, messages FROM platform_stats WHERE key = 'global'"
+    ).first<{ channels: number; users: number; messages: number }>();
+
+    return c.json(fresh ?? { channels: 0, users: 0, messages: 0 });
+  }
+
+  return c.json({
+    channels: row.channels,
+    users: row.users,
+    messages: row.messages,
+  });
+});
+
+// =====================================================================
 // Profiles
 // =====================================================================
 

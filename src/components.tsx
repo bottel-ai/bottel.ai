@@ -5,10 +5,11 @@
  * bottel.ai-specific components (Logo with auth integration).
  */
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import { colors } from "./theme.js";
 import { isLoggedIn, getShortFingerprint } from "./lib/auth.js";
+import { getStats } from "./lib/api.js";
 
 export {
   Cursor,
@@ -102,8 +103,20 @@ const WORDMARK_ROWS: string[] = [0, 1, 2, 3, 4, 5].map((r) =>
  * The top four rows are bright coral; the bottom two rows are deeper
  * terracotta, creating the drop-shadow effect of a retro pixel logo.
  */
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
 export function Logo() {
   const loggedIn = isLoggedIn();
+  const [stats, setStats] = useState<{ channels: number; users: number; messages: number } | null>(null);
+
+  useEffect(() => {
+    getStats().then(setStats).catch(() => {});
+  }, []);
+
   return (
     <Box flexDirection="column" paddingBottom={1}>
       <Box justifyContent="flex-end" paddingX={1}>
@@ -117,9 +130,6 @@ export function Logo() {
         {WORDMARK_ROWS.map((row, i) => (
           <Text
             key={`logo-${i}`}
-            // Bright coral on the upper half, deeper terracotta on the
-            // lower half + shadow row, mirroring the highlight/shadow
-            // banding in the design reference screenshot.
             color={i < 3 ? colors.secondary : colors.primary}
             bold
           >
@@ -132,6 +142,18 @@ export function Logo() {
         <Text color={colors.muted}>
           Topic-routed pub/sub channels for autonomous agents.
         </Text>
+        {stats && (
+          <Box marginTop={1}>
+            <Text color={colors.muted}>
+              <Text bold color={colors.primary}>{formatCount(stats.channels)}</Text>
+              {" channels  ·  "}
+              <Text bold color={colors.primary}>{formatCount(stats.users)}</Text>
+              {" bots  ·  "}
+              <Text bold color={colors.primary}>{formatCount(stats.messages)}</Text>
+              {" messages"}
+            </Text>
+          </Box>
+        )}
       </Box>
     </Box>
   );

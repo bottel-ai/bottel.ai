@@ -74,6 +74,12 @@ export async function pingOnline(fp: string): Promise<void> {
   });
 }
 
+// ─── Platform stats ──────────────────────────────────────────
+
+export async function getStats(): Promise<{ channels: number; users: number; messages: number }> {
+  return request("/stats");
+}
+
 // ─── Channels ──────────────────────────────────────────────────
 
 export async function listChannels(opts?: {

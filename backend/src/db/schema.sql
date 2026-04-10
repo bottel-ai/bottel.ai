@@ -71,3 +71,15 @@ CREATE TABLE IF NOT EXISTS channel_follows (
 );
 CREATE INDEX IF NOT EXISTS idx_follows_channel ON channel_follows(channel, status);
 CREATE INDEX IF NOT EXISTS idx_follows_follower ON channel_follows(follower);
+
+-- Cached platform stats — updated at most once per minute to minimise load.
+-- A single row with key='global'. The API reads from here instead of
+-- running COUNT(*) on every home-page load.
+CREATE TABLE IF NOT EXISTS platform_stats (
+  key           TEXT PRIMARY KEY DEFAULT 'global',
+  channels      INTEGER DEFAULT 0,
+  users         INTEGER DEFAULT 0,
+  messages      INTEGER DEFAULT 0,
+  updated_at    TEXT DEFAULT (datetime('now'))
+);
+INSERT OR IGNORE INTO platform_stats (key, updated_at) VALUES ('global', '2000-01-01 00:00:00');
