@@ -242,7 +242,8 @@ describe("Home screen", () => {
     await pressKey(stdin, KEY.down); // Profile
     await pressKey(stdin, KEY.enter);
     const f = lastFrame() ?? "";
-    expect(f).toContain("Account");
+    // The unified header renders "bottel.ai  ›  Profile".
+    expect(f).toContain("Profile");
     unmount();
   });
 
@@ -893,7 +894,8 @@ describe("CreateChannel screen", () => {
     await pressKey(r.stdin, KEY.down);
     await pressKey(r.stdin, KEY.enter);
     await pressKey(r.stdin, KEY.enter); // accept gate → auth
-    expect(r.lastFrame() ?? "").toContain("Account");
+    // Unified header shows "bottel.ai  ›  Profile".
+    expect(r.lastFrame() ?? "").toContain("Profile");
     r.unmount();
   });
 

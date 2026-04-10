@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { useStore } from "../state.js";
 import { colors, boxStyle } from "../theme.js";
-import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../components.js";
+import { Cursor, HelpFooter } from "../components.js";
 
 const MENU_ITEMS = [
   { label: "Profile", description: "Identity, keys, edit profile" },
@@ -46,8 +46,7 @@ export function Settings() {
 
   const allRows: React.ReactNode[] = [];
 
-  allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Settings"]} />);
-  allRows.push(<ScreenHeader key="header" title="Settings" />);
+  // Sub-page header (breadcrumb + separator) is rendered by App.tsx.
 
   MENU_ITEMS.forEach((item, i) => {
     const isSelected = i === selectedIndex;

@@ -3,7 +3,7 @@ import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { useStore } from "../state.js";
 import { colors } from "../theme.js";
-import { Breadcrumb, HelpFooter } from "../components.js";
+import { HelpFooter } from "../components.js";
 import { getAuth } from "../lib/auth.js";
 import { createProfile, getProfile } from "../lib/api.js";
 
@@ -82,11 +82,7 @@ export function ProfileSetup() {
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      <Breadcrumb path={["Home", "Profile"]} />
-
-      <Box paddingLeft={2} marginBottom={1}>
-        <Text bold color={colors.primary}>Edit Profile</Text>
-      </Box>
+      {/* Sub-page header (breadcrumb + separator) is rendered by App.tsx. */}
 
       {error && (
         <Box paddingLeft={2}>

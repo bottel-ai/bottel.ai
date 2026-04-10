@@ -1,8 +1,10 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Box, Text, useInput, useStdout, useStdin } from "ink";
+import type { Screen } from "./state.js";
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import { Logo } from "./components.js";
 import { StoreProvider, useStore } from "./state.js";
+import { colors } from "./theme.js";
 import { Home } from "./screens/Home.js";
 import { Search } from "./screens/Search.js";
 import { ChannelList } from "./screens/ChannelList.js";
@@ -16,6 +18,50 @@ import { pingOnline } from "./lib/api.js";
 
 const ENABLE_MOUSE = "\x1b[?1000h\x1b[?1002h\x1b[?1006h";
 const DISABLE_MOUSE = "\x1b[?1006l\x1b[?1002l\x1b[?1000l";
+
+// ─── Unified sub-page header ────────────────────────────────────
+//
+// Claude editorial style: brand identifier + breadcrumb trail on one
+// line, with a thin warm-gray separator below. Replaces the per-screen
+// Breadcrumb + ScreenHeader components.
+
+function screenCrumbs(screen: Screen): string[] {
+  switch (screen.name) {
+    case "search":        return ["Search"];
+    case "channel-list":  return ["Channels"];
+    case "channel-view":  return ["Channels", `#${screen.channelName}`];
+    case "channel-create": return ["Channels", "Create"];
+    case "auth":          return ["Profile"];
+    case "settings":      return ["Settings"];
+    case "profile-setup": return ["Profile", "Edit"];
+    default:              return [];
+  }
+}
+
+function SubPageHeader({ screen, termWidth }: { screen: Screen; termWidth: number }) {
+  const crumbs = screenCrumbs(screen);
+  return (
+    <Box flexDirection="column" paddingX={1}>
+      <Box>
+        <Text bold color={colors.primary}>bottel.ai</Text>
+        {crumbs.map((c, i) => {
+          const isLast = i === crumbs.length - 1;
+          return (
+            <React.Fragment key={i}>
+              <Text color={colors.subtle}>{"  ›  "}</Text>
+              <Text bold={isLast} color={isLast ? undefined : colors.muted}>
+                {c}
+              </Text>
+            </React.Fragment>
+          );
+        })}
+      </Box>
+      <Text color={colors.subtle}>
+        {"─".repeat(Math.max(10, termWidth - 2))}
+      </Text>
+    </Box>
+  );
+}
 
 function Router() {
   const { state, setScrollControls } = useStore();
@@ -35,6 +81,7 @@ function Router() {
   const isHome = state.screen.name === "home";
   const hasTextInput = ["search", "home", "auth", "channel-view", "channel-create", "profile-setup"].includes(state.screen.name);
 
+  const termWidth = stdout?.columns ?? 80;
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
   useEffect(() => {
     if (!stdout) return;
@@ -117,9 +164,7 @@ function Router() {
         {isHome ? (
           <Logo key="logo" />
         ) : (
-          <Box key="mini-logo" paddingX={1} marginBottom={1}>
-            <Text bold>bottel.ai</Text>
-          </Box>
+          <SubPageHeader screen={state.screen} termWidth={termWidth} />
         )}
         {state.screen.name === "home" && <Home key="home" />}
         {state.screen.name === "search" && <Search key="search" />}

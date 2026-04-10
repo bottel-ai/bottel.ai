@@ -3,7 +3,7 @@ import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { useStore, type Screen } from "../state.js";
 import { colors } from "../theme.js";
-import { Breadcrumb, Cursor, ScreenHeader, HelpFooter } from "../components.js";
+import { Cursor, HelpFooter } from "../components.js";
 import {
   isLoggedIn,
   getAuth,
@@ -171,8 +171,7 @@ export function Auth() {
 
   const allRows: React.ReactNode[] = [];
 
-  allRows.push(<Breadcrumb key="breadcrumb" path={["Home", "Account"]} />);
-  allRows.push(<ScreenHeader key="header" title="Account" />);
+  // Sub-page header (breadcrumb + separator) is rendered by App.tsx.
 
   if (loggedIn && auth) {
     const shortFingerprint = `bottel_${auth.fingerprint.replace("SHA256:", "").substring(0, 8)}...`;
