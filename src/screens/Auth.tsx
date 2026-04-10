@@ -16,15 +16,15 @@ import {
 type Mode = "menu" | "import" | "show-key" | "confirm-regen";
 
 const LOGGED_OUT_ITEMS = [
-  { label: "Generate Key Pair", description: "Create new Ed25519 key pair" },
-  { label: "Import Key", description: "Import existing private key" },
+  { label: "Create Identity", description: "Set up a new bot identity" },
+  { label: "Import Identity", description: "Restore from a private key" },
   { label: "Back", description: "" },
 ];
 
 const LOGGED_IN_ITEMS = [
   { label: "Edit Profile", description: "Change name, bio, visibility" },
-  { label: "Show Full Key", description: "Display complete public key" },
-  { label: "Regenerate Key", description: "Generate new key pair" },
+  { label: "Show Identity", description: "Display your keys and fingerprint" },
+  { label: "Reset Identity", description: "Replace with a new identity" },
   { label: "Logout", description: "Remove keys" },
   { label: "Back", description: "" },
 ];
@@ -54,7 +54,7 @@ export function Auth() {
       if (input === "y" || input === "Y") {
         const authData = generateKeyPair();
         saveAuth(authData);
-        showMessage(`Key regenerated.\nPublic Key: ${authData.publicKey}`);
+        showMessage(`Identity reset.\nPublic Key: ${authData.publicKey}`);
         setMode("menu");
         refresh();
         return;
@@ -121,17 +121,17 @@ export function Auth() {
 
       if (!loggedIn) {
         switch (item.label) {
-          case "Generate Key Pair": {
+          case "Create Identity": {
             const authData = generateKeyPair();
             saveAuth(authData);
-            showMessage(`Key pair generated!\nPublic Key: ${authData.publicKey}`);
+            showMessage(`Identity created!\nPublic Key: ${authData.publicKey}`);
             dispatch({ type: "UPDATE_AUTH_SCREEN", state: { selectedIndex: 0 } });
             refresh();
             // Offer to set up profile
             navigate({ name: "profile-setup" } as Screen);
             break;
           }
-          case "Import Key":
+          case "Import Identity":
             setMode("import");
             setImportValue("");
             setMessage(null);
@@ -145,11 +145,11 @@ export function Auth() {
           case "Edit Profile":
             navigate({ name: "profile-setup" } as Screen);
             break;
-          case "Show Full Key":
+          case "Show Identity":
             setMode("show-key");
             setMessage(null);
             break;
-          case "Regenerate Key":
+          case "Reset Identity":
             // Show a confirm prompt — regenerating throws away the
             // current identity and the user can't recover it.
             setMode("confirm-regen");
@@ -278,7 +278,7 @@ export function Auth() {
         marginTop={1}
       >
         <Text bold color={colors.warning}>
-          ⚠  Regenerate key pair?
+          ⚠  Reset your identity?
         </Text>
         <Box marginTop={1}>
           <Text color={colors.muted}>
@@ -292,14 +292,14 @@ export function Auth() {
         </Box>
         <Box marginTop={1}>
           <Text>
-            Press <Text bold color={colors.error}>y</Text> to regenerate, or{" "}
+            Press <Text bold color={colors.error}>y</Text> to reset, or{" "}
             <Text bold color={colors.success}>n</Text> /{" "}
             <Text bold color={colors.success}>Esc</Text> to cancel.
           </Text>
         </Box>
       </Box>,
     );
-    allRows.push(<HelpFooter key="footer" text="y regenerate · n / Esc cancel" />);
+    allRows.push(<HelpFooter key="footer" text="y reset · n / Esc cancel" />);
   } else {
     menuItems.forEach((item, i) => {
       const isSelected = i === selectedIndex;
