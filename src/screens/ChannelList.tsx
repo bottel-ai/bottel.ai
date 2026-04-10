@@ -1,8 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import { useStore } from "../state.js";
 import type { Channel } from "../state.js";
-import { listChannels } from "../lib/api.js";
+import { listChannels, leaveChannel } from "../lib/api.js";
+import { getAuth, isLoggedIn } from "../lib/auth.js";
+import { removeChannelKey } from "../lib/keys.js";
 import { colors } from "../theme.js";
 import { Cursor, HelpFooter } from "../components.js";
 
@@ -36,6 +38,9 @@ function truncate(s: string, len: number): string {
 export function ChannelList() {
   const { state, dispatch, navigate, goBack } = useStore();
   const { channels, selectedIndex, loading, sort } = state.channelList;
+  const [confirmLeave, setConfirmLeave] = useState<string | null>(null); // channel name or null
+  const auth = getAuth();
+  const selfFp = auth?.fingerprint ?? "";
   const { stdout } = useStdout();
   const termWidth = stdout?.columns ?? 80;
   // Use the full terminal width (minus a small gutter for the outer paddingX).
@@ -58,6 +63,24 @@ export function ChannelList() {
   }, []);
 
   useInput((input, key) => {
+    // Leave confirm intercept.
+    if (confirmLeave) {
+      if (input === "y" || input === "Y") {
+        if (selfFp) {
+          leaveChannel(selfFp, confirmLeave).catch(() => {});
+          removeChannelKey(confirmLeave);
+        }
+        setConfirmLeave(null);
+        fetchChannels(sort); // refresh list
+        return;
+      }
+      if (input === "n" || input === "N" || key.escape) {
+        setConfirmLeave(null);
+        return;
+      }
+      return;
+    }
+
     if (key.escape) {
       goBack();
       return;
@@ -98,6 +121,11 @@ export function ChannelList() {
       fetchChannels(sort);
       return;
     }
+    if (input === "l" && isLoggedIn()) {
+      const ch = channels[selectedIndex];
+      if (ch) setConfirmLeave(ch.name);
+      return;
+    }
   });
 
   // ─── Header strip rendered inside round border ───────────────
@@ -106,6 +134,7 @@ export function ChannelList() {
     const active = i === selectedIndex;
     const rel = relativeTime(ch.created_at);
     const statsLeft = `${ch.message_count} msgs · ${ch.subscriber_count} subs`;
+    const showLeaveConfirm = confirmLeave === ch.name;
     return (
       <Box key={ch.name} flexDirection="column" marginBottom={1}>
         <Box>
@@ -125,6 +154,16 @@ export function ChannelList() {
             {rel ? `   · ${rel}` : ""}
           </Text>
         </Box>
+        {showLeaveConfirm && (
+          <Box paddingLeft={3}>
+            <Text color={colors.warning}>
+              Leave b/{ch.name}?{!ch.is_public ? "  Key will be deleted." : ""}  </Text>
+            <Text bold color={colors.error}>y</Text>
+            <Text color={colors.muted}> yes  </Text>
+            <Text bold color={colors.success}>n</Text>
+            <Text color={colors.muted}> no</Text>
+          </Box>
+        )}
       </Box>
     );
   };
@@ -175,7 +214,7 @@ export function ChannelList() {
         )}
       </Box>
 
-      <HelpFooter text="s sort · c create · r refresh · ↑↓ nav · Enter open · Esc back" />
+      <HelpFooter text="s sort · c create · r refresh · l leave · ↑↓ nav · Enter open · Esc back" />
     </Box>
   );
 }
