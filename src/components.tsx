@@ -12,9 +12,7 @@ import { isLoggedIn, getShortFingerprint } from "./lib/auth.js";
 
 export {
   Cursor,
-  Breadcrumb,
   HelpFooter,
-  ScreenHeader,
   Dialog,
 } from "../packages/cli-app-scaffold/src/components.js";
 
