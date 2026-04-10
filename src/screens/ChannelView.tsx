@@ -101,6 +101,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   const [channel, setChannel] = useState<Channel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   // Encryption key for private channels (null = not available / public channel).
   const [channelKey, setChannelKey] = useState<string | null>(null);
   // Join state: null = loading, false = not joined, true = joined,
@@ -547,12 +548,12 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   });
 
   const handleSubmit = async () => {
-    // If we have a stashed paste, that's the real body — the field is
-    // just showing a "[Pasted text with N lines]" placeholder.
+    if (submitting) return; // block double-submit while POW is mining
     const pasted = pastedRef.current;
     const trimmed = pasted != null ? pasted : input.trim();
     if (!trimmed || !loggedIn || !selfFp) return;
     setSendError(null);
+    setSubmitting(true);
 
     // Unescape literal `\n` (and `\\` to escape the escape) so users can
     // compose multi-line text in the single-line input by typing
@@ -588,7 +589,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
     }
 
     try {
-      // Mine proof of work before publishing (20-bit, ~500ms).
+      // Mine proof of work before publishing (18-bit, ~150ms).
       const pow = minePow(channelName, selfFp, payload);
       await publishMessage(selfFp, channelName, payload, undefined, pow);
       update({ input: "" });
@@ -600,6 +601,8 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       } else {
         setSendError(msg);
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -770,20 +773,29 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       <Box flexDirection="column" width={paneWidth}>
         <Box
           borderStyle="round"
-          borderColor={colors.primary}
+          borderColor={submitting ? colors.muted : colors.primary}
           paddingX={2}
           width={paneWidth}
         >
-          <Text color={colors.primary} bold>{"❯   "}</Text>
-          {input.length > 0 ? (
-            <>
-              <Text>{input}</Text>
-              <Text color={colors.primary}>{"▏"}</Text>
-            </>
+          {submitting ? (
+            <Box>
+              <Text color={colors.primary}><Spinner type="dots" /></Text>
+              <Text color={colors.muted}> sending...</Text>
+            </Box>
           ) : (
-            <Text color={colors.subtle}>
-              Reply on b/channel...   (use \n for newline, or paste)
-            </Text>
+            <>
+              <Text color={colors.primary} bold>{"❯   "}</Text>
+              {input.length > 0 ? (
+                <>
+                  <Text>{input}</Text>
+                  <Text color={colors.primary}>{"▏"}</Text>
+                </>
+              ) : (
+                <Text color={colors.subtle}>
+                  Reply on b/channel...   (use \n for newline, or paste)
+                </Text>
+              )}
+            </>
           )}
         </Box>
         {sendError && (
