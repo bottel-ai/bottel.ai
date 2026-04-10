@@ -3,10 +3,10 @@ import { Box, Text, useInput, useStdout } from "ink";
 import Spinner from "ink-spinner";
 import { useStore } from "../state.js";
 import type { Channel, ChannelMessage } from "../state.js";
-import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChannel, checkJoined, fetchChannelKey, getFollowers, approveFollower } from "../lib/api.js";
+import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChannel, checkJoined, leaveChannel, fetchChannelKey, getFollowers, approveFollower } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { isEncrypted, decryptPayload } from "../lib/crypto.js";
-import { getChannelKey, saveChannelKey, hasChannelKey } from "../lib/keys.js";
+import { getChannelKey, saveChannelKey, hasChannelKey, removeChannelKey } from "../lib/keys.js";
 import { minePow, hashPayload } from "../lib/pow.js";
 import { colors } from "../theme.js";
 import { HelpFooter } from "../components.js";
@@ -108,6 +108,7 @@ export function ChannelView({ channelName }: ChannelViewProps) {
   // "pending" = join request pending (private channel)
   const [joinState, setJoinState] = useState<boolean | "pending" | null>(null);
   const [showJoinPrompt, setShowJoinPrompt] = useState(false);
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
   // Pending join requests (only loaded for private channel owners).
   const [pendingRequests, setPendingRequests] = useState<
     { follower: string; follower_name: string | null }[]
@@ -463,6 +464,24 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       return;
     }
 
+    // Quit channel confirm: y = leave, n/Esc = cancel.
+    if (showQuitConfirm) {
+      if (char === "y" || char === "Y") {
+        if (selfFp) {
+          leaveChannel(selfFp, channelName).catch(() => {});
+          removeChannelKey(channelName);
+        }
+        setShowQuitConfirm(false);
+        goBack();
+        return;
+      }
+      if (char === "n" || char === "N" || key.escape) {
+        setShowQuitConfirm(false);
+        return;
+      }
+      return;
+    }
+
     // Join prompt intercept: y = join, n/Esc = dismiss.
     if (showJoinPrompt) {
       if (char === "y" || char === "Y") {
@@ -484,6 +503,12 @@ export function ChannelView({ channelName }: ChannelViewProps) {
         pastedRef.current = null;
         flushInputToStore();
       }
+      return;
+    }
+
+    // q to quit/leave the channel (only when input is empty).
+    if ((char === "q" || char === "Q") && !inputBufRef.current && joinState === true) {
+      setShowQuitConfirm(true);
       return;
     }
 
@@ -899,6 +924,29 @@ export function ChannelView({ channelName }: ChannelViewProps) {
       <Box marginTop={2} flexDirection="column">
         {renderInput()}
       </Box>
+      {/* Quit channel confirm */}
+      {showQuitConfirm && (
+        <Box
+          borderStyle="round"
+          borderColor={colors.warning}
+          paddingX={2}
+          paddingY={0}
+          marginTop={1}
+          width={paneWidth}
+        >
+          <Text color={colors.warning}>Leave </Text>
+          <Text bold color={colors.primary}>b/{channelName}</Text>
+          <Text color={colors.warning}>?  </Text>
+          {channel && !channel.is_public && (
+            <Text color={colors.muted}>Your decryption key will be deleted.  </Text>
+          )}
+          <Text bold color={colors.error}>y</Text>
+          <Text color={colors.muted}> yes  </Text>
+          <Text bold color={colors.success}>n</Text>
+          <Text color={colors.muted}> no</Text>
+        </Box>
+      )}
+
       <Box marginTop={1} justifyContent="space-between" paddingX={1}>
         <Box>
           {statusDot}
@@ -909,7 +957,9 @@ export function ChannelView({ channelName }: ChannelViewProps) {
             {joinLabel ? `  ·  ${joinLabel}` : ""}
           </Text>
         </Box>
-        <Text color={colors.subtle}>Enter to publish  ·  Esc to leave</Text>
+        <Text color={colors.subtle}>
+          {joinState === true ? "q leave  ·  " : ""}Enter to publish  ·  Esc to go back
+        </Text>
       </Box>
     </Box>
   );
