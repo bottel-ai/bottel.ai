@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { useStore, type Screen } from "../state.js";
@@ -12,7 +12,7 @@ import {
   saveAuth,
   clearAuth,
 } from "../lib/auth.js";
-import { updateProfile } from "../lib/api.js";
+import { getProfile, updateProfile } from "../lib/api.js";
 import { shortFp } from "../components/MessageRenderer.js";
 import { clearAllChannelKeys } from "../lib/keys.js";
 
@@ -25,7 +25,8 @@ const LOGGED_OUT_ITEMS = [
 ];
 
 const LOGGED_IN_ITEMS = [
-  { label: "Edit Profile", description: "Change name, bio, visibility" },
+  { label: "Edit Profile", description: "Change name and bio" },
+  { label: "Visibility", description: "" }, // dynamic — filled at render
   { label: "Show Identity", description: "Display your keys and fingerprint" },
   { label: "Reset Identity", description: "Replace with a new identity" },
   { label: "Logout", description: "Remove keys" },
@@ -40,11 +41,21 @@ export function Auth() {
   const [message, setMessage] = useState<string | null>(null);
   const [messageColor, setMessageColor] = useState<string>(colors.success);
   const [, setTick] = useState(0);
+  const [isPublic, setIsPublic] = useState<boolean | null>(null);
+  const [toggling, setToggling] = useState(false);
 
   const refresh = () => setTick((t) => t + 1);
   const loggedIn = isLoggedIn();
   const auth = getAuth();
   const menuItems = loggedIn ? LOGGED_IN_ITEMS : LOGGED_OUT_ITEMS;
+
+  // Fetch visibility state on mount
+  useEffect(() => {
+    if (!auth) return;
+    getProfile(auth.fingerprint)
+      .then((p) => setIsPublic(p.public ?? false))
+      .catch(() => {});
+  }, [auth?.fingerprint]);
 
   const showMessage = (msg: string, color: string = colors.success) => {
     setMessage(msg);
@@ -170,6 +181,29 @@ export function Auth() {
           case "Edit Profile":
             navigate({ name: "profile-setup" } as Screen);
             break;
+          case "Visibility": {
+            if (!auth || toggling) break;
+            setToggling(true);
+            const newPublic = !isPublic;
+            getProfile(auth.fingerprint)
+              .then((p) =>
+                updateProfile(auth.fingerprint, {
+                  name: p.name,
+                  bio: p.bio,
+                  public: newPublic,
+                })
+              )
+              .then(() => {
+                setIsPublic(newPublic);
+                showMessage(newPublic ? "Profile is now public" : "Profile is now private");
+                setToggling(false);
+              })
+              .catch((err: Error) => {
+                showMessage(`Error: ${err.message}`, colors.error);
+                setToggling(false);
+              });
+            break;
+          }
           case "Show Identity":
             setMode("show-key");
             setMessage(null);
@@ -327,13 +361,26 @@ export function Auth() {
   } else {
     menuItems.forEach((item, i) => {
       const isSelected = i === selectedIndex;
+      let label = item.label;
+      let description = item.description;
+      if (item.label === "Visibility") {
+        if (isPublic === true) {
+          label = "Visibility (public)";
+          description = "Your name is visible in channels";
+        } else if (isPublic === false) {
+          label = "Visibility (private)";
+          description = "Only your bot ID is shown";
+        } else {
+          description = "Loading...";
+        }
+      }
       allRows.push(
         <Box key={item.label}>
           <Cursor active={isSelected} />
           <Text bold={isSelected} color={isSelected ? colors.primary : undefined}>
-            {item.label.padEnd(20)}
+            {label.padEnd(24)}
           </Text>
-          <Text color={colors.muted}>{item.description}</Text>
+          <Text color={colors.muted}>{description}</Text>
         </Box>,
       );
     });

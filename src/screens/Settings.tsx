@@ -1,20 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { useStore } from "../state.js";
 import { colors, boxStyle } from "../theme.js";
 import { Cursor, HelpFooter } from "../components.js";
-import { getAuth } from "../lib/auth.js";
-import { getProfile, updateProfile } from "../lib/api.js";
 
-// Module-level cache for profile visibility — avoids a D1 read on every
-// Settings mount. Cleared when toggling so the next mount reflects reality.
-let _cachedIsPublic: boolean | null = null;
-let _cachedFp: string | null = null;
-
-// Visibility label is built dynamically based on current state.
 const STATIC_ITEMS = [
-  { label: "Profile", description: "Identity, keys, edit profile" },
-  { label: "Visibility", description: "" }, // dynamic
+  { label: "Profile", description: "Identity, keys, visibility" },
   { label: "About", description: "About bottel.ai" },
   { label: "Back", description: "Return to home" },
 ];
@@ -23,27 +14,6 @@ export function Settings() {
   const { state, dispatch, goBack, navigate } = useStore();
   const { selectedIndex } = state.settings;
   const [message, setMessage] = useState<string | null>(null);
-  const [isPublic, setIsPublic] = useState<boolean | null>(null);
-  const [toggling, setToggling] = useState(false);
-
-  // Fetch current profile public state on mount — use cache if available
-  // for the same identity to avoid a D1 read on every Settings visit.
-  useEffect(() => {
-    const auth = getAuth();
-    if (!auth) return;
-    if (_cachedIsPublic !== null && _cachedFp === auth.fingerprint) {
-      setIsPublic(_cachedIsPublic);
-      return;
-    }
-    getProfile(auth.fingerprint)
-      .then((p) => {
-        const val = p.public ?? false;
-        _cachedIsPublic = val;
-        _cachedFp = auth.fingerprint;
-        setIsPublic(val);
-      })
-      .catch(() => setIsPublic(null));
-  }, []);
 
   useInput((_input, key) => {
     if (key.escape) {
@@ -64,35 +34,6 @@ export function Settings() {
         case "Profile":
           navigate({ name: "auth" });
           break;
-        case "Visibility": {
-          const auth = getAuth();
-          if (!auth) {
-            setMessage("No identity found. Create one first.");
-            break;
-          }
-          if (toggling) break;
-          setToggling(true);
-          const newPublic = !isPublic;
-          getProfile(auth.fingerprint)
-            .then((p) =>
-              updateProfile(auth.fingerprint, {
-                name: p.name,
-                bio: p.bio,
-                public: newPublic,
-              })
-            )
-            .then(() => {
-              setIsPublic(newPublic);
-              _cachedIsPublic = newPublic;
-              setMessage(newPublic ? "Profile is now Public" : "Profile is now Private");
-              setToggling(false);
-            })
-            .catch((err: Error) => {
-              setMessage(`Error: ${err.message}`);
-              setToggling(false);
-            });
-          break;
-        }
         case "About":
           setMessage("about");
           break;
@@ -109,26 +50,13 @@ export function Settings() {
 
   STATIC_ITEMS.forEach((item, i) => {
     const isSelected = i === selectedIndex;
-    let label = item.label;
-    let description = item.description;
-    if (item.label === "Visibility") {
-      if (isPublic === true) {
-        label = "Visibility (public)";
-        description = "Your name is visible in channels";
-      } else if (isPublic === false) {
-        label = "Visibility (private)";
-        description = "Only your fingerprint is shown";
-      } else {
-        description = "Loading...";
-      }
-    }
     allRows.push(
       <Box key={item.label}>
         <Cursor active={isSelected} />
         <Text bold={isSelected} color={isSelected ? colors.primary : undefined}>
-          {label.padEnd(24)}
+          {item.label.padEnd(24)}
         </Text>
-        <Text color={colors.muted}>{description}</Text>
+        <Text color={colors.muted}>{item.description}</Text>
       </Box>
     );
   });
