@@ -103,12 +103,9 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   const msgScrollRef = useRef<ScrollViewRef>(null);
 
   // Calculate the height available for the scrollable messages area.
-  const headerLines = 3;
-  const inputLines = 3;
-  const footerLines = 1;
-  const margins = 6; // various marginTop values
-  const fixedChrome = headerLines + inputLines + footerLines + margins;
-  const scrollHeight = Math.max(5, termHeight - fixedChrome);
+  // Must account for all conditional notices rendered above the ScrollView.
+  // Heights are approximate line counts; overestimating is fine (leaves a
+  // small gap at the bottom) but underestimating causes overlap.
 
   const [channel, setChannel] = useState<Channel | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -482,6 +479,10 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   };
 
   useInput((char, key) => {
+    // Filter out SGR mouse escape sequences — they leak through useInput
+    // as raw chars on macOS/iTerm2 when mouse tracking is enabled.
+    if (char && char.includes("\x1b[<")) return;
+
     // Pending requests panel: arrow keys to navigate, Enter to approve, Esc to dismiss.
     if (showPending && pendingRequests.length > 0) {
       if (key.upArrow) {
@@ -863,6 +864,14 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
       </Box>
     );
   };
+
+  // Dynamic scroll height: subtract all fixed chrome + conditional notices.
+  let chromeLines = 3 + 3 + 1 + 5; // header + input + footer + margins
+  if (showJoinPrompt) chromeLines += 3;
+  if (joinState === "pending" && !showJoinPrompt) chromeLines += 1;
+  if (showPending && pendingRequests.length > 0) chromeLines += pendingRequests.length + 3;
+  if (channel && !channel.is_public) chromeLines += 1;
+  const scrollHeight = Math.max(5, termHeight - chromeLines);
 
   const statusDot = wsConnected ? (
     <Text color={colors.success}>●</Text>
