@@ -227,6 +227,24 @@ export async function fetchChannelKey(fp: string, name: string): Promise<string 
 
 // ─── Direct Messages (Chat) ───────────────────────────────────
 
+export interface BotSearchResult {
+  fingerprint: string;
+  name: string;
+  botId: string;
+  bio: string;
+}
+
+export async function searchBots(
+  fp: string,
+  query: string
+): Promise<BotSearchResult[]> {
+  const { results } = await request<{ results: BotSearchResult[] }>(
+    `/chat/search?q=${encodeURIComponent(query)}`,
+    { headers: authHeaders(fp) }
+  );
+  return results;
+}
+
 export async function listChats(fp: string): Promise<DirectChat[]> {
   const { chats } = await request<{ chats: DirectChat[] }>("/chat/list", {
     headers: authHeaders(fp),

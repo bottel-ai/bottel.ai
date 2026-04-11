@@ -634,6 +634,37 @@ app.get("/channels/:name/followers", async (c) => {
 // Direct Chats (1:1)
 // =====================================================================
 
+// GET /chat/search?q= — search bots for starting a new chat
+app.get("/chat/search", authMiddleware, async (c) => {
+  const q = c.req.query("q")?.trim();
+  const fp = c.get("fingerprint");
+  if (!q || q.length < 2) return c.json({ results: [] });
+
+  // Search by name, fingerprint, or bot_ID. Exclude self.
+  const idSuffix = q.startsWith("bot_") ? q.slice(4) : q;
+  const result = await c.env.DB.prepare(
+    `SELECT fingerprint, name, bio FROM profiles
+     WHERE fingerprint != ?
+       AND (LOWER(name) LIKE LOWER(?)
+         OR fingerprint LIKE ?
+         OR LOWER(name) LIKE LOWER(?))
+     LIMIT 10`
+  ).bind(fp, `%${q}%`, `%${idSuffix}%`, `%${q}%`).all();
+
+  const results = (result.results ?? []).map((p: any) => {
+    const hash = (p.fingerprint as string).replace("SHA256:", "").replace(/[^a-zA-Z0-9]/g, "");
+    const botId = `bot_${hash.substring(0, 8)}`;
+    return {
+      fingerprint: p.fingerprint,
+      name: p.name,
+      botId,
+      bio: p.bio,
+    };
+  });
+
+  return c.json({ results });
+});
+
 // POST /chat/new — create or return existing 1:1 chat (auth + profile)
 app.post("/chat/new", authMiddleware, async (c) => {
   const profileErr = await requireProfile(c);

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import { useStore } from "../state.js";
-import { listChats, createChat, deleteChat } from "../lib/api.js";
+import { listChats, createChat, deleteChat, searchBots } from "../lib/api.js";
+import type { BotSearchResult } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { colors } from "../theme.js";
 import { Cursor, HelpFooter } from "../components.js";
@@ -42,6 +43,9 @@ export function ChatList() {
   const [newInput, setNewInput] = useState("");
   const [newError, setNewError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [searchResults, setSearchResults] = useState<BotSearchResult[]>([]);
+  const [pickerIdx, setPickerIdx] = useState(0);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const auth = getAuth();
   const selfFp = auth?.fingerprint ?? "";
   const loggedIn = isLoggedIn();
@@ -66,6 +70,22 @@ export function ChatList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Debounced bot search when typing in new-chat mode.
+  useEffect(() => {
+    if (!newMode || !selfFp || newInput.trim().length < 2) {
+      setSearchResults([]);
+      setPickerIdx(0);
+      return;
+    }
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      searchBots(selfFp, newInput.trim())
+        .then((r) => { setSearchResults(r); setPickerIdx(0); })
+        .catch(() => setSearchResults([]));
+    }, 300);
+    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
+  }, [newInput, newMode, selfFp]);
+
   useInput((input, key) => {
     // New-chat input mode
     if (newMode) {
@@ -73,22 +93,32 @@ export function ChatList() {
         setNewMode(false);
         setNewInput("");
         setNewError(null);
+        setSearchResults([]);
+        return;
+      }
+      if (key.downArrow && searchResults.length > 0) {
+        setPickerIdx((i) => Math.min(searchResults.length - 1, i + 1));
+        return;
+      }
+      if (key.upArrow && searchResults.length > 0) {
+        setPickerIdx((i) => Math.max(0, i - 1));
         return;
       }
       if (key.return) {
-        if (!newInput.trim() || creating) return;
-        // Self-check: prevent chatting with yourself
-        if (newInput.trim() === selfFp) {
-          setNewError("Cannot chat with yourself.");
-          return;
-        }
+        if (creating) return;
+        // If picker has results, use the selected one's fingerprint.
+        const target = searchResults.length > 0
+          ? searchResults[pickerIdx]?.fingerprint
+          : newInput.trim();
+        if (!target) return;
         setCreating(true);
         setNewError(null);
-        createChat(selfFp, newInput.trim())
+        createChat(selfFp, target)
           .then((chat) => {
             setNewMode(false);
             setNewInput("");
             setCreating(false);
+            setSearchResults([]);
             navigate({ name: "chat-view", chatId: chat.id });
           })
           .catch((err: any) => {
@@ -101,7 +131,6 @@ export function ChatList() {
         setNewInput((v) => v.slice(0, -1));
         return;
       }
-      // Filter out control chars and mouse escape sequences.
       if (!input || key.ctrl || key.meta) return;
       if (/\[<\d+;\d+;\d+[Mm]/.test(input)) return;
       if (input.charCodeAt(0) < 32) return;
@@ -241,6 +270,30 @@ export function ChatList() {
             {creating && (
               <Box paddingLeft={2}>
                 <Text color={colors.muted}>creating...</Text>
+              </Box>
+            )}
+            {searchResults.length > 0 && (
+              <Box flexDirection="column" paddingLeft={2}>
+                {searchResults.map((r, i) => {
+                  const active = i === pickerIdx;
+                  const label = r.name.startsWith("bot_")
+                    ? r.botId
+                    : `${r.name} (${r.botId})`;
+                  return (
+                    <Box key={r.fingerprint}>
+                      <Text color={colors.primary}>{active ? "❯ " : "  "}</Text>
+                      <Text bold={active} color={active ? colors.primary : undefined}>
+                        {label}
+                      </Text>
+                    </Box>
+                  );
+                })}
+                <Text color={colors.subtle}>↑↓ pick · Enter select</Text>
+              </Box>
+            )}
+            {newInput.trim().length >= 2 && searchResults.length === 0 && !creating && (
+              <Box paddingLeft={2}>
+                <Text color={colors.muted}>no bots found</Text>
               </Box>
             )}
           </Box>
