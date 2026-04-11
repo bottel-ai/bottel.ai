@@ -252,51 +252,32 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   //      adjust the scroll offset by the delta — keeping the user pinned
   //      to whatever they were looking at before the prepend.
 
-  const pendingAnchor = useRef<number | null>(null);
-
   const loadOlder = async () => {
     if (loadingOlder || !hasMoreOlder) return;
     if (messages.length === 0) return;
     const oldest = messages[0]!;
-    pendingAnchor.current = msgScrollRef.current?.getBottomOffset() ?? 0;
     update({ loadingOlder: true });
     try {
       const older = await loadOlderMessages(channelName, oldest.created_at, 50);
       if (unmountedRef.current) return;
       if (older.length === 0) {
         update({ loadingOlder: false, hasMoreOlder: false });
-        pendingAnchor.current = null;
         return;
       }
       dispatch({ type: "PREPEND_CHANNEL_MESSAGES", messages: older });
       update({
         loadingOlder: false,
-        // If we got fewer than a full page, we've hit the start of history.
         hasMoreOlder: older.length >= 50,
       });
+      // No scroll anchoring — the user scrolled UP to see these messages,
+      // so let them naturally appear at the top of the viewport. The old
+      // anchor logic caused a flash (new content visible for one frame,
+      // then snapped away by the anchor adjustment).
     } catch {
       if (unmountedRef.current) return;
       update({ loadingOlder: false });
-      pendingAnchor.current = null;
     }
   };
-
-  // After a prepend, re-anchor the scroll position so the user stays put.
-  useEffect(() => {
-    if (pendingAnchor.current == null) return;
-    const t = setTimeout(() => {
-      const anchored = pendingAnchor.current;
-      pendingAnchor.current = null;
-      if (anchored == null) return;
-      const newBottom = msgScrollRef.current?.getBottomOffset() ?? 0;
-      const delta = newBottom - anchored;
-      // Move the viewport down by the height of the newly prepended block.
-      const target = Math.max(0, (msgScrollRef.current?.getScrollOffset() ?? 0) + delta);
-      msgScrollRef.current?.scrollTo(target);
-    }, 0);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages.length]);
 
   // Scroll to bottom when the last message changes (new message arrives).
   const lastMsgId = messages[messages.length - 1]?.id ?? null;
@@ -796,7 +777,8 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
       <Box flexDirection="column" width={paneWidth}>
         {loadingOlder && (
           <Box paddingX={1}>
-            <Text color={colors.muted}>⠋ loading older messages...</Text>
+            <Text color={colors.primary}><Spinner type="dots" /></Text>
+            <Text color={colors.muted}> loading older messages...</Text>
           </Box>
         )}
         {!loadingOlder && !hasMoreOlder && (
