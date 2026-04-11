@@ -311,6 +311,10 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
           // Wheel up
           msgScrollRef.current.scrollTo(Math.max(0, offset - 3));
           checkIfAtBottom();
+          // At the top? Merge prefetched older messages.
+          if (offset <= 3 && hasMoreOlder && prefetchBuf.current.length > 0) {
+            mergeOlder();
+          }
         } else if ((button & 0x43) === 0x41) {
           // Wheel down
           msgScrollRef.current.scrollTo(Math.min(bottom, offset + 3));
