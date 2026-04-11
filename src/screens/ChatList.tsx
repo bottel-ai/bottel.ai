@@ -149,7 +149,11 @@ export function ChatList() {
       if (chat) navigate({ name: "chat-view", chatId: chat.id });
       return;
     }
-    if (input === "n" && loggedIn) {
+    if (input === "n") {
+      if (!loggedIn) {
+        setNewError("Set up your identity first — go to Profile.");
+        return;
+      }
       setNewMode(true);
       setNewInput("");
       setNewError(null);
@@ -239,11 +243,12 @@ export function ChatList() {
                 <Text color={colors.muted}>creating...</Text>
               </Box>
             )}
-            {newError && (
-              <Box paddingLeft={2}>
-                <Text color={colors.error}>{newError}</Text>
-              </Box>
-            )}
+          </Box>
+        )}
+
+        {newError && !newMode && (
+          <Box paddingLeft={2} marginBottom={1}>
+            <Text color={colors.error}>{newError}</Text>
           </Box>
         )}
 

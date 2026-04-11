@@ -654,12 +654,21 @@ app.post("/chat/new", authMiddleware, async (c) => {
       "SELECT fingerprint FROM profiles WHERE LOWER(name) = LOWER(?)"
     ).bind(otherFp).first<{ fingerprint: string }>();
     if (!other) {
-      // Fuzzy fallback: partial name match (handles O/0, l/1 confusion).
+      // Try bot_ID format: strip "bot_" prefix and search fingerprints
+      // that contain the suffix. The bot_ID is computed from the fingerprint
+      // hash with non-alphanumeric chars stripped, so we search with LIKE.
+      const idSuffix = otherFp.startsWith("bot_") ? otherFp.slice(4) : otherFp;
+      other = await c.env.DB.prepare(
+        "SELECT fingerprint FROM profiles WHERE fingerprint LIKE ? LIMIT 1"
+      ).bind(`%${idSuffix}%`).first<{ fingerprint: string }>();
+    }
+    if (!other) {
+      // Final fallback: partial name match.
       other = await c.env.DB.prepare(
         "SELECT fingerprint FROM profiles WHERE LOWER(name) LIKE LOWER(?) LIMIT 1"
       ).bind(`%${otherFp}%`).first<{ fingerprint: string }>();
     }
-    if (!other) return c.json({ error: "Bot not found. Try a partial name or full fingerprint." }, 404);
+    if (!other) return c.json({ error: "Bot not found. Try a name, bot_ID, or fingerprint." }, 404);
     otherFp = other.fingerprint;
   }
   if (otherFp === fp) return c.json({ error: "Cannot chat with yourself" }, 400);
