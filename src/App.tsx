@@ -85,7 +85,7 @@ function Router() {
   const isHome = state.screen.name === "home";
   // channel-view is excluded: it uses a custom useInput handler (not ink-text-input)
   // and needs mouse tracking enabled for wheel scrolling.
-  const hasTextInput = ["search", "home", "auth", "channel-create", "profile-setup", "chat-list", "chat-view"].includes(state.screen.name);
+  const hasTextInput = ["search", "home", "auth", "channel-create", "profile-setup", "channel-list", "chat-list", "settings"].includes(state.screen.name);
 
   const termWidth = stdout?.columns ?? 80;
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
@@ -110,10 +110,11 @@ function Router() {
   //     snap back to the bottom right after fetching older messages.
   //   - everything else: scroll to top on screen change.
   const isChannelView = state.screen.name === "channel-view";
+  const isChatView = state.screen.name === "chat-view";
   const lastMessageId =
     state.channelView.messages[state.channelView.messages.length - 1]?.id ?? null;
   useEffect(() => {
-    if (isChannelView) {
+    if (isChannelView || isChatView) {
       // Defer one tick so ink has a chance to lay out the new content
       // before we measure the bottom offset.
       const t = setTimeout(() => {
@@ -123,7 +124,7 @@ function Router() {
       return () => clearTimeout(t);
     }
     scrollRef.current?.scrollToTop();
-  }, [state.screen.name, isChannelView, lastMessageId]);
+  }, [state.screen.name, isChannelView, isChatView, lastMessageId]);
 
   // Disable mouse tracking on text-input screens
   useEffect(() => {
@@ -131,10 +132,10 @@ function Router() {
     stdout.write(hasTextInput ? DISABLE_MOUSE : ENABLE_MOUSE);
   }, [hasTextInput, stdout]);
 
-  // Mouse wheel — scroll GLOBAL viewport (channel-view handles its own).
-  const isChannelViewScreen = state.screen.name === "channel-view";
+  // Mouse wheel — scroll GLOBAL viewport (channel-view and chat-view handle their own).
+  const isOwnScrollScreen = isChannelView || isChatView;
   useEffect(() => {
-    if (!stdin || hasTextInput || isChannelViewScreen) return;
+    if (!stdin || hasTextInput || isOwnScrollScreen) return;
     const onData = (data: Buffer) => {
       const str = data.toString();
       const matches = str.matchAll(/\x1b\[<(\d+);\d+;\d+[Mm]/g);
@@ -152,12 +153,12 @@ function Router() {
     };
     stdin.on("data", onData);
     return () => { stdin.off("data", onData); };
-  }, [stdin, hasTextInput, isChannelViewScreen]);
+  }, [stdin, hasTextInput, isOwnScrollScreen]);
 
-  // Arrow keys: scroll the GLOBAL viewport (not for channel-view, which
-  // has its own internal ScrollView and handles its own keys).
+  // Arrow keys: scroll the GLOBAL viewport (not for channel-view/chat-view,
+  // which have their own internal ScrollView and handle their own keys).
   useInput((_input, key) => {
-    if (state.screen.name === "channel-view") return;
+    if (isOwnScrollScreen) return;
     if (!scrollRef.current) return;
     const offset = scrollRef.current.getScrollOffset();
     const bottom = scrollRef.current.getBottomOffset();
@@ -169,13 +170,23 @@ function Router() {
 
   return (
     <Box flexDirection="column">
-      {/* Channel-view has its own scroll — render outside the global ScrollView */}
+      {/* Channel-view and chat-view have their own scroll — render outside the global ScrollView */}
       {state.screen.name === "channel-view" ? (
         <Box flexDirection="column" height={termHeight}>
           <SubPageHeader screen={state.screen} termWidth={termWidth} />
           <ChannelView
             key={`cv-${state.screen.channelName}`}
             channelName={state.screen.channelName}
+            termHeight={termHeight - 2}
+            termWidth={termWidth}
+          />
+        </Box>
+      ) : state.screen.name === "chat-view" ? (
+        <Box flexDirection="column" height={termHeight}>
+          <SubPageHeader screen={state.screen} termWidth={termWidth} />
+          <ChatView
+            key={`dv-${state.screen.chatId}`}
+            chatId={state.screen.chatId}
             termHeight={termHeight - 2}
             termWidth={termWidth}
           />
@@ -195,7 +206,7 @@ function Router() {
           {state.screen.name === "settings" && <Settings key="settings" />}
           {state.screen.name === "profile-setup" && <ProfileSetup key="profile-setup" />}
           {state.screen.name === "chat-list" && <ChatList key="chat-list" />}
-          {state.screen.name === "chat-view" && <ChatView key={`dv-${state.screen.chatId}`} chatId={state.screen.chatId} />}
+          {/* chat-view is rendered outside the global ScrollView above */}
         </ScrollView>
       )}
     </Box>

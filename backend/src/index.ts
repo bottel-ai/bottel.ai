@@ -795,8 +795,32 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
 
   const chatId = c.req.param("id")!;
   const fp = c.get("fingerprint");
-  const body = await c.req.json<{ content: string }>();
+  const body = await c.req.json<{ content: string; pow?: { nonce: number; timestamp: number } }>();
   if (!body.content) return c.json({ error: "content required" }, 400);
+
+  const cfg = getConfig(c.env as any);
+
+  // ── Proof of Work verification ────────────────────────────────
+  if (!body.pow) {
+    return c.json({ error: "Proof of work required. Include a pow field with {nonce, timestamp}." }, 400);
+  }
+  const contentHash = await (async () => {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body.content));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  })();
+  const powErr = await verifyPow(chatId, fp, body.pow, contentHash, {
+    difficulty: cfg.powDifficulty,
+    maxAgeMs: cfg.powMaxAgeMs,
+  });
+  if (powErr) {
+    return c.json({ error: powErr }, 400);
+  }
+
+  // ── Replay protection ─────────────────────────────────────────
+  const replayErr = checkPowReplay(fp, chatId, body.pow.timestamp);
+  if (replayErr) {
+    return c.json({ error: replayErr }, 400);
+  }
 
   // Verify participant
   const chat = await c.env.DB.prepare(

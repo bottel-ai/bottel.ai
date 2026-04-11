@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Text, useInput, useStdin } from "ink";
+import { Box, Text, useStdin } from "ink";
 import Spinner from "ink-spinner";
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import { useStore } from "../state.js";
@@ -10,6 +10,9 @@ import { getChannelKey, saveChannelKey, hasChannelKey } from "../lib/keys.js";
 import { minePow } from "../lib/pow.js";
 import { colors } from "../theme.js";
 import { MessageRenderer, formatPayload } from "../components/MessageRenderer.js";
+import { useReplyInput, unescapeInput, ReplyBox } from "../components/ReplyBox.js";
+import { useWebSocket } from "../components/useWebSocket.js";
+import { StatusBar } from "../components/StatusBar.js";
 
 // ─── Props ──────────────────────────────────────────────────────
 
@@ -62,17 +65,6 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   >([]);
   const [pendingIdx, setPendingIdx] = useState(0);
   const [showPending, setShowPending] = useState(false);
-  // When the user pastes multi-line content into the single-line reply
-  // field we show a "[Pasted text with N lines]" placeholder in the field
-  // and stash the real content here. handleSubmit reads from this ref so
-  // the original multi-line body actually goes on the wire.
-  const pastedRef = useRef<string | null>(null);
-
-  const pastePlaceholder = (n: number) =>
-    `[Pasted text with ${n} line${n === 1 ? "" : "s"}]`;
-
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unmountedRef = useRef(false);
 
   const auth = getAuth();
@@ -179,11 +171,6 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
 
     return () => {
       unmountedRef.current = true;
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      try {
-        wsRef.current?.close();
-      } catch {}
-      wsRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelName]);
@@ -326,90 +313,33 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
     return () => { stdin.off("data", onData); };
   }, [stdin]);
 
-  // ─── WebSocket lifecycle ───────────────────────────────────
+  // ─── WebSocket (shared hook) ───────────────────────────────
 
-  useEffect(() => {
-    if (!loggedIn || !selfFp) return;
+  useWebSocket({
+    id: channelName,
+    enabled: loggedIn && !!selfFp,
+    createWs: () => openChannelWs(channelName, selfFp),
+    onOpen: () => update({ wsConnected: true }),
+    onClose: () => update({ wsConnected: false }),
+    onMessage: (raw) => {
+      const data = JSON.parse(raw);
 
-    let cancelled = false;
-
-    const connect = () => {
-      if (cancelled || unmountedRef.current) return;
-      let ws: WebSocket;
-      try {
-        ws = openChannelWs(channelName, selfFp);
-      } catch {
-        scheduleReconnect();
+      // Live presence update — DO broadcasts these on every join/leave.
+      if (data?.type === "presence" && typeof data.subscribers === "number") {
+        setChannel((prev) =>
+          prev ? { ...prev, subscriber_count: data.subscribers } : prev
+        );
         return;
       }
-      wsRef.current = ws;
 
-      ws.addEventListener("open", () => {
-        if (unmountedRef.current) return;
-        update({ wsConnected: true });
-      });
-
-      ws.addEventListener("message", (ev: MessageEvent) => {
-        if (unmountedRef.current) return;
-        try {
-          const data = JSON.parse(String(ev.data));
-
-          // Live presence update — DO broadcasts these on every join/leave.
-          if (data?.type === "presence" && typeof data.subscribers === "number") {
-            setChannel((prev) =>
-              prev ? { ...prev, subscriber_count: data.subscribers } : prev
-            );
-            return;
-          }
-
-          // Support either {message: ChannelMessage} or ChannelMessage directly
-          const incoming: ChannelMessage | null = data?.message
-            ? data.message
-            : data?.id && data?.author
-              ? data
-              : null;
-          if (!incoming) return;
-          // Use atomic dispatch — handler closures over a stale `state` would
-          // otherwise overwrite messages loaded after the WS opened.
-          dispatch({ type: "APPEND_CHANNEL_MESSAGE", message: incoming });
-        } catch {
-          /* ignore */
-        }
-      });
-
-      ws.addEventListener("close", () => {
-        if (unmountedRef.current) return;
-        update({ wsConnected: false });
-        scheduleReconnect();
-      });
-
-      ws.addEventListener("error", () => {
-        try {
-          ws.close();
-        } catch {}
-      });
-    };
-
-    const scheduleReconnect = () => {
-      if (unmountedRef.current || cancelled) return;
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      reconnectTimer.current = setTimeout(() => {
-        connect();
-      }, 3000);
-    };
-
-    connect();
-
-    return () => {
-      cancelled = true;
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      try {
-        wsRef.current?.close();
-      } catch {}
-      wsRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelName, loggedIn, selfFp]);
+      const incoming: ChannelMessage | null = data?.message
+        ? data.message
+        : data?.id && data?.author
+          ? data
+          : null;
+      if (incoming) dispatch({ type: "APPEND_CHANNEL_MESSAGE", message: incoming });
+    },
+  });
 
   // ─── Input handling ────────────────────────────────────────
   //
@@ -425,29 +355,14 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   // dropped chars. The React `input` slice is just a mirror of the
   // ref so the renderer can re-render when needed.
 
-  const inputBufRef = useRef<string>("");
-  // Keep the ref in sync if the store's input value is reset elsewhere
-  // (e.g. handleSubmit setting it to "").
-  if (inputBufRef.current !== input && pastedRef.current == null) {
-    // Only sync from store → ref when there's no pending paste, so the
-    // store can clear the field after publish.
-    if (input === "") inputBufRef.current = "";
-  }
-
-  const flushInputToStore = () => {
-    update({ input: inputBufRef.current });
-  };
-
   const handleJoin = async () => {
     if (!loggedIn || !selfFp) return;
     try {
       const { status } = await joinChannel(selfFp, channelName);
       setJoinState(status === "pending" ? "pending" : true);
       setShowJoinPrompt(false);
-      // Refresh channel to get updated subscriber_count.
       const result = await getChannel(channelName);
       if (result) setChannel(result.channel);
-      // For private channels, try to fetch the encryption key after approval.
       if (status !== "pending" && channel && !channel.is_public) {
         fetchChannelKey(selfFp, channelName)
           .then((key) => {
@@ -463,171 +378,19 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
     }
   };
 
-  useInput((char, key) => {
-    // Filter out SGR mouse escape sequences — they leak through useInput
-    // as raw chars when mouse tracking is enabled. ink may strip the ESC
-    // prefix, leaving just "[<NN;NN;NNM" or the full "\x1b[<..." form.
-    if (char && /\[<\d+;\d+;\d+[Mm]/.test(char)) return;
+  // ─── Submit handler ───────────────────────────────────────
 
-    // Pending requests panel: arrow keys to navigate, Enter to approve, Esc to dismiss.
-    if (showPending && pendingRequests.length > 0) {
-      if (key.upArrow) {
-        setPendingIdx((i) => Math.max(0, i - 1));
-        return;
-      }
-      if (key.downArrow) {
-        setPendingIdx((i) => Math.min(pendingRequests.length - 1, i + 1));
-        return;
-      }
-      if (key.return) {
-        const req = pendingRequests[pendingIdx];
-        if (req && selfFp) {
-          approveFollower(selfFp, channelName, req.follower)
-            .then(() => {
-              setPendingRequests((prev) => {
-                const next = prev.filter((_, i) => i !== pendingIdx);
-                if (next.length === 0) setShowPending(false);
-                return next;
-              });
-              setPendingIdx((i) => Math.max(0, i - 1));
-              // Refresh channel to update member count.
-              getChannel(channelName).then((r) => r && setChannel(r.channel)).catch(() => {});
-            })
-            .catch(() => {});
-        }
-        return;
-      }
-      if (key.escape) {
-        setShowPending(false);
-        return;
-      }
-      return;
-    }
-
-    // Join prompt intercept: y = join, n/Esc = dismiss.
-    if (showJoinPrompt) {
-      if (char === "y" || char === "Y") {
-        void handleJoin();
-        return;
-      }
-      if (char === "n" || char === "N" || key.escape) {
-        setShowJoinPrompt(false);
-        return;
-      }
-      return; // swallow all other keys while the prompt is showing
-    }
-
-    if (key.escape) {
-      if (!inputBufRef.current && pastedRef.current == null) {
-        goBack();
-      } else {
-        inputBufRef.current = "";
-        pastedRef.current = null;
-        flushInputToStore();
-      }
-      return;
-    }
-
-    // Scroll-up-to-load-more: when at the top, merge the prefetched
-    // buffer instantly. If the buffer is empty and there's more history,
-    // fall back to a live fetch.
-    if ((key.upArrow || key.pageUp) && hasMoreOlder) {
-      if ((msgScrollRef.current?.getScrollOffset() ?? 0) <= 0) {
-        if (prefetchBuf.current.length > 0) {
-          mergeOlder();
-        }
-        // If buffer is empty and we're not already prefetching, the user
-        // hit the top before prefetch finished. Just let them scroll up
-        // normally — the next prefetch will fill the buffer.
-        return;
-      }
-    }
-    // Up/Down/PageUp/PageDown: scroll the internal messages ScrollView.
-    if (key.upArrow) { msgScrollRef.current?.scrollBy(-1); checkIfAtBottom(); return; }
-    if (key.downArrow) { msgScrollRef.current?.scrollBy(1); checkIfAtBottom(); return; }
-    if (key.pageUp) { msgScrollRef.current?.scrollBy(-10); checkIfAtBottom(); return; }
-    if (key.pageDown) { msgScrollRef.current?.scrollBy(10); checkIfAtBottom(); return; }
-
-    // g = jump to bottom (latest messages) and clear the new-message counter.
-    if ((char === "g" || char === "G") && !inputBufRef.current && newMsgCount > 0) {
-      jumpToBottom();
-      return;
-    }
-
-    if (key.return) {
-      void handleSubmit();
-      return;
-    }
-
-    if (key.backspace || key.delete) {
-      if (pastedRef.current != null) {
-        // Backspacing while a paste is pending discards it.
-        pastedRef.current = null;
-        inputBufRef.current = "";
-      } else {
-        inputBufRef.current = inputBufRef.current.slice(0, -1);
-      }
-      flushInputToStore();
-      return;
-    }
-
-    if (!char) return;
-
-    // Multi-char input with CR/LF = paste of multi-line content. A bare
-    // single-char "\n" is treated as Enter (and would normally arrive
-    // via key.return anyway).
-    if (char.length > 1 && /[\r\n]/.test(char)) {
-      const normalized = char.replace(/\r\n?/g, "\n");
-      const n = normalized.split("\n").length;
-      pastedRef.current = normalized;
-      inputBufRef.current = pastePlaceholder(n);
-      flushInputToStore();
-      return;
-    }
-    if (char === "\n" || char === "\r") {
-      void handleSubmit();
-      return;
-    }
-
-    // Typing while a paste is pending discards the paste and starts fresh.
-    if (pastedRef.current != null) {
-      pastedRef.current = null;
-      inputBufRef.current = char.replace(/\t/g, " ");
-      flushInputToStore();
-      return;
-    }
-
-    // Normal append. Tabs are flattened so they can't mangle column math.
-    inputBufRef.current += char.replace(/\t/g, " ");
-    flushInputToStore();
-  });
-
-  const handleSubmit = async () => {
-    if (submitting) return; // block double-submit while POW is mining
-    const pasted = pastedRef.current;
-    const trimmed = pasted != null ? pasted : input.trim();
-    if (!trimmed || !loggedIn || !selfFp) return;
+  const handleSubmit = async (text: string, pasted: string | null) => {
+    if (submitting || !loggedIn || !selfFp) return;
     setSendError(null);
     setSubmitting(true);
 
-    // Unescape literal `\n` (and `\\` to escape the escape) so users can
-    // compose multi-line text in the single-line input by typing
-    // "line1\nline2". Pasted bodies already contain real newlines, so
-    // skip the unescape step for them.
-    const unescaped =
-      pasted != null
-        ? pasted
-        : trimmed
-            .replace(/\\\\/g, "\u0000")
-            .replace(/\\n/g, "\n")
-            .replace(/\u0000/g, "\\");
+    const unescaped = unescapeInput(text, pasted);
 
-    // Try to parse as JSON object; otherwise wrap as text. JSON parsing
-    // uses the original (escaped) string so a JSON payload like
-    // {"type":"text","text":"a\nb"} still parses cleanly.
+    // Try to parse as JSON object; otherwise wrap as text.
     let payload: any;
     try {
-      const parsed = JSON.parse(trimmed);
+      const parsed = JSON.parse(text);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         payload = parsed;
       } else {
@@ -640,18 +403,14 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
     const serialized = JSON.stringify(payload);
     if (Buffer.byteLength(serialized, "utf8") > 4096) {
       setSendError("payload too large (>4096 bytes)");
+      setSubmitting(false);
       return;
     }
 
     try {
-      // minePow is async — it yields the event loop every 4096 hashes
-      // so the spinner animation stays smooth during mining.
       const pow = await minePow(channelName, selfFp, payload);
       await publishMessage(selfFp, channelName, payload, undefined, pow);
       update({ input: "" });
-      pastedRef.current = null;
-      // Jump to bottom so the user sees their own message immediately,
-      // even if they were scrolled up reading history.
       jumpToBottom();
     } catch (err: any) {
       const msg = String(err?.message || err);
@@ -664,6 +423,70 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
       setSubmitting(false);
     }
   };
+
+  // ─── Input handling (shared hook) ─────────────────────────
+
+  const { inputBufRef } = useReplyInput({
+    input,
+    flushInput: (value) => update({ input: value }),
+    onSubmit: handleSubmit,
+    onEscape: goBack,
+    onKeyBefore: (char, key) => {
+      // Pending requests panel
+      if (showPending && pendingRequests.length > 0) {
+        if (key.upArrow) { setPendingIdx((i: number) => Math.max(0, i - 1)); return true; }
+        if (key.downArrow) { setPendingIdx((i: number) => Math.min(pendingRequests.length - 1, i + 1)); return true; }
+        if (key.return) {
+          const req = pendingRequests[pendingIdx];
+          if (req && selfFp) {
+            approveFollower(selfFp, channelName, req.follower)
+              .then(() => {
+                setPendingRequests((prev) => {
+                  const next = prev.filter((_: any, i: number) => i !== pendingIdx);
+                  if (next.length === 0) setShowPending(false);
+                  return next;
+                });
+                setPendingIdx((i: number) => Math.max(0, i - 1));
+                getChannel(channelName).then((r) => r && setChannel(r.channel)).catch(() => {});
+              })
+              .catch(() => {});
+          }
+          return true;
+        }
+        if (key.escape) { setShowPending(false); return true; }
+        return true; // swallow all keys while panel is open
+      }
+
+      // Join prompt
+      if (showJoinPrompt) {
+        if (char === "y" || char === "Y") { void handleJoin(); return true; }
+        if (char === "n" || char === "N" || key.escape) { setShowJoinPrompt(false); return true; }
+        return true;
+      }
+
+      // Scroll-up-to-load-more
+      if ((key.upArrow || key.pageUp) && hasMoreOlder) {
+        if ((msgScrollRef.current?.getScrollOffset() ?? 0) <= 0) {
+          if (prefetchBuf.current.length > 0) mergeOlder();
+          return true;
+        }
+      }
+
+      // Scroll
+      if (key.upArrow) { msgScrollRef.current?.scrollBy(-1); checkIfAtBottom(); return true; }
+      if (key.downArrow) { msgScrollRef.current?.scrollBy(1); checkIfAtBottom(); return true; }
+      if (key.pageUp) { msgScrollRef.current?.scrollBy(-10); checkIfAtBottom(); return true; }
+      if (key.pageDown) { msgScrollRef.current?.scrollBy(10); checkIfAtBottom(); return true; }
+
+      // g = jump to bottom
+      if ((char === "g" || char === "G") && !inputBufRef.current && newMsgCount > 0) {
+        jumpToBottom();
+        return true;
+      }
+
+      return false;
+    },
+  });
 
   // ─── Rendering ─────────────────────────────────────────────
 
@@ -763,59 +586,6 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
     );
   };
 
-  const renderInput = () => {
-    if (!loggedIn) {
-      return (
-        <Box
-          borderStyle="round"
-          borderColor={colors.warning}
-          paddingX={2}
-          width={paneWidth}
-        >
-          <Text color={colors.warning}>
-            ⚠ generate a key in Profile to publish
-          </Text>
-        </Box>
-      );
-    }
-    return (
-      <Box flexDirection="column" width={paneWidth}>
-        <Box
-          borderStyle="round"
-          borderColor={submitting ? colors.muted : colors.primary}
-          paddingX={2}
-          width={paneWidth}
-        >
-          {submitting ? (
-            <Box>
-              <Text color={colors.primary}><Spinner type="dots" /></Text>
-              <Text color={colors.muted}> sending...</Text>
-            </Box>
-          ) : (
-            <>
-              <Text color={colors.primary} bold>{"❯   "}</Text>
-              {input.length > 0 ? (
-                <>
-                  <Text>{input}</Text>
-                  <Text color={colors.primary}>{"▏"}</Text>
-                </>
-              ) : (
-                <Text color={colors.subtle}>
-                  Reply on b/channel...   (use \n for newline, or paste)
-                </Text>
-              )}
-            </>
-          )}
-        </Box>
-        {sendError && (
-          <Box paddingX={1}>
-            <Text color={colors.error}>{sendError}</Text>
-          </Box>
-        )}
-      </Box>
-    );
-  };
-
   // Dynamic scroll height: subtract all fixed chrome + conditional notices.
   let chromeLines = 3 + 3 + 1 + 5; // header + input + footer + margins
   if (showJoinPrompt) chromeLines += 3;
@@ -824,13 +594,6 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   if (channel && !channel.is_public) chromeLines += 1;
   if (newMsgCount > 0) chromeLines += 1;
   const scrollHeight = Math.max(5, termHeight - chromeLines);
-
-  const statusDot = wsConnected ? (
-    <Text color={colors.success}>●</Text>
-  ) : (
-    <Text color={colors.subtle}>○</Text>
-  );
-  const statusLabel = wsConnected ? "live" : "offline";
 
   const joinLabel = joinState === true
     ? "joined"
@@ -908,7 +671,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
       {/* Private channel encryption notice */}
       {channel && !channel.is_public && (
         <Box paddingX={2} marginTop={1}>
-          <Text color={colors.muted}>{"\u{1F512}"} This is a private channel. Messages are encrypted.</Text>
+          <Text color={colors.muted}>{"\u{1F512}"} Private · encrypted · approved members only</Text>
         </Box>
       )}
 
@@ -930,20 +693,26 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
       )}
 
       <Box marginTop={1} flexDirection="column">
-        {renderInput()}
+        <ReplyBox
+          input={input}
+          submitting={submitting}
+          loggedIn={loggedIn}
+          paneWidth={paneWidth}
+          sendError={sendError}
+          placeholder={`Reply on b/${channelName}...   (use \\n for newline, or paste)`}
+          notLoggedInText="generate a key in Profile to publish"
+          showSpinner={true}
+        />
       </Box>
-      <Box marginTop={1} justifyContent="space-between" paddingX={1}>
-        <Box>
-          {statusDot}
-          <Text color={colors.subtle}>
-            {" " + statusLabel}
-            {channel ? `  ·  ${channel.subscriber_count} member${channel.subscriber_count === 1 ? "" : "s"}` : ""}
-            {channel && !channel.is_public ? "  ·  encrypted" : ""}
-            {joinLabel ? `  ·  ${joinLabel}` : ""}
-          </Text>
-        </Box>
-        <Text color={colors.subtle}>Enter to publish  ·  Esc to leave</Text>
-      </Box>
+      <StatusBar
+        connected={wsConnected}
+        extra={[
+          channel ? `${channel.subscriber_count} member${channel.subscriber_count === 1 ? "" : "s"}` : "",
+          channel && !channel.is_public ? "encrypted" : "",
+          joinLabel,
+        ].filter(Boolean).join("  ·  ")}
+        hint="Enter to publish  ·  Esc to leave"
+      />
     </Box>
   );
 }

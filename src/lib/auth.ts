@@ -88,13 +88,6 @@ export function clearAuth(): void {
   config.set("auth", null);
 }
 
-/** Get a short fingerprint for display (first 16 chars of the hash). */
-export function getShortFingerprint(): string {
-  const auth = getAuth();
-  if (!auth) return "not logged in";
-  const hash = auth.fingerprint.replace("SHA256:", "");
-  return hash.substring(0, 12);
-}
 
 /** Import a private key from a base64-encoded PKCS8 DER string. */
 export function importPrivateKey(privateKeyBase64: string): AuthData {

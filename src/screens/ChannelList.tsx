@@ -7,31 +7,7 @@ import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { removeChannelKey } from "../lib/keys.js";
 import { colors } from "../theme.js";
 import { Cursor, HelpFooter } from "../components.js";
-
-// ─── Helpers ────────────────────────────────────────────────────
-
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "";
-  const diffMs = Date.now() - then;
-  const s = Math.max(0, Math.floor(diffMs / 1000));
-  if (s < 45) return "just now";
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d}d ago`;
-  const mo = Math.floor(d / 30);
-  if (mo < 12) return `${mo}mo ago`;
-  const y = Math.floor(mo / 12);
-  return `${y}y ago`;
-}
-
-function truncate(s: string, len: number): string {
-  if (!s) return "";
-  return s.length > len ? s.slice(0, Math.max(0, len - 1)) + "…" : s;
-}
+import { relativeTime, truncate } from "../lib/formatting.js";
 
 // ─── Screen ─────────────────────────────────────────────────────
 
@@ -39,6 +15,7 @@ export function ChannelList() {
   const { state, dispatch, navigate, goBack } = useStore();
   const { channels, selectedIndex, loading, sort } = state.channelList;
   const [confirmLeave, setConfirmLeave] = useState<string | null>(null); // channel name or null
+  const [flash, setFlash] = useState<string | null>(null);
   const auth = getAuth();
   const selfFp = auth?.fingerprint ?? "";
   const { stdout } = useStdout();
@@ -50,11 +27,17 @@ export function ChannelList() {
   const update = (s: Partial<Slice> | ((cur: Slice) => Partial<Slice>)) =>
     dispatch({ type: "UPDATE_CHANNEL_LIST", state: s });
 
-  const fetchChannels = (s: "messages" | "recent") => {
+  const fetchChannels = (s: "messages" | "recent", resetIndex = false) => {
     update({ loading: true });
     listChannels({ sort: s })
-      .then((cs) => update({ channels: cs, loading: false, selectedIndex: 0 }))
-      .catch(() => update({ channels: [], loading: false }));
+      .then((cs) =>
+        update((cur) => ({
+          channels: cs,
+          loading: false,
+          selectedIndex: resetIndex ? 0 : Math.min(cur.selectedIndex, Math.max(0, cs.length - 1)),
+        }))
+      )
+      .catch(() => update({ channels: [], loading: false, selectedIndex: 0 }));
   };
 
   useEffect(() => {
@@ -117,7 +100,7 @@ export function ChannelList() {
       const next: "messages" | "recent" =
         sort === "messages" ? "recent" : "messages";
       update({ sort: next });
-      fetchChannels(next);
+      fetchChannels(next, true);
       return;
     }
     if (input === "c") {
@@ -130,12 +113,26 @@ export function ChannelList() {
     }
     if (input === "l" && isLoggedIn()) {
       const ch = channels[selectedIndex];
-      if (ch && ch.created_by !== selfFp) setConfirmLeave(ch.name);
+      if (ch) {
+        if (ch.created_by === selfFp) {
+          setFlash("Can't leave your own channel — use d to delete it.");
+          setTimeout(() => setFlash(null), 3000);
+        } else {
+          setConfirmLeave(ch.name);
+        }
+      }
       return;
     }
     if (input === "d" && isLoggedIn()) {
       const ch = channels[selectedIndex];
-      if (ch && ch.created_by === selfFp) setConfirmLeave(`delete:${ch.name}`);
+      if (ch) {
+        if (ch.created_by !== selfFp) {
+          setFlash("Can't delete someone else's channel — use l to leave it.");
+          setTimeout(() => setFlash(null), 3000);
+        } else {
+          setConfirmLeave(`delete:${ch.name}`);
+        }
+      }
       return;
     }
   });
@@ -189,6 +186,11 @@ export function ChannelList() {
             <Text color={colors.muted}> yes  </Text>
             <Text bold color={colors.success}>n</Text>
             <Text color={colors.muted}> no</Text>
+          </Box>
+        )}
+        {active && flash && (
+          <Box paddingLeft={3}>
+            <Text color={colors.warning}>{flash}</Text>
           </Box>
         )}
       </Box>

@@ -8,7 +8,8 @@
 import React, { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import { colors } from "./theme.js";
-import { isLoggedIn, getShortFingerprint } from "./lib/auth.js";
+import { isLoggedIn, getAuth } from "./lib/auth.js";
+import { shortFp } from "./components/MessageRenderer.js";
 import { getStats } from "./lib/api.js";
 
 export {
@@ -121,7 +122,7 @@ export function Logo() {
     <Box flexDirection="column" paddingBottom={1}>
       <Box justifyContent="flex-end" paddingX={1}>
         {loggedIn ? (
-          <Text color={colors.success}>● {getShortFingerprint()}</Text>
+          <Text color={colors.success}>● {shortFp(getAuth()!.fingerprint)}</Text>
         ) : (
           <Text color={colors.muted}>○ not logged in</Text>
         )}

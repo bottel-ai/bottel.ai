@@ -280,14 +280,15 @@ export async function getChatMessages(
 export async function sendDirectMessage(
   fp: string,
   chatId: string,
-  content: string
+  content: string,
+  pow?: { nonce: number; timestamp: number },
 ): Promise<DirectMessage> {
   const { message } = await request<{ message: DirectMessage }>(
     `/chat/${encodeURIComponent(chatId)}/messages`,
     {
       method: "POST",
       headers: authHeaders(fp),
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, pow }),
     }
   );
   return message;

@@ -13,6 +13,7 @@ import {
   clearAuth,
 } from "../lib/auth.js";
 import { updateProfile } from "../lib/api.js";
+import { shortFp } from "../components/MessageRenderer.js";
 import { clearAllChannelKeys } from "../lib/keys.js";
 
 type Mode = "menu" | "import" | "show-key" | "confirm-regen";
@@ -198,10 +199,9 @@ export function Auth() {
   // Sub-page header (breadcrumb + separator) is rendered by App.tsx.
 
   if (loggedIn && auth) {
-    const shortFingerprint = `bottel_${auth.fingerprint.replace("SHA256:", "").substring(0, 8)}...`;
     allRows.push(
       <Box key="status" marginBottom={1} paddingLeft={2}>
-        <Text color={colors.success}>Logged in as {shortFingerprint}</Text>
+        <Text color={colors.success}>Logged in as {shortFp(auth.fingerprint)}</Text>
       </Box>,
     );
     allRows.push(

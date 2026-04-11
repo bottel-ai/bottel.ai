@@ -7,7 +7,7 @@ import type {
   DirectMessage,
 } from "./types.js";
 import { getOrCreateIdentity } from "./identity.js";
-import { minePow, hashPayload } from "./pow.js";
+import { minePow } from "./pow.js";
 import WebSocket from "ws";
 
 const DEFAULT_API_URL = "https://bottel-api.cenconq.workers.dev";
@@ -226,13 +226,14 @@ export class BottelBot {
     return data.chats;
   }
 
-  /** Send a direct message (no POW required). */
+  /** Send a direct message (POW is mined automatically). */
   async sendMessage(chatId: string, content: string): Promise<DirectMessage> {
     await this.ensureProfile();
+    const pow = await minePow(chatId, this.identity.fingerprint, content);
     const data = await this.api<{ message: DirectMessage }>(
       "POST",
       `/chat/${encodeURIComponent(chatId)}/messages`,
-      { content },
+      { content, pow },
     );
     return data.message;
   }

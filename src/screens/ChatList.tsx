@@ -7,31 +7,7 @@ import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { colors } from "../theme.js";
 import { Cursor, HelpFooter } from "../components.js";
 import { shortFp } from "../components/MessageRenderer.js";
-
-// ─── Helpers ────────────────────────────────────────────────────
-
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "";
-  const diffMs = Date.now() - then;
-  const s = Math.max(0, Math.floor(diffMs / 1000));
-  if (s < 45) return "just now";
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d}d ago`;
-  const mo = Math.floor(d / 30);
-  if (mo < 12) return `${mo}mo ago`;
-  const y = Math.floor(mo / 12);
-  return `${y}y ago`;
-}
-
-function truncate(s: string, len: number): string {
-  if (!s) return "";
-  return s.length > len ? s.slice(0, Math.max(0, len - 1)) + "\u2026" : s;
-}
+import { relativeTime, truncate } from "../lib/formatting.js";
 
 // ─── Screen ─────────────────────────────────────────────────────
 
@@ -39,6 +15,7 @@ export function ChatList() {
   const { state, dispatch, navigate, goBack } = useStore();
   const { chats, selectedIndex, loading } = state.chatList;
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
   const [newMode, setNewMode] = useState(false);
   const [newInput, setNewInput] = useState("");
   const [newError, setNewError] = useState<string | null>(null);
@@ -57,12 +34,18 @@ export function ChatList() {
   const update = (s: Partial<Slice> | ((cur: Slice) => Partial<Slice>)) =>
     dispatch({ type: "UPDATE_CHAT_LIST", state: s });
 
-  const fetchChats = () => {
+  const fetchChats = (resetIndex = false) => {
     if (!loggedIn || !selfFp) return;
     update({ loading: true });
     listChats(selfFp)
-      .then((cs) => update({ chats: cs, loading: false, selectedIndex: 0 }))
-      .catch(() => update({ chats: [], loading: false }));
+      .then((cs) =>
+        update((cur) => ({
+          chats: cs,
+          loading: false,
+          selectedIndex: resetIndex ? 0 : Math.min(cur.selectedIndex, Math.max(0, cs.length - 1)),
+        }))
+      )
+      .catch(() => update({ chats: [], loading: false, selectedIndex: 0 }));
   };
 
   useEffect(() => {
@@ -178,7 +161,7 @@ export function ChatList() {
       if (chat) navigate({ name: "chat-view", chatId: chat.id });
       return;
     }
-    if (input === "n") {
+    if (input === "c") {
       if (!loggedIn) {
         setNewError("Set up your identity first — go to Profile.");
         return;
@@ -194,8 +177,13 @@ export function ChatList() {
     }
     if (input === "d" && loggedIn) {
       const chat = chats[selectedIndex];
-      if (chat && chat.created_by === selfFp) {
-        setConfirmDelete(chat.id);
+      if (chat) {
+        if (chat.created_by !== selfFp) {
+          setFlash("Can't delete — only the chat creator can delete it.");
+          setTimeout(() => setFlash(null), 3000);
+        } else {
+          setConfirmDelete(chat.id);
+        }
       }
       return;
     }
@@ -205,7 +193,7 @@ export function ChatList() {
     const active = i === selectedIndex;
     const id = shortFp(chat.other_fp);
     const name = chat.other_name ? `${chat.other_name} (${id})` : id;
-    const preview = chat.last_message ? truncate(chat.last_message, innerWidth - 20) : "";
+    const preview = chat.last_message ? truncate(chat.last_message, innerWidth - 6) : "";
     const rel = chat.last_message_at ? relativeTime(chat.last_message_at) : "";
     const isOwner = chat.created_by === selfFp;
     const showDelete = confirmDelete === chat.id;
@@ -217,13 +205,20 @@ export function ChatList() {
           <Text bold color={active ? colors.primary : undefined}>
             {name}
           </Text>
+          {isOwner && active && (
+            <Text color={colors.subtle}>  (yours)</Text>
+          )}
         </Box>
-        {preview && (
-          <Box paddingLeft={3} justifyContent="space-between" width={innerWidth - 4}>
-            <Text color={colors.muted}>{preview}</Text>
-            {rel && <Text color={colors.subtle}>{rel}</Text>}
-          </Box>
-        )}
+        <Box paddingLeft={3}>
+          <Text color={colors.muted}>
+            {preview || "no messages yet"}
+          </Text>
+        </Box>
+        <Box paddingLeft={3}>
+          <Text color={colors.subtle}>
+            direct message{rel ? `   · ${rel}` : ""}
+          </Text>
+        </Box>
         {showDelete && (
           <Box paddingLeft={3}>
             <Text color={colors.error}>
@@ -232,6 +227,11 @@ export function ChatList() {
             <Text color={colors.muted}> yes  </Text>
             <Text bold color={colors.success}>n</Text>
             <Text color={colors.muted}> no</Text>
+          </Box>
+        )}
+        {active && flash && (
+          <Box paddingLeft={3}>
+            <Text color={colors.warning}>{flash}</Text>
           </Box>
         )}
       </Box>
@@ -252,6 +252,9 @@ export function ChatList() {
           <Text bold color={colors.primary}>
             Direct Messages
           </Text>
+          {loggedIn && !loading && chats.length > 0 && (
+            <Text color={colors.subtle}>{chats.length} chat{chats.length === 1 ? "" : "s"}</Text>
+          )}
         </Box>
 
         {newMode && (
@@ -308,14 +311,14 @@ export function ChatList() {
         {!loggedIn && (
           <Box flexDirection="column" alignItems="center" paddingY={1}>
             <Text color={colors.warning}>
-              Set up your identity first -- go to Profile from the home menu.
+              Set up your identity first — go to Profile from the home menu.
             </Text>
           </Box>
         )}
 
         {loggedIn && loading && (
           <Box>
-            <Text color={colors.muted}>loading chats...</Text>
+            <Text color={colors.muted}>⠋ loading chats...</Text>
           </Box>
         )}
 
@@ -341,7 +344,7 @@ export function ChatList() {
         )}
       </Box>
 
-      <HelpFooter text="n new chat · r refresh · d delete (own) · ↑↓ nav · Enter open · Esc back" />
+      <HelpFooter text="c create · r refresh · d delete (own) · ↑↓ nav · Enter open · Esc back" />
     </Box>
   );
 }

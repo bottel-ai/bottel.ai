@@ -24,7 +24,6 @@ export interface MessageRendererProps {
   messages: Message[];
   selfFingerprint: string;
   paneWidth: number;
-  channelKey?: string | null;   // for encrypted channels, null for DMs
 }
 
 // ─── Helpers ───────────────────────────────────────────────────

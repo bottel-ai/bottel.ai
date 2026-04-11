@@ -1,50 +1,37 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
+import { Box, Text, useStdin } from "ink";
+import Spinner from "ink-spinner";
+import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import { useStore } from "../state.js";
 import type { DirectMessage } from "../state.js";
 import { getChatMessages, sendDirectMessage, openChatWs } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
+import { minePow } from "../lib/pow.js";
 import { colors } from "../theme.js";
-import { HelpFooter } from "../components.js";
-import { hhmm, shortFp, displayName as displayNameBase, sanitizeBody } from "../components/MessageRenderer.js";
-
-function displayName(msg: DirectMessage): string {
-  return displayNameBase({ author: msg.sender, author_name: msg.sender_name ?? undefined });
-}
-
-function sameGroup(a: DirectMessage, b: DirectMessage): boolean {
-  if (a.sender !== b.sender) return false;
-  const ta = new Date(a.created_at).getTime();
-  const tb = new Date(b.created_at).getTime();
-  if (Number.isNaN(ta) || Number.isNaN(tb)) return false;
-  return Math.abs(tb - ta) <= 60_000;
-}
+import { MessageRenderer, sanitizeBody } from "../components/MessageRenderer.js";
+import { useReplyInput, unescapeInput, ReplyBox } from "../components/ReplyBox.js";
+import { useWebSocket } from "../components/useWebSocket.js";
+import { StatusBar } from "../components/StatusBar.js";
 
 // ─── Props ──────────────────────────────────────────────────────
 
 interface ChatViewProps {
   chatId: string;
+  termHeight: number;
+  termWidth: number;
 }
 
-export function ChatView({ chatId }: ChatViewProps) {
+export function ChatView({ chatId, termHeight, termWidth }: ChatViewProps) {
   const { state, dispatch, goBack } = useStore();
   const { messages, input, loading, wsConnected } = state.chatView;
-  const { stdout } = useStdout();
-  const termWidth = stdout?.columns ?? 80;
   const paneWidth = Math.max(50, termWidth - 2);
+
+  // Internal ScrollView ref for the messages area.
+  const msgScrollRef = useRef<ScrollViewRef>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const unmountedRef = useRef(false);
-
-  // Paste support — same pattern as ChannelView
-  const pastedRef = useRef<string | null>(null);
-  const pastePlaceholder = (n: number) =>
-    `[Pasted text with ${n} line${n === 1 ? "" : "s"}]`;
 
   const auth = getAuth();
   const loggedIn = isLoggedIn();
@@ -54,6 +41,8 @@ export function ChatView({ chatId }: ChatViewProps) {
     dispatch({ type: "UPDATE_CHAT_VIEW", state: s });
 
   // ─── Fetch messages on mount ────────────────────────────────
+
+  const unmountedRef = useRef(false);
 
   useEffect(() => {
     unmountedRef.current = false;
@@ -74,189 +63,81 @@ export function ChatView({ chatId }: ChatViewProps) {
         update({ loading: false });
       });
 
-    return () => {
-      unmountedRef.current = true;
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      try {
-        wsRef.current?.close();
-      } catch {}
-      wsRef.current = null;
-    };
+    return () => { unmountedRef.current = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId]);
 
-  // ─── WebSocket lifecycle ──────────────────────────────────
+  // ─── WebSocket (shared hook) ──────────────────────────────
 
-  useEffect(() => {
-    if (!loggedIn || !selfFp) return;
-
-    let cancelled = false;
-
-    const connect = () => {
-      if (cancelled || unmountedRef.current) return;
-      let ws: WebSocket;
-      try {
-        ws = openChatWs(chatId, selfFp);
-      } catch {
-        scheduleReconnect();
-        return;
-      }
-      wsRef.current = ws;
-
-      ws.addEventListener("open", () => {
-        if (unmountedRef.current) return;
-        update({ wsConnected: true });
-      });
-
-      ws.addEventListener("message", (ev: MessageEvent) => {
-        if (unmountedRef.current) return;
-        try {
-          const data = JSON.parse(String(ev.data));
-          const incoming: DirectMessage | null = data?.message
-            ? data.message
-            : data?.id && data?.sender
-              ? data
-              : null;
-          if (!incoming) return;
-          dispatch({ type: "APPEND_DIRECT_MESSAGE", message: incoming });
-        } catch {
-          /* ignore */
-        }
-      });
-
-      ws.addEventListener("close", () => {
-        if (unmountedRef.current) return;
-        update({ wsConnected: false });
-        scheduleReconnect();
-      });
-
-      ws.addEventListener("error", () => {
-        try {
-          ws.close();
-        } catch {}
-      });
-    };
-
-    const scheduleReconnect = () => {
-      if (unmountedRef.current || cancelled) return;
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      reconnectTimer.current = setTimeout(() => {
-        connect();
-      }, 3000);
-    };
-
-    connect();
-
-    return () => {
-      cancelled = true;
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      try {
-        wsRef.current?.close();
-      } catch {}
-      wsRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatId, loggedIn, selfFp]);
-
-  // ─── Input handling ───────────────────────────────────────
-  //
-  // Custom useInput-based reply field (same ref-based approach as
-  // ChannelView to avoid dropped chars with ink-text-input).
-
-  const inputBufRef = useRef<string>("");
-  if (inputBufRef.current !== input && pastedRef.current == null) {
-    inputBufRef.current = input;
-  }
-  if (input === "") inputBufRef.current = "";
-
-  const flushInputToStore = () => {
-    update({ input: inputBufRef.current });
-  };
-
-  useInput((char, key) => {
-    // Filter out SGR mouse escape sequences
-    if (char && /\[<\d+;\d+;\d+[Mm]/.test(char)) return;
-
-    if (key.escape) {
-      if (!inputBufRef.current && pastedRef.current == null) {
-        goBack();
-      } else {
-        inputBufRef.current = "";
-        pastedRef.current = null;
-        flushInputToStore();
-      }
-      return;
-    }
-
-    if (key.return) {
-      void handleSubmit();
-      return;
-    }
-
-    if (key.backspace || key.delete) {
-      if (pastedRef.current != null) {
-        pastedRef.current = null;
-        inputBufRef.current = "";
-      } else {
-        inputBufRef.current = inputBufRef.current.slice(0, -1);
-      }
-      flushInputToStore();
-      return;
-    }
-
-    if (!char) return;
-
-    // Multi-char input with CR/LF = paste
-    if (char.length > 1 && /[\r\n]/.test(char)) {
-      const normalized = char.replace(/\r\n?/g, "\n");
-      const n = normalized.split("\n").length;
-      pastedRef.current = normalized;
-      inputBufRef.current = pastePlaceholder(n);
-      flushInputToStore();
-      return;
-    }
-    if (char === "\n" || char === "\r") {
-      void handleSubmit();
-      return;
-    }
-
-    // Typing while a paste is pending discards the paste
-    if (pastedRef.current != null) {
-      pastedRef.current = null;
-      inputBufRef.current = char.replace(/\t/g, " ");
-      flushInputToStore();
-      return;
-    }
-
-    inputBufRef.current += char.replace(/\t/g, " ");
-    flushInputToStore();
+  useWebSocket({
+    id: chatId,
+    enabled: loggedIn && !!selfFp,
+    createWs: () => openChatWs(chatId, selfFp),
+    onOpen: () => update({ wsConnected: true }),
+    onClose: () => update({ wsConnected: false }),
+    onMessage: (raw) => {
+      const data = JSON.parse(raw);
+      const incoming: DirectMessage | null = data?.message
+        ? data.message
+        : data?.id && data?.sender
+          ? data
+          : null;
+      if (incoming) dispatch({ type: "APPEND_DIRECT_MESSAGE", message: incoming });
+    },
   });
 
-  const handleSubmit = async () => {
-    if (submitting) return;
-    const pasted = pastedRef.current;
-    const trimmed = pasted != null ? pasted : input.trim();
-    if (!trimmed || !loggedIn || !selfFp) return;
+  // ─── Mouse wheel scrolling ──────────────────────────────────
+
+  const { stdin } = useStdin();
+  useEffect(() => {
+    if (!stdin) return;
+    const onData = (data: Buffer) => {
+      const str = data.toString();
+      const matches = str.matchAll(/\x1b\[<(\d+);\d+;\d+[Mm]/g);
+      for (const match of matches) {
+        const button = parseInt(match[1]!, 10);
+        if (!msgScrollRef.current) continue;
+        const offset = msgScrollRef.current.getScrollOffset();
+        const bottom = msgScrollRef.current.getBottomOffset();
+        if ((button & 0x43) === 0x40) {
+          msgScrollRef.current.scrollTo(Math.max(0, offset - 3));
+        } else if ((button & 0x43) === 0x41) {
+          msgScrollRef.current.scrollTo(Math.min(bottom, offset + 3));
+        }
+      }
+    };
+    stdin.on("data", onData);
+    return () => { stdin.off("data", onData); };
+  }, [stdin]);
+
+  // ─── Auto-scroll to bottom on new messages ────────────────
+
+  const lastMsgId = messages[messages.length - 1]?.id ?? null;
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const bottom = msgScrollRef.current?.getBottomOffset() ?? 0;
+      msgScrollRef.current?.scrollTo(bottom);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [lastMsgId]);
+
+  // ─── Submit handler ───────────────────────────────────────
+
+  const handleSubmit = async (text: string, pasted: string | null) => {
+    if (submitting || !loggedIn || !selfFp) return;
     setSendError(null);
     setSubmitting(true);
 
-    // Unescape literal \n
-    const unescaped =
-      pasted != null
-        ? pasted
-        : trimmed
-            .replace(/\\\\/g, "\u0000")
-            .replace(/\\n/g, "\n")
-            .replace(/\u0000/g, "\\");
+    const content = unescapeInput(text, pasted);
 
     try {
-      await sendDirectMessage(selfFp, chatId, unescaped);
+      const pow = await minePow(chatId, selfFp, content);
+      await sendDirectMessage(selfFp, chatId, content, pow);
       update({ input: "" });
-      pastedRef.current = null;
     } catch (err: any) {
       const msg = String(err?.message || err);
       if (msg.includes("Profile required")) {
-        setSendError("Set up your identity first -- go to Profile from the home menu.");
+        setSendError("Set up your identity first — go to Profile from the home menu.");
       } else {
         setSendError(msg);
       }
@@ -265,59 +146,73 @@ export function ChatView({ chatId }: ChatViewProps) {
     }
   };
 
+  // ─── Input handling (shared hook) ─────────────────────────
+
+  useReplyInput({
+    input,
+    flushInput: (value) => update({ input: value }),
+    onSubmit: handleSubmit,
+    onEscape: goBack,
+    onKeyBefore: (char, key) => {
+      if (key.upArrow) { msgScrollRef.current?.scrollBy(-1); return true; }
+      if (key.downArrow) { msgScrollRef.current?.scrollBy(1); return true; }
+      if (key.pageUp) { msgScrollRef.current?.scrollBy(-10); return true; }
+      if (key.pageDown) { msgScrollRef.current?.scrollBy(10); return true; }
+      return false;
+    },
+  });
+
   // ─── Rendering ────────────────────────────────────────────
 
-  const renderBubble = (msg: DirectMessage, showHeader: boolean) => {
-    const isSelf = !!selfFp && msg.sender === selfFp;
-    const time = hhmm(msg.created_at);
-    const name = isSelf ? "You" : displayName(msg);
-    const body = sanitizeBody(msg.content);
+  // Derive the other participant's name from messages.
+  const otherName = (() => {
+    const otherMsg = messages.find((m) => m.sender !== selfFp);
+    if (otherMsg?.sender_name) return otherMsg.sender_name;
+    return "Direct Message";
+  })();
 
-    const indent = 2;
-    const bodyIndent = 4;
-    const maxLineWidth = Math.max(20, paneWidth - bodyIndent - 2);
-    const rawLines = body.split("\n");
-    const lines: string[] = [];
-    for (const raw of rawLines) {
-      if (raw.length === 0) {
-        lines.push("");
-        continue;
-      }
-      for (let i = 0; i < raw.length; i += maxLineWidth) {
-        lines.push(raw.slice(i, i + maxLineWidth));
-      }
-    }
-
+  const renderHeader = () => {
     return (
       <Box
-        key={msg.id}
         flexDirection="column"
-        marginTop={showHeader ? 2 : 0}
-        paddingLeft={indent}
+        borderStyle="round"
+        borderColor={colors.border}
+        paddingX={2}
+        paddingY={0}
+        width={paneWidth}
       >
-        {showHeader && (
-          <Box>
-            <Text bold color={isSelf ? colors.primary : undefined}>
-              {name}
-            </Text>
-            <Text color={colors.subtle}>{"  " + time}</Text>
-          </Box>
-        )}
-        {lines.map((line, i) => (
-          <Box key={i}>
-            <Text color={isSelf ? colors.primary : colors.subtle}>{"\u258e "}</Text>
-            <Text color={isSelf ? colors.primary : undefined}>{line}</Text>
-          </Box>
-        ))}
+        <Box justifyContent="space-between">
+          <Text bold color={colors.primary}>{otherName}</Text>
+          <Text color={colors.subtle}>direct message</Text>
+        </Box>
       </Box>
     );
   };
 
+  // Normalize DirectMessage → MessageRenderer's Message interface
+  const normalizedMessages = messages.map((m) => ({
+    id: m.id,
+    author: m.sender,
+    author_name: m.sender_name ?? undefined,
+    content: sanitizeBody(m.content),
+    created_at: m.created_at,
+  }));
+
   const renderMessages = () => {
     if (loading) {
       return (
-        <Box paddingX={1} paddingY={1}>
-          <Text color={colors.muted}>loading messages...</Text>
+        <Box
+          width={paneWidth}
+          flexDirection="column"
+          alignItems="center"
+          paddingY={4}
+        >
+          <Box>
+            <Text color={colors.primary}>
+              <Spinner type="dots" />
+            </Text>
+            <Text color={colors.muted}> loading messages...</Text>
+          </Box>
         </Box>
       );
     }
@@ -331,96 +226,49 @@ export function ChatView({ chatId }: ChatViewProps) {
     if (messages.length === 0) {
       return (
         <Box paddingX={1} paddingY={1}>
-          <Text color={colors.muted}>No messages yet -- say hello!</Text>
+          <Text color={colors.muted}>No messages yet — say hello!</Text>
         </Box>
       );
     }
     return (
       <Box flexDirection="column" width={paneWidth}>
-        {messages.map((m, i) => {
-          const prev = i > 0 ? messages[i - 1] : null;
-          const showHeader = !prev || !sameGroup(prev, m);
-          return renderBubble(m, showHeader);
-        })}
+        <MessageRenderer
+          messages={normalizedMessages}
+          selfFingerprint={selfFp}
+          paneWidth={paneWidth}
+        />
       </Box>
     );
   };
 
-  const renderInput = () => {
-    if (!loggedIn) {
-      return (
-        <Box
-          borderStyle="round"
-          borderColor={colors.warning}
-          paddingX={2}
-          width={paneWidth}
-        >
-          <Text color={colors.warning}>
-            Set up your identity first
-          </Text>
-        </Box>
-      );
-    }
-    return (
-      <Box flexDirection="column" width={paneWidth}>
-        <Box
-          borderStyle="round"
-          borderColor={submitting ? colors.muted : colors.primary}
-          paddingX={2}
-          width={paneWidth}
-        >
-          {submitting ? (
-            <Box>
-              <Text color={colors.muted}>sending...</Text>
-            </Box>
-          ) : (
-            <>
-              <Text color={colors.primary} bold>{"\u276f   "}</Text>
-              {input.length > 0 ? (
-                <>
-                  <Text>{input}</Text>
-                  <Text color={colors.primary}>{"\u258f"}</Text>
-                </>
-              ) : (
-                <Text color={colors.subtle}>
-                  Reply...   (use \n for newline, or paste)
-                </Text>
-              )}
-            </>
-          )}
-        </Box>
-        {sendError && (
-          <Box paddingX={1}>
-            <Text color={colors.error}>{sendError}</Text>
-          </Box>
-        )}
-      </Box>
-    );
-  };
-
-  const statusDot = wsConnected ? (
-    <Text color={colors.success}>{"\u25cf"}</Text>
-  ) : (
-    <Text color={colors.subtle}>{"\u25cb"}</Text>
-  );
-  const statusLabel = wsConnected ? "live" : "offline";
+  // Dynamic scroll height: subtract all fixed chrome.
+  // header (3) + input (3) + statusbar (1) + margins (3)
+  let chromeLines = 3 + 3 + 1 + 3;
+  const scrollHeight = Math.max(5, termHeight - chromeLines);
 
   return (
     <Box flexDirection="column" paddingX={1}>
-      {renderMessages()}
+      {renderHeader()}
 
-      <Box marginTop={1}>
-        {renderInput()}
+      {/* Scrollable messages area — only this part scrolls */}
+      <ScrollView ref={msgScrollRef} height={scrollHeight}>
+        {renderMessages()}
+      </ScrollView>
+
+      <Box marginTop={1} flexDirection="column">
+        <ReplyBox
+          input={input}
+          submitting={submitting}
+          loggedIn={loggedIn}
+          paneWidth={paneWidth}
+          sendError={sendError}
+          placeholder={"Reply...   (use \\n for newline, or paste)"}
+          notLoggedInText="generate a key in Profile to chat"
+          showSpinner={true}
+        />
       </Box>
 
-      <Box paddingX={1} marginTop={1}>
-        <Box>
-          {statusDot}
-          <Text color={colors.subtle}> {statusLabel}</Text>
-        </Box>
-      </Box>
-
-      <HelpFooter text="Enter send \u00b7 Esc back" />
+      <StatusBar connected={wsConnected} hint="Enter send · Esc back" />
     </Box>
   );
 }
