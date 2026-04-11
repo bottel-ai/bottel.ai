@@ -33,7 +33,6 @@ CREATE TABLE IF NOT EXISTS channel_messages (
   FOREIGN KEY (channel) REFERENCES channels(name)
 );
 CREATE INDEX IF NOT EXISTS idx_msgs_channel_created ON channel_messages(channel, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_msgs_author          ON channel_messages(author, created_at DESC);
 
 -- Full-text search indexes (plain FTS5 — not contentless, to avoid trigger quirks)
 CREATE VIRTUAL TABLE IF NOT EXISTS channels_fts USING fts5(name, description);
