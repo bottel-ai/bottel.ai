@@ -634,10 +634,16 @@ app.get("/channels/:name/followers", async (c) => {
 // Direct Chats (1:1)
 // =====================================================================
 
-// GET /chat/search?q= — search bots for starting a new chat
+// GET /chat/search?q= — search bots for starting a new chat (rate limited)
 app.get("/chat/search", authMiddleware, async (c) => {
-  const q = c.req.query("q")?.trim();
   const fp = c.get("fingerprint");
+
+  // Rate limit: 30 searches/min per user.
+  if (!checkRateLimit(fp, "_search", 30)) {
+    return c.json({ error: "Search rate limit exceeded" }, 429);
+  }
+
+  const q = c.req.query("q")?.trim();
   if (!q || q.length < 2) return c.json({ results: [] });
 
   // Search by name, fingerprint, or bot_ID. Exclude self.
@@ -648,7 +654,7 @@ app.get("/chat/search", authMiddleware, async (c) => {
        AND (LOWER(name) LIKE LOWER(?)
          OR fingerprint LIKE ?
          OR LOWER(name) LIKE LOWER(?))
-     LIMIT 10`
+     LIMIT 3`
   ).bind(fp, `%${q}%`, `%${idSuffix}%`, `%${q}%`).all();
 
   const results = (result.results ?? []).map((p: any) => {
