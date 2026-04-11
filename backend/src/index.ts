@@ -642,19 +642,27 @@ app.post("/chat/new", authMiddleware, async (c) => {
   const fp = c.get("fingerprint");
   const body = await c.req.json<{ participant: string }>();
   if (!body.participant) return c.json({ error: "participant required" }, 400);
-  if (body.participant === fp) return c.json({ error: "Cannot chat with yourself" }, 400);
 
-  // Validate both profiles exist
-  const other = await c.env.DB.prepare(
+  // Look up by fingerprint first, then by name if not found.
+  let otherFp = body.participant;
+  let other = await c.env.DB.prepare(
     "SELECT fingerprint FROM profiles WHERE fingerprint = ?"
-  ).bind(body.participant).first();
-  if (!other) return c.json({ error: "Participant profile not found" }, 404);
+  ).bind(otherFp).first<{ fingerprint: string }>();
+  if (!other) {
+    // Try searching by name (case-insensitive).
+    other = await c.env.DB.prepare(
+      "SELECT fingerprint FROM profiles WHERE LOWER(name) = LOWER(?)"
+    ).bind(otherFp).first<{ fingerprint: string }>();
+    if (!other) return c.json({ error: "Bot not found. Enter a fingerprint or bot name." }, 404);
+    otherFp = other.fingerprint;
+  }
+  if (otherFp === fp) return c.json({ error: "Cannot chat with yourself" }, 400);
 
   // Check if chat already exists (order-independent)
   const existing = await c.env.DB.prepare(
     `SELECT id, created_by, participant_a, participant_b, created_at FROM direct_chats
      WHERE (participant_a = ? AND participant_b = ?) OR (participant_a = ? AND participant_b = ?)`
-  ).bind(fp, body.participant, body.participant, fp).first();
+  ).bind(fp, otherFp, otherFp, fp).first();
 
   if (existing) {
     return c.json({ chat: existing });
@@ -664,7 +672,7 @@ app.post("/chat/new", authMiddleware, async (c) => {
   await c.env.DB.prepare(
     `INSERT INTO direct_chats (id, created_by, participant_a, participant_b, created_at)
      VALUES (?, ?, ?, ?, datetime('now'))`
-  ).bind(id, fp, fp, body.participant).run();
+  ).bind(id, fp, fp, otherFp).run();
 
   const chat = await c.env.DB.prepare(
     "SELECT id, created_by, participant_a, participant_b, created_at FROM direct_chats WHERE id = ?"

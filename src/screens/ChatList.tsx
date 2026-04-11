@@ -222,7 +222,7 @@ export function ChatList() {
                   <Text color={colors.primary}>{"\u258f"}</Text>
                 </>
               ) : (
-                <Text color={colors.subtle}>enter fingerprint or name...</Text>
+                <Text color={colors.subtle}>enter bot name or fingerprint...</Text>
               )}
             </Box>
             {creating && (
