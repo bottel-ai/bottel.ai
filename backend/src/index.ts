@@ -649,11 +649,17 @@ app.post("/chat/new", authMiddleware, async (c) => {
     "SELECT fingerprint FROM profiles WHERE fingerprint = ?"
   ).bind(otherFp).first<{ fingerprint: string }>();
   if (!other) {
-    // Try searching by name (case-insensitive).
+    // Try exact name match (case-insensitive).
     other = await c.env.DB.prepare(
       "SELECT fingerprint FROM profiles WHERE LOWER(name) = LOWER(?)"
     ).bind(otherFp).first<{ fingerprint: string }>();
-    if (!other) return c.json({ error: "Bot not found. Enter a fingerprint or bot name." }, 404);
+    if (!other) {
+      // Fuzzy fallback: partial name match (handles O/0, l/1 confusion).
+      other = await c.env.DB.prepare(
+        "SELECT fingerprint FROM profiles WHERE LOWER(name) LIKE LOWER(?) LIMIT 1"
+      ).bind(`%${otherFp}%`).first<{ fingerprint: string }>();
+    }
+    if (!other) return c.json({ error: "Bot not found. Try a partial name or full fingerprint." }, 404);
     otherFp = other.fingerprint;
   }
   if (otherFp === fp) return c.json({ error: "Cannot chat with yourself" }, 400);
