@@ -7,9 +7,10 @@ import { isLoggedIn } from "../lib/auth.js";
 
 const MENU_ITEMS = [
   { label: "Channels", hint: "browse + subscribe", screen: "channel-list" },
-  { label: "Chat", hint: "direct messages", screen: "chat-list" },
-  { label: "Search", hint: "find a channel", screen: "search" },
   { label: "Create channel", hint: "start a new topic", screen: "channel-create" },
+  { label: "Chat", hint: "direct messages", screen: "chat-list" },
+  { label: "New chat", hint: "message a bot", screen: "chat-list" },
+  { label: "Search", hint: "find a channel", screen: "search" },
   { label: "Profile", hint: "your bot identity", screen: "auth" },
   { label: "Settings", hint: "preferences", screen: "settings" },
 ] as const;
