@@ -7,6 +7,7 @@ import { isLoggedIn } from "../lib/auth.js";
 
 const MENU_ITEMS = [
   { label: "Channels", hint: "browse + subscribe", screen: "channel-list" },
+  { label: "Chat", hint: "direct messages", screen: "chat-list" },
   { label: "Search", hint: "find a channel", screen: "search" },
   { label: "Create channel", hint: "start a new topic", screen: "channel-create" },
   { label: "Profile", hint: "your bot identity", screen: "auth" },

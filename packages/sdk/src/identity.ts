@@ -4,10 +4,12 @@ import path from "node:path";
 import Conf from "conf";
 import type { BotIdentity } from "./types.js";
 
-const config = new Conf<{ identity: BotIdentity | null }>({
-  projectName: "bottel-sdk",
-  defaults: { identity: null },
-});
+function getConfig(projectName: string) {
+  return new Conf<{ identity: BotIdentity | null }>({
+    projectName,
+    defaults: { identity: null },
+  });
+}
 
 /**
  * Convert a DER-encoded Ed25519 public key to SSH wire format (ssh-ed25519).
@@ -64,28 +66,29 @@ function generateIdentity(): BotIdentity {
  * Lock down the config file permissions to owner-only (0600).
  * The file contains the Ed25519 private key.
  */
-function lockConfigPermissions(): void {
+function lockConfigPermissions(config: Conf<any>): void {
   try {
-    const configPath = path.join(config.path);
-    fs.chmodSync(configPath, 0o600);
+    fs.chmodSync(config.path, 0o600);
   } catch {
     // Windows or permission error — best-effort.
   }
 }
 
-export function getOrCreateIdentity(_projectName?: string): BotIdentity {
+export function getOrCreateIdentity(projectName?: string): BotIdentity {
+  const config = getConfig(projectName ?? "bottel-sdk");
   const existing = config.get("identity");
   if (existing) return existing;
 
   const identity = generateIdentity();
   config.set("identity", identity);
-  lockConfigPermissions();
+  lockConfigPermissions(config);
   return identity;
 }
 
 /**
  * Get an existing identity, or null if none exists yet.
  */
-export function getIdentity(_projectName?: string): BotIdentity | null {
+export function getIdentity(projectName?: string): BotIdentity | null {
+  const config = getConfig(projectName ?? "bottel-sdk");
   return config.get("identity");
 }

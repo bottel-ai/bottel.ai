@@ -24,6 +24,24 @@ export type ChannelMessage = {
   created_at: string;
 };
 
+export interface DirectChat {
+  id: string;
+  other_fp: string;
+  other_name: string | null;
+  last_message: string | null;
+  last_message_at: string | null;
+  created_by: string;
+}
+
+export interface DirectMessage {
+  id: string;
+  chat_id: string;
+  sender: string;
+  sender_name: string | null;
+  content: string;
+  created_at: string;
+}
+
 // ─── Screen Types ────────────────────────────────────────────────
 
 export type Screen =
@@ -34,7 +52,9 @@ export type Screen =
   | { name: "channel-create" }
   | { name: "profile-setup" }
   | { name: "auth" }
-  | { name: "settings" };
+  | { name: "settings" }
+  | { name: "chat-list" }
+  | { name: "chat-view"; chatId: string };
 
 // ─── Screen State ───────────────────────────────────────────────
 
@@ -89,6 +109,19 @@ export interface SettingsState {
   selectedIndex: number;
 }
 
+export interface ChatListState {
+  chats: DirectChat[];
+  selectedIndex: number;
+  loading: boolean;
+}
+
+export interface ChatViewState {
+  messages: DirectMessage[];
+  input: string;
+  loading: boolean;
+  wsConnected: boolean;
+}
+
 // ─── App State ──────────────────────────────────────────────────
 
 export interface AppState {
@@ -102,6 +135,8 @@ export interface AppState {
   profileSetup: ProfileSetupState;
   authScreen: AuthScreenState;
   settings: SettingsState;
+  chatList: ChatListState;
+  chatView: ChatViewState;
 }
 
 const INITIAL_HOME: HomeState = { menuIndex: 0 };
@@ -151,6 +186,19 @@ const INITIAL_PROFILE_SETUP: ProfileSetupState = {
 const INITIAL_AUTH_SCREEN: AuthScreenState = { selectedIndex: 0 };
 const INITIAL_SETTINGS: SettingsState = { selectedIndex: 0 };
 
+const INITIAL_CHAT_LIST: ChatListState = {
+  chats: [],
+  selectedIndex: 0,
+  loading: false,
+};
+
+const INITIAL_CHAT_VIEW: ChatViewState = {
+  messages: [],
+  input: "",
+  loading: false,
+  wsConnected: false,
+};
+
 const INITIAL_STATE: AppState = {
   screen: { name: "home" },
   history: [],
@@ -162,6 +210,8 @@ const INITIAL_STATE: AppState = {
   profileSetup: INITIAL_PROFILE_SETUP,
   authScreen: INITIAL_AUTH_SCREEN,
   settings: INITIAL_SETTINGS,
+  chatList: INITIAL_CHAT_LIST,
+  chatView: INITIAL_CHAT_VIEW,
 };
 
 // ─── Actions ────────────────────────────────────────────────────
@@ -186,7 +236,10 @@ export type Action =
   | { type: "UPDATE_CHANNEL_CREATE"; state: Updater<ChannelCreateState> }
   | { type: "UPDATE_PROFILE_SETUP"; state: Updater<ProfileSetupState> }
   | { type: "UPDATE_AUTH_SCREEN"; state: Updater<AuthScreenState> }
-  | { type: "UPDATE_SETTINGS"; state: Updater<SettingsState> };
+  | { type: "UPDATE_SETTINGS"; state: Updater<SettingsState> }
+  | { type: "UPDATE_CHAT_LIST"; state: Updater<ChatListState> }
+  | { type: "UPDATE_CHAT_VIEW"; state: Updater<ChatViewState> }
+  | { type: "APPEND_DIRECT_MESSAGE"; message: DirectMessage };
 
 function applyUpdater<S>(current: S, u: Updater<S>): S {
   const patch = typeof u === "function" ? (u as (s: S) => Partial<S>)(current) : u;
@@ -208,6 +261,8 @@ function reducer(state: AppState, action: Action): AppState {
         case "profile-setup": resets.profileSetup = INITIAL_PROFILE_SETUP; break;
         case "auth": resets.authScreen = INITIAL_AUTH_SCREEN; break;
         case "settings": resets.settings = INITIAL_SETTINGS; break;
+        case "chat-list": resets.chatList = INITIAL_CHAT_LIST; break;
+        case "chat-view": resets.chatView = INITIAL_CHAT_VIEW; break;
       }
       return {
         ...state,
@@ -230,6 +285,8 @@ function reducer(state: AppState, action: Action): AppState {
         case "profile-setup": resets.profileSetup = INITIAL_PROFILE_SETUP; break;
         case "auth": resets.authScreen = INITIAL_AUTH_SCREEN; break;
         case "settings": resets.settings = INITIAL_SETTINGS; break;
+        case "chat-list": resets.chatList = INITIAL_CHAT_LIST; break;
+        case "chat-view": resets.chatView = INITIAL_CHAT_VIEW; break;
       }
       return { ...state, ...resets, screen: action.screen };
     }
@@ -290,6 +347,22 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, authScreen: applyUpdater(state.authScreen, action.state) };
     case "UPDATE_SETTINGS":
       return { ...state, settings: applyUpdater(state.settings, action.state) };
+    case "UPDATE_CHAT_LIST":
+      return { ...state, chatList: applyUpdater(state.chatList, action.state) };
+    case "UPDATE_CHAT_VIEW":
+      return { ...state, chatView: applyUpdater(state.chatView, action.state) };
+    case "APPEND_DIRECT_MESSAGE": {
+      if (state.chatView.messages.some((m) => m.id === action.message.id)) {
+        return state;
+      }
+      return {
+        ...state,
+        chatView: {
+          ...state.chatView,
+          messages: [...state.chatView.messages, action.message],
+        },
+      };
+    }
 
     default:
       return state;

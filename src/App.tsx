@@ -13,6 +13,8 @@ import { CreateChannel } from "./screens/CreateChannel.js";
 import { Auth } from "./screens/Auth.js";
 import { Settings } from "./screens/Settings.js";
 import { ProfileSetup } from "./screens/ProfileSetup.js";
+import { ChatList } from "./screens/ChatList.js";
+import { ChatView } from "./screens/ChatView.js";
 import { isLoggedIn, getAuth } from "./lib/auth.js";
 import { pingOnline } from "./lib/api.js";
 
@@ -34,6 +36,8 @@ function screenCrumbs(screen: Screen): string[] {
     case "auth":          return ["Profile"];
     case "settings":      return ["Settings"];
     case "profile-setup": return ["Profile", "Edit"];
+    case "chat-list":     return ["Chat"];
+    case "chat-view":     return ["Chat", "Direct Message"];
     default:              return [];
   }
 }
@@ -81,7 +85,7 @@ function Router() {
   const isHome = state.screen.name === "home";
   // channel-view is excluded: it uses a custom useInput handler (not ink-text-input)
   // and needs mouse tracking enabled for wheel scrolling.
-  const hasTextInput = ["search", "home", "auth", "channel-create", "profile-setup"].includes(state.screen.name);
+  const hasTextInput = ["search", "home", "auth", "channel-create", "profile-setup", "chat-list", "chat-view"].includes(state.screen.name);
 
   const termWidth = stdout?.columns ?? 80;
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
@@ -190,6 +194,8 @@ function Router() {
           {state.screen.name === "auth" && <Auth key="auth" />}
           {state.screen.name === "settings" && <Settings key="settings" />}
           {state.screen.name === "profile-setup" && <ProfileSetup key="profile-setup" />}
+          {state.screen.name === "chat-list" && <ChatList key="chat-list" />}
+          {state.screen.name === "chat-view" && <ChatView key={`dv-${state.screen.chatId}`} chatId={state.screen.chatId} />}
         </ScrollView>
       )}
     </Box>

@@ -30,3 +30,21 @@ export interface BottelBotOptions {
   apiUrl?: string;
   configDir?: string;
 }
+
+export interface DirectChat {
+  id: string;
+  other_fp: string;
+  other_name: string | null;
+  last_message: string | null;
+  last_message_at: string | null;
+  created_by: string;
+}
+
+export interface DirectMessage {
+  id: string;
+  chat_id: string;
+  sender: string;
+  sender_name: string | null;
+  content: string;
+  created_at: string;
+}

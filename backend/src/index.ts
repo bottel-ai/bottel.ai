@@ -37,12 +37,14 @@ import { generateChannelKey, encryptPayload } from "./crypto.js";
 import { verifyPow } from "./pow.js";
 import { getConfig } from "./config.js";
 
-// Re-export the Durable Object class so wrangler can bind it.
+// Re-export the Durable Object classes so wrangler can bind them.
 export { ChannelRoom } from "./channel-room.js";
+export { DirectChatRoom } from "./chat-room.js";
 
 interface Env {
   DB: D1Database;
   CHANNEL_ROOM: DurableObjectNamespace;
+  DIRECT_CHAT_ROOM: DurableObjectNamespace;
 }
 
 type AppEnv = { Bindings: Env; Variables: { fingerprint: string } };
@@ -152,7 +154,7 @@ app.get("/profiles", async (c) => {
 app.get("/profiles/:fp", async (c) => {
   const fp = c.req.param("fp")!;
   const p = await c.env.DB.prepare(
-    "SELECT fingerprint, name, bio, online_at FROM profiles WHERE fingerprint = ?"
+    "SELECT fingerprint, name, bio, online_at, public FROM profiles WHERE fingerprint = ?"
   )
     .bind(fp)
     .first();
@@ -161,7 +163,7 @@ app.get("/profiles/:fp", async (c) => {
     ? Date.now() - new Date((p.online_at as string) + "Z").getTime() < 300000
     : false;
   return c.json({
-    profile: { fingerprint: p.fingerprint, name: p.name, bio: p.bio, online },
+    profile: { fingerprint: p.fingerprint, name: p.name, bio: p.bio, online, public: !!(p as any).public },
   });
 });
 
@@ -277,7 +279,7 @@ app.get("/channels/:name/messages", async (c) => {
 
   let sql = `SELECT m.id, m.channel, m.author, m.payload, m.signature, m.parent_id, m.created_at, p.name as author_name
              FROM channel_messages m
-             LEFT JOIN profiles p ON p.fingerprint = m.author
+             LEFT JOIN profiles p ON p.fingerprint = m.author AND p.public = 1
              WHERE m.channel = ?`;
   const bindings: any[] = [name];
   if (since) {
@@ -376,7 +378,7 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
       c.env.DB.prepare("UPDATE channels SET message_count = message_count + 1 WHERE name = ?").bind(name),
     ]);
     // Look up author name for the broadcast (same as publishMessage does).
-    const authorProfile = await c.env.DB.prepare("SELECT name FROM profiles WHERE fingerprint = ?")
+    const authorProfile = await c.env.DB.prepare("SELECT name FROM profiles WHERE fingerprint = ? AND public = 1")
       .bind(fp).first<{ name: string }>();
     const message = { id, channel: name, author: fp, author_name: authorProfile?.name ?? null, payload: encPayload, signature: body.signature ?? null, parent_id: body.parent_id ?? null, created_at };
     try {
@@ -626,6 +628,197 @@ app.get("/channels/:name/followers", async (c) => {
 
   const result = await c.env.DB.prepare(sql).bind(...bindings).all();
   return c.json({ followers: result.results ?? [] });
+});
+
+// =====================================================================
+// Direct Chats (1:1)
+// =====================================================================
+
+// POST /chat/new — create or return existing 1:1 chat (auth + profile)
+app.post("/chat/new", authMiddleware, async (c) => {
+  const profileErr = await requireProfile(c);
+  if (profileErr) return profileErr;
+
+  const fp = c.get("fingerprint");
+  const body = await c.req.json<{ participant: string }>();
+  if (!body.participant) return c.json({ error: "participant required" }, 400);
+  if (body.participant === fp) return c.json({ error: "Cannot chat with yourself" }, 400);
+
+  // Validate both profiles exist
+  const other = await c.env.DB.prepare(
+    "SELECT fingerprint FROM profiles WHERE fingerprint = ?"
+  ).bind(body.participant).first();
+  if (!other) return c.json({ error: "Participant profile not found" }, 404);
+
+  // Check if chat already exists (order-independent)
+  const existing = await c.env.DB.prepare(
+    `SELECT id, created_by, participant_a, participant_b, created_at FROM direct_chats
+     WHERE (participant_a = ? AND participant_b = ?) OR (participant_a = ? AND participant_b = ?)`
+  ).bind(fp, body.participant, body.participant, fp).first();
+
+  if (existing) {
+    return c.json({ chat: existing });
+  }
+
+  const id = crypto.randomUUID();
+  await c.env.DB.prepare(
+    `INSERT INTO direct_chats (id, created_by, participant_a, participant_b, created_at)
+     VALUES (?, ?, ?, ?, datetime('now'))`
+  ).bind(id, fp, fp, body.participant).run();
+
+  const chat = await c.env.DB.prepare(
+    "SELECT id, created_by, participant_a, participant_b, created_at FROM direct_chats WHERE id = ?"
+  ).bind(id).first();
+
+  return c.json({ chat }, 201);
+});
+
+// GET /chat/list — all chats for the current user (auth)
+app.get("/chat/list", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+
+  const result = await c.env.DB.prepare(
+    `SELECT
+       dc.id,
+       dc.created_by,
+       CASE WHEN dc.participant_a = ? THEN dc.participant_b ELSE dc.participant_a END AS other_fp,
+       p.name AS other_name,
+       dm.content AS last_message,
+       dm.created_at AS last_message_at
+     FROM direct_chats dc
+     LEFT JOIN profiles p ON p.fingerprint = CASE WHEN dc.participant_a = ? THEN dc.participant_b ELSE dc.participant_a END
+     LEFT JOIN direct_messages dm ON dm.id = (
+       SELECT id FROM direct_messages WHERE chat_id = dc.id ORDER BY created_at DESC LIMIT 1
+     )
+     WHERE dc.participant_a = ? OR dc.participant_b = ?
+     ORDER BY COALESCE(dm.created_at, dc.created_at) DESC`
+  ).bind(fp, fp, fp, fp).all();
+
+  return c.json({ chats: result.results ?? [] });
+});
+
+// GET /chat/:id/messages — messages with pagination (auth)
+app.get("/chat/:id/messages", authMiddleware, async (c) => {
+  const chatId = c.req.param("id")!;
+  const fp = c.get("fingerprint");
+
+  // Verify participant
+  const chat = await c.env.DB.prepare(
+    "SELECT id FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
+  ).bind(chatId, fp, fp).first();
+  if (!chat) return c.json({ error: "Chat not found or access denied" }, 404);
+
+  const before = c.req.query("before");
+  const limitRaw = parseInt(c.req.query("limit") || "50", 10);
+  const limit = Math.min(200, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 50));
+
+  let sql = `SELECT dm.id, dm.chat_id, dm.sender, p.name AS sender_name, dm.content, dm.created_at
+             FROM direct_messages dm
+             LEFT JOIN profiles p ON p.fingerprint = dm.sender AND p.public = 1
+             WHERE dm.chat_id = ?`;
+  const bindings: any[] = [chatId];
+  if (before) {
+    sql += " AND dm.created_at < ?";
+    bindings.push(before);
+  }
+  sql += " ORDER BY dm.created_at DESC LIMIT ?";
+  bindings.push(limit);
+
+  const result = await c.env.DB.prepare(sql).bind(...bindings).all();
+  return c.json({ messages: result.results ?? [] });
+});
+
+// POST /chat/:id/messages — send a DM (auth + profile)
+app.post("/chat/:id/messages", authMiddleware, async (c) => {
+  const profileErr = await requireProfile(c);
+  if (profileErr) return profileErr;
+
+  const chatId = c.req.param("id")!;
+  const fp = c.get("fingerprint");
+  const body = await c.req.json<{ content: string }>();
+  if (!body.content) return c.json({ error: "content required" }, 400);
+
+  // Verify participant
+  const chat = await c.env.DB.prepare(
+    "SELECT id FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
+  ).bind(chatId, fp, fp).first();
+  if (!chat) return c.json({ error: "Chat not found or access denied" }, 404);
+
+  // Rate limit: 60 msg/min per chat
+  if (!checkRateLimit(fp, chatId, 60)) {
+    return c.json({ error: "Rate limit exceeded (60 msg/min per chat)" }, 429);
+  }
+
+  const id = crypto.randomUUID();
+  const created_at = new Date().toISOString();
+
+  await c.env.DB.prepare(
+    "INSERT INTO direct_messages (id, chat_id, sender, content, created_at) VALUES (?, ?, ?, ?, ?)"
+  ).bind(id, chatId, fp, body.content, created_at).run();
+
+  const senderProfile = await c.env.DB.prepare(
+    "SELECT name FROM profiles WHERE fingerprint = ? AND public = 1"
+  ).bind(fp).first<{ name: string }>();
+
+  const message = {
+    id,
+    chat_id: chatId,
+    sender: fp,
+    sender_name: senderProfile?.name ?? null,
+    content: body.content,
+    created_at,
+  };
+
+  // Broadcast via DirectChatRoom DO
+  try {
+    const room = c.env.DIRECT_CHAT_ROOM.get(c.env.DIRECT_CHAT_ROOM.idFromName(chatId!));
+    await room.fetch(new Request("https://do/broadcast", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(message),
+    }));
+  } catch {}
+
+  return c.json({ message }, 201);
+});
+
+// DELETE /chat/:id — delete chat (creator only, auth)
+app.delete("/chat/:id", authMiddleware, async (c) => {
+  const chatId = c.req.param("id")!;
+  const fp = c.get("fingerprint");
+
+  const chat = await c.env.DB.prepare(
+    "SELECT created_by FROM direct_chats WHERE id = ?"
+  ).bind(chatId).first<{ created_by: string }>();
+  if (!chat) return c.json({ error: "Chat not found" }, 404);
+  if (chat.created_by !== fp) return c.json({ error: "Only the chat creator can delete it" }, 403);
+
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM direct_messages WHERE chat_id = ?").bind(chatId),
+    c.env.DB.prepare("DELETE FROM direct_chats WHERE id = ?").bind(chatId),
+  ]);
+
+  return c.body(null, 204);
+});
+
+// GET /chat/:id/ws — WebSocket upgrade via DirectChatRoom DO
+// No authMiddleware — WS upgrades can't send custom headers.
+// Auth is via the fp query param (same as channel WS).
+app.get("/chat/:id/ws", async (c) => {
+  const chatId = c.req.param("id")!;
+  const fp = c.req.query("fp");
+  if (!fp) return c.json({ error: "fp query param required" }, 400);
+
+  // Verify participant
+  const chat = await c.env.DB.prepare(
+    "SELECT id FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
+  ).bind(chatId, fp, fp).first();
+  if (!chat) return c.json({ error: "Chat not found or access denied" }, 404);
+
+  const room = c.env.DIRECT_CHAT_ROOM.get(c.env.DIRECT_CHAT_ROOM.idFromName(chatId));
+  const doUrl = new URL(`https://do/chat/${encodeURIComponent(chatId)}/ws`);
+  doUrl.searchParams.set("fp", fp);
+  return room.fetch(new Request(doUrl.toString(), c.req.raw));
 });
 
 // =====================================================================

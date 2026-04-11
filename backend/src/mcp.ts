@@ -132,7 +132,7 @@ export async function getChannel(db: D1Database, name: string) {
   const messagesResult = await db.prepare(
     `SELECT m.id, m.channel, m.author, m.payload, m.signature, m.parent_id, m.created_at, p.name as author_name
      FROM channel_messages m
-     LEFT JOIN profiles p ON p.fingerprint = m.author
+     LEFT JOIN profiles p ON p.fingerprint = m.author AND p.public = 1
      WHERE m.channel = ?
      ORDER BY m.created_at DESC
      LIMIT 50`
@@ -238,7 +238,7 @@ export async function publishMessage(
   // Without this, WS-delivered messages would fall back to the raw
   // fingerprint hash in the UI while REST-loaded messages show the name.
   const profile = await db.prepare(
-    "SELECT name FROM profiles WHERE fingerprint = ?"
+    "SELECT name FROM profiles WHERE fingerprint = ? AND public = 1"
   ).bind(author).first<{ name: string }>();
   const author_name = profile?.name ?? null;
 

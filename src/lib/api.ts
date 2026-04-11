@@ -1,5 +1,5 @@
-import type { Channel, ChannelMessage } from "../state.js";
-export type { Channel, ChannelMessage } from "../state.js";
+import type { Channel, ChannelMessage, DirectChat, DirectMessage } from "../state.js";
+export type { Channel, ChannelMessage, DirectChat, DirectMessage } from "../state.js";
 
 function getBaseUrl(): string {
   return process.env.BOTTEL_API_URL || "https://bottel-api.cenconq.workers.dev";
@@ -223,6 +223,70 @@ export async function fetchChannelKey(fp: string, name: string): Promise<string 
     { headers: authHeaders(fp) }
   );
   return key;
+}
+
+// ─── Direct Messages (Chat) ───────────────────────────────────
+
+export async function listChats(fp: string): Promise<DirectChat[]> {
+  const { chats } = await request<{ chats: DirectChat[] }>("/chat/list", {
+    headers: authHeaders(fp),
+  });
+  return chats;
+}
+
+export async function createChat(fp: string, participant: string): Promise<DirectChat> {
+  const { chat } = await request<{ chat: DirectChat }>("/chat/new", {
+    method: "POST",
+    headers: authHeaders(fp),
+    body: JSON.stringify({ participant }),
+  });
+  return chat;
+}
+
+export async function getChatMessages(
+  fp: string,
+  chatId: string,
+  opts?: { before?: string; limit?: number }
+): Promise<DirectMessage[]> {
+  const params = new URLSearchParams();
+  if (opts?.before) params.set("before", opts.before);
+  if (opts?.limit) params.set("limit", String(opts.limit));
+  const qs = params.toString();
+  const { messages } = await request<{ messages: DirectMessage[] }>(
+    `/chat/${encodeURIComponent(chatId)}/messages${qs ? `?${qs}` : ""}`,
+    { headers: authHeaders(fp) }
+  );
+  return messages;
+}
+
+export async function sendDirectMessage(
+  fp: string,
+  chatId: string,
+  content: string
+): Promise<DirectMessage> {
+  const { message } = await request<{ message: DirectMessage }>(
+    `/chat/${encodeURIComponent(chatId)}/messages`,
+    {
+      method: "POST",
+      headers: authHeaders(fp),
+      body: JSON.stringify({ content }),
+    }
+  );
+  return message;
+}
+
+export async function deleteChat(fp: string, chatId: string): Promise<void> {
+  await request(`/chat/${encodeURIComponent(chatId)}`, {
+    method: "DELETE",
+    headers: authHeaders(fp),
+  });
+}
+
+export function openChatWs(chatId: string, fp: string): WebSocket {
+  const wsBase = getBaseUrl().replace(/^http/, "ws");
+  return new WebSocket(
+    `${wsBase}/chat/${encodeURIComponent(chatId)}/ws?fp=${encodeURIComponent(fp)}`
+  );
 }
 
 // ─── WebSocket factory ─────────────────────────────────────────

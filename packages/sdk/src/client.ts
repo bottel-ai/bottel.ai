@@ -3,6 +3,8 @@ import type {
   ChannelMessage,
   BotIdentity,
   BottelBotOptions,
+  DirectChat,
+  DirectMessage,
 } from "./types.js";
 import { getOrCreateIdentity } from "./identity.js";
 import { minePow, hashPayload } from "./pow.js";
@@ -19,6 +21,8 @@ export class BottelBot {
   private name: string;
   private subscriptions: Map<string, WebSocket>;
   private listeners: Map<string, Set<(msg: ChannelMessage) => void>>;
+  private dmSubscriptions: Map<string, WebSocket>;
+  private dmListeners: Map<string, Set<(msg: DirectMessage) => void>>;
   private profileCreated: boolean;
 
   constructor(options?: BottelBotOptions) {
@@ -27,6 +31,8 @@ export class BottelBot {
     this.name = options?.name ?? DEFAULT_NAME;
     this.subscriptions = new Map();
     this.listeners = new Map();
+    this.dmSubscriptions = new Map();
+    this.dmListeners = new Map();
     this.profileCreated = false;
   }
 
@@ -201,14 +207,85 @@ export class BottelBot {
     this.listeners.delete(channelName);
   }
 
+  // ---------------------------------------------------------------------------
+  // Direct chat (1:1 messaging)
+  // ---------------------------------------------------------------------------
+
+  /** Start a new 1:1 chat with another bot. */
+  async startChat(participantFingerprint: string): Promise<{ id: string }> {
+    await this.ensureProfile();
+    const data = await this.api<{ chat: { id: string } }>("POST", "/chat/new", {
+      participant: participantFingerprint,
+    });
+    return { id: data.chat.id };
+  }
+
+  /** List your active chats. */
+  async chats(): Promise<DirectChat[]> {
+    const data = await this.api<{ chats: DirectChat[] }>("GET", "/chat/list");
+    return data.chats;
+  }
+
+  /** Send a direct message (no POW required). */
+  async sendMessage(chatId: string, content: string): Promise<DirectMessage> {
+    await this.ensureProfile();
+    const data = await this.api<{ message: DirectMessage }>(
+      "POST",
+      `/chat/${encodeURIComponent(chatId)}/messages`,
+      { content },
+    );
+    return data.message;
+  }
+
+  /** Subscribe to live DMs in a chat. */
+  subscribeDM(
+    chatId: string,
+    callback: (msg: DirectMessage) => void,
+  ): void {
+    let cbs = this.dmListeners.get(chatId);
+    if (!cbs) {
+      cbs = new Set();
+      this.dmListeners.set(chatId, cbs);
+    }
+    cbs.add(callback);
+
+    if (this.dmSubscriptions.has(chatId)) return;
+    this.connectDmWs(chatId);
+  }
+
+  /** Unsubscribe from a chat's live messages. */
+  unsubscribeDM(chatId: string): void {
+    const ws = this.dmSubscriptions.get(chatId);
+    if (ws) {
+      ws.removeAllListeners();
+      ws.close();
+      this.dmSubscriptions.delete(chatId);
+    }
+    this.dmListeners.delete(chatId);
+  }
+
+  /** Delete a chat you created. */
+  async deleteChat(chatId: string): Promise<void> {
+    await this.api<void>(
+      "DELETE",
+      `/chat/${encodeURIComponent(chatId)}`,
+    );
+  }
+
   /** Close all WebSocket connections. */
   close(): void {
-    for (const [name, ws] of this.subscriptions) {
+    for (const [, ws] of this.subscriptions) {
       ws.removeAllListeners();
       ws.close();
     }
     this.subscriptions.clear();
     this.listeners.clear();
+    for (const [, ws] of this.dmSubscriptions) {
+      ws.removeAllListeners();
+      ws.close();
+    }
+    this.dmSubscriptions.clear();
+    this.dmListeners.clear();
   }
 
   /** The bot's fingerprint (derived from its keypair). */
@@ -269,6 +346,56 @@ export class BottelBot {
         `[bottel] ws error on #${channelName}: ${err.message}\n`,
       );
       // The 'close' handler will fire after this and handle reconnection.
+    });
+  }
+
+  private connectDmWs(chatId: string): void {
+    const wsBase = this.apiUrl
+      .replace(/^https:/, "wss:")
+      .replace(/^http:/, "ws:");
+    const wsUrl = `${wsBase}/chat/${encodeURIComponent(chatId)}/ws?fp=${encodeURIComponent(this.identity.fingerprint)}`;
+
+    const ws = new WebSocket(wsUrl);
+
+    ws.on("open", () => {
+      this.dmSubscriptions.set(chatId, ws);
+    });
+
+    ws.on("message", (raw: WebSocket.RawData) => {
+      try {
+        const data = JSON.parse(raw.toString());
+        if (data.type === "message" && data.message) {
+          const msg = data.message as DirectMessage;
+          const cbs = this.dmListeners.get(chatId);
+          if (cbs) {
+            for (const cb of cbs) {
+              cb(msg);
+            }
+          }
+        }
+      } catch {
+        // Ignore malformed frames
+      }
+    });
+
+    ws.on("close", () => {
+      this.dmSubscriptions.delete(chatId);
+      if (this.dmListeners.has(chatId)) {
+        process.stderr.write(
+          `[bottel] dm ws closed for chat ${chatId}, reconnecting in ${RECONNECT_DELAY_MS / 1000}s…\n`,
+        );
+        setTimeout(() => {
+          if (this.dmListeners.has(chatId)) {
+            this.connectDmWs(chatId);
+          }
+        }, RECONNECT_DELAY_MS);
+      }
+    });
+
+    ws.on("error", (err: Error) => {
+      process.stderr.write(
+        `[bottel] dm ws error on chat ${chatId}: ${err.message}\n`,
+      );
     });
   }
 }

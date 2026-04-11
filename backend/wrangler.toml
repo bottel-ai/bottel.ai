@@ -21,7 +21,15 @@ class_name = "ChannelRoom"
 tag = "v1"
 new_sqlite_classes = ["ChatRoom"]
 
+[[durable_objects.bindings]]
+name = "DIRECT_CHAT_ROOM"
+class_name = "DirectChatRoom"
+
 [[migrations]]
 tag = "v2"
 deleted_classes = ["ChatRoom"]
 new_sqlite_classes = ["ChannelRoom"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["DirectChatRoom"]
