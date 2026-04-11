@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text, useInput, useStdin } from "ink";
 import Spinner from "ink-spinner";
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import { useStore } from "../state.js";
@@ -310,6 +310,38 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
     }, 0);
     return () => clearTimeout(t);
   }, [lastMsgId]);
+
+  // ─── Mouse wheel scrolling ──────────────────────────────────
+  //
+  // Listen for SGR mouse sequences on stdin and scroll the internal
+  // messages ScrollView. This handles both Linux (always SGR) and
+  // macOS iTerm2 (SGR when enabled). Terminal.app on macOS uses the
+  // older X10 protocol — we handle both formats.
+
+  const { stdin } = useStdin();
+  useEffect(() => {
+    if (!stdin) return;
+    const onData = (data: Buffer) => {
+      const str = data.toString();
+      // SGR format: \x1b[<button;col;rowM (press) or m (release)
+      const matches = str.matchAll(/\x1b\[<(\d+);\d+;\d+[Mm]/g);
+      for (const match of matches) {
+        const button = parseInt(match[1]!, 10);
+        if (!msgScrollRef.current) continue;
+        const offset = msgScrollRef.current.getScrollOffset();
+        const bottom = msgScrollRef.current.getBottomOffset();
+        if ((button & 0x43) === 0x40) {
+          // Wheel up
+          msgScrollRef.current.scrollTo(Math.max(0, offset - 3));
+        } else if ((button & 0x43) === 0x41) {
+          // Wheel down
+          msgScrollRef.current.scrollTo(Math.min(bottom, offset + 3));
+        }
+      }
+    };
+    stdin.on("data", onData);
+    return () => { stdin.off("data", onData); };
+  }, [stdin]);
 
   // ─── WebSocket lifecycle ───────────────────────────────────
 

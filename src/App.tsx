@@ -79,7 +79,9 @@ function Router() {
     });
   }, [setScrollControls]);
   const isHome = state.screen.name === "home";
-  const hasTextInput = ["search", "home", "auth", "channel-view", "channel-create", "profile-setup"].includes(state.screen.name);
+  // channel-view is excluded: it uses a custom useInput handler (not ink-text-input)
+  // and needs mouse tracking enabled for wheel scrolling.
+  const hasTextInput = ["search", "home", "auth", "channel-create", "profile-setup"].includes(state.screen.name);
 
   const termWidth = stdout?.columns ?? 80;
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
@@ -167,7 +169,7 @@ function Router() {
           <ChannelView
             key={`cv-${state.screen.channelName}`}
             channelName={state.screen.channelName}
-            termHeight={termHeight}
+            termHeight={termHeight - 2}
             termWidth={termWidth}
           />
         </Box>
