@@ -8,9 +8,8 @@ import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChann
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { isEncrypted, decryptPayload } from "../lib/crypto.js";
 import { getChannelKey, saveChannelKey, hasChannelKey } from "../lib/keys.js";
-import { minePow, hashPayload } from "../lib/pow.js";
+import { minePow } from "../lib/pow.js";
 import { colors } from "../theme.js";
-import { HelpFooter } from "../components.js";
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -107,6 +106,10 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   const prefetchBuf = useRef<ChannelMessage[]>([]);
   const prefetchHasMore = useRef(true);
   const prefetching = useRef(false);
+
+  // Pending scroll anchor — set by mergeOlder so that onContentHeightChange
+  // can re-anchor the viewport after React actually renders the new items.
+  const pendingAnchor = useRef<number | null>(null);
 
   // New-message indicator — instead of auto-scrolling to bottom on every
   // WS message, show "N new messages below" and let the user jump manually.
@@ -283,32 +286,31 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
       update({ hasMoreOlder: false });
       return;
     }
-    // Capture scroll position before merge.
-    const prevOffset = msgScrollRef.current?.getScrollOffset() ?? 0;
-    const prevBottom = msgScrollRef.current?.getBottomOffset() ?? 0;
+    // Record the current scroll offset so onContentHeightChange can
+    // re-anchor the viewport after React renders the prepended items.
+    pendingAnchor.current = msgScrollRef.current?.getScrollOffset() ?? 0;
 
     dispatch({ type: "PREPEND_CHANNEL_MESSAGES", messages: buf });
     update({ hasMoreOlder: prefetchHasMore.current });
     prefetchBuf.current = [];
 
-    // Re-anchor so the viewport stays at the same visual position.
-    process.nextTick(() => {
-      if (unmountedRef.current || !msgScrollRef.current) return;
-      const newBottom = msgScrollRef.current.getBottomOffset();
-      const delta = newBottom - prevBottom;
-      msgScrollRef.current.scrollTo(prevOffset + delta);
-    });
-
     // Start prefetching the next page from the new oldest message.
-    const allMsgs = state.channelView.messages;
-    if (allMsgs.length > 0 && prefetchHasMore.current) {
-      // Use buf's oldest message as the cursor (it's now merged).
+    if (prefetchHasMore.current) {
       const sorted = [...buf].sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       if (sorted.length > 0) {
         void doPrefetch(sorted[0]!.created_at);
       }
+    }
+  };
+
+  // Re-anchor scroll position after content height changes from a merge.
+  const handleContentHeightChange = (height: number, previousHeight: number) => {
+    if (pendingAnchor.current !== null && msgScrollRef.current) {
+      const delta = height - previousHeight;
+      msgScrollRef.current.scrollTo(pendingAnchor.current + delta);
+      pendingAnchor.current = null;
     }
   };
 
@@ -473,7 +475,6 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
       wsRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelName, loggedIn, selfFp]);
 
   // ─── Input handling ────────────────────────────────────────
@@ -602,9 +603,8 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
           mergeOlder();
         }
         // If buffer is empty and we're not already prefetching, the user
-        // hit the top before prefetch finished. The spinner at the top
-        // of the message list (from loadingOlder) would show, but with
-        // prefetching that case is rare. Just let them scroll up normally.
+        // hit the top before prefetch finished. Just let them scroll up
+        // normally — the next prefetch will fill the buffer.
         return;
       }
     }
@@ -1025,7 +1025,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
       )}
 
       {/* Scrollable messages area — only this part scrolls */}
-      <ScrollView ref={msgScrollRef} height={scrollHeight}>
+      <ScrollView ref={msgScrollRef} height={scrollHeight} onContentHeightChange={handleContentHeightChange}>
         {renderMessages()}
       </ScrollView>
 

@@ -164,16 +164,6 @@ export async function joinChannel(
   });
 }
 
-export async function unjoinChannel(
-  fp: string,
-  name: string
-): Promise<void> {
-  await request(`/channels/${encodeURIComponent(name)}/follow`, {
-    method: "DELETE",
-    headers: authHeaders(fp),
-  });
-}
-
 export async function deleteChannel(
   fp: string,
   name: string

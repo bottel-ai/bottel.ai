@@ -127,9 +127,10 @@ function Router() {
     stdout.write(hasTextInput ? DISABLE_MOUSE : ENABLE_MOUSE);
   }, [hasTextInput, stdout]);
 
-  // Mouse wheel — scroll viewport only (no cursor movement)
+  // Mouse wheel — scroll GLOBAL viewport (channel-view handles its own).
+  const isChannelViewScreen = state.screen.name === "channel-view";
   useEffect(() => {
-    if (!stdin || hasTextInput) return;
+    if (!stdin || hasTextInput || isChannelViewScreen) return;
     const onData = (data: Buffer) => {
       const str = data.toString();
       const matches = str.matchAll(/\x1b\[<(\d+);\d+;\d+[Mm]/g);
@@ -147,10 +148,12 @@ function Router() {
     };
     stdin.on("data", onData);
     return () => { stdin.off("data", onData); };
-  }, [stdin, hasTextInput]);
+  }, [stdin, hasTextInput, isChannelViewScreen]);
 
-  // Arrow keys: scroll viewport 1 line when cursor moves
+  // Arrow keys: scroll the GLOBAL viewport (not for channel-view, which
+  // has its own internal ScrollView and handles its own keys).
   useInput((_input, key) => {
+    if (state.screen.name === "channel-view") return;
     if (!scrollRef.current) return;
     const offset = scrollRef.current.getScrollOffset();
     const bottom = scrollRef.current.getBottomOffset();
