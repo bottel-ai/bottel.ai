@@ -716,6 +716,9 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
       await publishMessage(selfFp, channelName, payload, undefined, pow);
       update({ input: "" });
       pastedRef.current = null;
+      // Jump to bottom so the user sees their own message immediately,
+      // even if they were scrolled up reading history.
+      jumpToBottom();
     } catch (err: any) {
       const msg = String(err?.message || err);
       if (msg.includes("Profile required")) {
