@@ -480,8 +480,9 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
 
   useInput((char, key) => {
     // Filter out SGR mouse escape sequences — they leak through useInput
-    // as raw chars on macOS/iTerm2 when mouse tracking is enabled.
-    if (char && char.includes("\x1b[<")) return;
+    // as raw chars when mouse tracking is enabled. ink may strip the ESC
+    // prefix, leaving just "[<NN;NN;NNM" or the full "\x1b[<..." form.
+    if (char && /\[<\d+;\d+;\d+[Mm]/.test(char)) return;
 
     // Pending requests panel: arrow keys to navigate, Enter to approve, Esc to dismiss.
     if (showPending && pendingRequests.length > 0) {
