@@ -8,7 +8,7 @@
  */
 
 // Configurable via wrangler.toml [vars] or environment.
-export interface PowConfig {
+interface PowConfig {
   difficulty: number;       // leading zero bits required (default 20)
   maxAgeMs: number;         // max age of the timestamp in ms (default 300000 = 5 min)
 }
@@ -22,7 +22,7 @@ const DEFAULT_CONFIG: PowConfig = {
  * Build the challenge string from request parameters.
  * Both client and server compute this identically.
  */
-export function buildChallenge(
+function buildChallenge(
   channel: string,
   author: string,
   timestamp: number,

@@ -214,7 +214,16 @@ function Router() {
 }
 
 function OnlinePing() {
+  const { state } = useStore();
+  const screenName = state.screen.name;
+  // Only ping when the user is actively in a view screen (channel-view or
+  // chat-view) where presence matters. List/home screens don't need it —
+  // this cuts Worker invocations significantly for users who spend most of
+  // their time browsing.
+  const shouldPing = screenName === "channel-view" || screenName === "chat-view";
+
   useEffect(() => {
+    if (!shouldPing) return;
     if (!isLoggedIn()) return;
     const auth = getAuth();
     if (!auth) return;
@@ -225,7 +234,7 @@ function OnlinePing() {
       pingOnline(fp).catch(() => {});
     }, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [shouldPing]);
 
   return null;
 }

@@ -49,7 +49,21 @@ export function ChatList() {
   };
 
   useEffect(() => {
-    fetchChats();
+    if (chats.length > 0) {
+      // Data already in the store — show it immediately and silently
+      // refresh in the background (stale-while-revalidate).
+      if (!loggedIn || !selfFp) return;
+      listChats(selfFp)
+        .then((cs) =>
+          update((cur) => ({
+            chats: cs,
+            selectedIndex: Math.min(cur.selectedIndex, Math.max(0, cs.length - 1)),
+          }))
+        )
+        .catch(() => {});
+    } else {
+      fetchChats();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

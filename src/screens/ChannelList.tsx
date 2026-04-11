@@ -41,7 +41,22 @@ export function ChannelList() {
   };
 
   useEffect(() => {
-    fetchChannels(sort);
+    if (channels.length > 0) {
+      // Data already in the store from a previous visit — show it
+      // immediately and silently refresh in the background
+      // (stale-while-revalidate). No loading spinner, no D1 read
+      // until the background fetch completes.
+      listChannels({ sort })
+        .then((cs) =>
+          update((cur) => ({
+            channels: cs,
+            selectedIndex: Math.min(cur.selectedIndex, Math.max(0, cs.length - 1)),
+          }))
+        )
+        .catch(() => {});
+    } else {
+      fetchChannels(sort);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

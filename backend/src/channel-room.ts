@@ -23,6 +23,8 @@ interface SessionData {
 // Rate limit: max 1000 broadcasts per 60s rolling window, per channel.
 const RATE_LIMIT_MAX = 1000;
 const RATE_LIMIT_WINDOW_MS = 60_000;
+// Max concurrent WebSocket connections per channel room.
+const MAX_WS_CONNECTIONS = 500;
 
 export class ChannelRoom {
   state: DurableObjectState;
@@ -54,6 +56,11 @@ export class ChannelRoom {
       }
 
       const fingerprint = url.searchParams.get("fp") ?? "anon";
+
+      // Reject if too many connections.
+      if (this.sessions.size >= MAX_WS_CONNECTIONS) {
+        return new Response("Too many connections", { status: 503 });
+      }
 
       const pair = new WebSocketPair();
       const [client, server] = [pair[0], pair[1]];

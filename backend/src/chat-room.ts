@@ -40,6 +40,11 @@ export class DirectChatRoom {
 
       const fingerprint = url.searchParams.get("fp") ?? "anon";
 
+      // 1:1 chat — at most a handful of connections (2 participants, maybe a few tabs).
+      if (this.sessions.size >= 20) {
+        return new Response("Too many connections", { status: 503 });
+      }
+
       const pair = new WebSocketPair();
       const [client, server] = [pair[0], pair[1]];
 

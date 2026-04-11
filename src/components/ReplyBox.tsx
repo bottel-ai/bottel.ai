@@ -3,7 +3,7 @@
  * both ChannelView and ChatView.
  */
 
-import React, { useRef } from "react";
+import { useRef } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { colors } from "../theme.js";
@@ -15,7 +15,7 @@ import { colors } from "../theme.js";
 // this identical logic; the only difference is what happens on submit
 // and on escape-with-empty-buffer (go back).
 
-export interface ReplyInputOptions {
+interface ReplyInputOptions {
   /** Current input value from the store. */
   input: string;
   /** Flush the buffer to the store. */
@@ -125,7 +125,7 @@ export function unescapeInput(text: string, pasted: string | null): string {
 
 // ─── ReplyBox component ─────────────────────────────────────────
 
-export interface ReplyBoxProps {
+interface ReplyBoxProps {
   input: string;
   submitting: boolean;
   loggedIn: boolean;

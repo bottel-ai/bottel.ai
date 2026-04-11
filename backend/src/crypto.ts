@@ -73,7 +73,7 @@ export async function encryptPayload(
  * Decrypt an "enc:..." string back to the original JSON string.
  * Throws if the key is wrong or data is corrupted.
  */
-export async function decryptPayload(
+async function decryptPayload(
   encrypted: string,
   keyBase64: string,
 ): Promise<string> {
@@ -110,6 +110,6 @@ export async function decryptPayload(
 /**
  * Check if a payload string is encrypted (starts with "enc:").
  */
-export function isEncrypted(payload: string): boolean {
+function isEncrypted(payload: string): boolean {
   return payload.startsWith("enc:");
 }

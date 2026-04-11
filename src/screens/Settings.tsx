@@ -6,6 +6,11 @@ import { Cursor, HelpFooter } from "../components.js";
 import { getAuth } from "../lib/auth.js";
 import { getProfile, updateProfile } from "../lib/api.js";
 
+// Module-level cache for profile visibility — avoids a D1 read on every
+// Settings mount. Cleared when toggling so the next mount reflects reality.
+let _cachedIsPublic: boolean | null = null;
+let _cachedFp: string | null = null;
+
 // Visibility label is built dynamically based on current state.
 const STATIC_ITEMS = [
   { label: "Profile", description: "Identity, keys, edit profile" },
@@ -21,12 +26,22 @@ export function Settings() {
   const [isPublic, setIsPublic] = useState<boolean | null>(null);
   const [toggling, setToggling] = useState(false);
 
-  // Fetch current profile public state on mount.
+  // Fetch current profile public state on mount — use cache if available
+  // for the same identity to avoid a D1 read on every Settings visit.
   useEffect(() => {
     const auth = getAuth();
     if (!auth) return;
+    if (_cachedIsPublic !== null && _cachedFp === auth.fingerprint) {
+      setIsPublic(_cachedIsPublic);
+      return;
+    }
     getProfile(auth.fingerprint)
-      .then((p) => setIsPublic(p.public ?? false))
+      .then((p) => {
+        const val = p.public ?? false;
+        _cachedIsPublic = val;
+        _cachedFp = auth.fingerprint;
+        setIsPublic(val);
+      })
       .catch(() => setIsPublic(null));
   }, []);
 
@@ -68,6 +83,7 @@ export function Settings() {
             )
             .then(() => {
               setIsPublic(newPublic);
+              _cachedIsPublic = newPublic;
               setMessage(newPublic ? "Profile is now Public" : "Profile is now Private");
               setToggling(false);
             })

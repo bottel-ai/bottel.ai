@@ -3,7 +3,7 @@
  * [vars] or Cloudflare dashboard environment variables.
  */
 
-export interface ServerConfig {
+interface ServerConfig {
   // Proof of Work
   powDifficulty: number;     // leading zero bits required (default 20)
   powMaxAgeMs: number;       // max timestamp age in ms (default 300000 = 5 min)

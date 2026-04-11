@@ -99,7 +99,8 @@ const TOOLS = [
 export async function listChannels(db: D1Database, q?: string, sort?: string) {
   let rows: any[];
   if (q && q.trim()) {
-    const ftsQuery = q.split(/\s+/).filter(Boolean).map((w) => `"${w}"*`).join(" ");
+    const ftsQuery = q.split(/\s+/).filter(Boolean).map((w) => `"${w.replace(/"/g, "")}"*`).join(" ");
+    if (!ftsQuery) return [];
     const r = await db.prepare(
       `SELECT c.*, bm25(channels_fts) as rank
        FROM channels_fts fts
@@ -111,6 +112,7 @@ export async function listChannels(db: D1Database, q?: string, sort?: string) {
     rows = r.results ?? [];
   } else {
     const order = sort === "recent" ? "created_at DESC" : "message_count DESC";
+    // `order` is derived from a strict equality check above, not user input — safe from injection.
     const r = await db.prepare(`SELECT * FROM channels ORDER BY ${order} LIMIT 50`).all();
     rows = r.results ?? [];
   }
@@ -152,7 +154,8 @@ export async function getChannel(db: D1Database, name: string) {
 }
 
 export async function searchChannel(db: D1Database, name: string, q: string) {
-  const ftsQuery = q.split(/\s+/).filter(Boolean).map((w) => `"${w}"*`).join(" ");
+  const ftsQuery = q.split(/\s+/).filter(Boolean).map((w) => `"${w.replace(/"/g, "")}"*`).join(" ");
+  if (!ftsQuery) return [];
   const r = await db.prepare(
     `SELECT m.id, m.channel, m.author, m.payload, m.parent_id, m.created_at, bm25(channel_messages_fts) as rank
      FROM channel_messages_fts fts
@@ -280,7 +283,8 @@ async function callTool(
 ): Promise<any> {
   switch (name) {
     case "channels/list": {
-      const channels = await listChannels(env.DB, args?.q, args?.sort);
+      const q = typeof args?.q === "string" ? args.q.slice(0, 200) : undefined;
+      const channels = await listChannels(env.DB, q, args?.sort);
       return { channels };
     }
     case "channels/get": {
@@ -302,6 +306,10 @@ async function callTool(
     case "channels/publish": {
       if (!fingerprint) throw new Error("X-Fingerprint header required for publish");
       if (!args?.name || !args?.payload) throw new Error("name and payload required");
+      // Rate limit MCP publish the same as the HTTP endpoint.
+      if (!checkRateLimit(fingerprint, args.name, 30)) {
+        throw new Error("Rate limit exceeded (30 msg/min/channel)");
+      }
       const r = await publishMessage(
         env.DB,
         env.CHANNEL_ROOM,
@@ -316,7 +324,7 @@ async function callTool(
     }
     case "channels/search": {
       if (!args?.name || !args?.q) throw new Error("name and q required");
-      const results = await searchChannel(env.DB, args.name, args.q);
+      const results = await searchChannel(env.DB, args.name, String(args.q).slice(0, 200));
       return { results };
     }
     default:
@@ -373,7 +381,10 @@ mcpApp.post("/", async (c) => {
   }
 
   if (Array.isArray(body)) {
-    // Batch request.
+    // Batch request — cap size to prevent abuse.
+    if (body.length > 20) {
+      return c.json(rpcError(null, -32600, "Batch too large (max 20 requests)"), 400);
+    }
     const responses = await Promise.all(body.map((r) => handleRpc(r, c.env, fingerprint)));
     return c.json(responses.filter((r) => r !== null));
   }

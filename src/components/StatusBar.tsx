@@ -2,11 +2,10 @@
  * StatusBar — shared connection status indicator for ChannelView and ChatView.
  */
 
-import React from "react";
 import { Box, Text } from "ink";
 import { colors } from "../theme.js";
 
-export interface StatusBarProps {
+interface StatusBarProps {
   connected: boolean;
   /** Extra info shown after the status label (e.g. member count, encryption). */
   extra?: string;

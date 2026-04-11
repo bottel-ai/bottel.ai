@@ -1,5 +1,4 @@
 import type { Channel, ChannelMessage, DirectChat, DirectMessage } from "../state.js";
-export type { Channel, ChannelMessage, DirectChat, DirectMessage } from "../state.js";
 
 function getBaseUrl(): string {
   return process.env.BOTTEL_API_URL || "https://bottel-api.cenconq.workers.dev";

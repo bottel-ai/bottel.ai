@@ -6,7 +6,7 @@
 
 import { useEffect, useRef } from "react";
 
-export interface UseWebSocketOptions {
+interface UseWebSocketOptions {
   /** Unique ID for the connection (channel name or chat ID). */
   id: string;
   /** Whether to connect (false skips). */

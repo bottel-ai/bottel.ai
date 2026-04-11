@@ -24,7 +24,7 @@ function buildChallenge(
 /**
  * Hash a payload object to a hex string for the challenge.
  */
-export function hashPayload(payload: any): string {
+function hashPayload(payload: any): string {
   const json = typeof payload === "string" ? payload : JSON.stringify(payload);
   return crypto.createHash("sha256").update(json).digest("hex");
 }

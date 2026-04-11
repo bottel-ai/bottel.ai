@@ -5,7 +5,7 @@
  * bottel.ai-specific components (Logo with auth integration).
  */
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import { colors } from "./theme.js";
 import { isLoggedIn, getAuth } from "./lib/auth.js";
@@ -110,12 +110,29 @@ function formatCount(n: number): string {
   return String(n);
 }
 
+// Module-level stats cache — avoids re-fetching on every Home mount.
+let _statsCache: { channels: number; users: number; messages: number } | null = null;
+let _statsFetchedAt = 0;
+const STATS_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 export function Logo() {
   const loggedIn = isLoggedIn();
-  const [stats, setStats] = useState<{ channels: number; users: number; messages: number } | null>(null);
+  const [stats, setStats] = useState(_statsCache);
 
   useEffect(() => {
-    getStats().then(setStats).catch(() => {});
+    const age = Date.now() - _statsFetchedAt;
+    if (_statsCache && age < STATS_TTL_MS) {
+      // Cache is fresh — skip the fetch entirely.
+      setStats(_statsCache);
+      return;
+    }
+    getStats()
+      .then((s) => {
+        _statsCache = s;
+        _statsFetchedAt = Date.now();
+        setStats(s);
+      })
+      .catch(() => {});
   }, []);
 
   return (

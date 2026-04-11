@@ -9,6 +9,7 @@
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { bodyLimit } from "hono/body-limit";
 import { authMiddleware } from "./middleware/auth.js";
 
 /** Return 403 if the authenticated user has no profile. */
@@ -49,20 +50,57 @@ interface Env {
 
 type AppEnv = { Bindings: Env; Variables: { fingerprint: string } };
 
+// =====================================================================
+// In-memory caches (per-isolate, survives across requests in same isolate)
+// =====================================================================
+
+type CacheEntry<T = any> = { data: T; ts: number };
+
+const channelListCache = new Map<string, CacheEntry>();
+const channelMetaCache = new Map<string, CacheEntry>();
+const profileCache = new Map<string, CacheEntry>();
+
+function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string, ttlMs: number): T | null {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > ttlMs) {
+    cache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCache<T>(cache: Map<string, CacheEntry<T>>, key: string, data: T): void {
+  cache.set(key, { data, ts: Date.now() });
+}
+
+/** Invalidate channel-related caches when channels are mutated. */
+function invalidateChannelCaches(name?: string): void {
+  channelListCache.clear();
+  if (name) channelMetaCache.delete(name);
+}
+
 const app = new Hono<AppEnv>();
 
+// CORS: allow any origin for now (bots connect from arbitrary origins).
+// Credentials are not cookie-based (fingerprint header), so this is acceptable.
 app.use("*", cors());
 
+// Global request body size limit: 64 KB. Individual routes enforce tighter limits.
+app.use("*", bodyLimit({ maxSize: 64 * 1024 }));
+
 // Health check
-app.get("/", (c) =>
-  c.json({ name: "bottel.ai", version: "0.2.0", status: "ok", surfaces: ["profiles", "channels", "mcp"] })
-);
+app.get("/", (c) => {
+  c.header("Cache-Control", "public, max-age=3600");
+  return c.json({ name: "bottel.ai", version: "0.2.0", status: "ok", surfaces: ["profiles", "channels", "mcp"] });
+});
 
 // =====================================================================
 // Platform stats (cached, refreshed at most once per minute)
 // =====================================================================
 
 app.get("/stats", async (c) => {
+  c.header("Cache-Control", "public, max-age=60");
   const row = await c.env.DB.prepare(
     "SELECT channels, users, messages, updated_at FROM platform_stats WHERE key = 'global'"
   ).first<{ channels: number; users: number; messages: number; updated_at: string }>();
@@ -99,15 +137,23 @@ app.get("/stats", async (c) => {
 // Profiles
 // =====================================================================
 
-// POST /profiles — create/update own profile (auth)
+// POST /profiles — create/update own profile (auth, rate limited)
 app.post("/profiles", authMiddleware, async (c) => {
   const fp = c.get("fingerprint");
+
+  // Rate limit: 10 profile updates/min per user.
+  if (!checkRateLimit(fp, "_profile", 10)) {
+    return c.json({ error: "Rate limit exceeded" }, 429);
+  }
+
   const { name, bio, public: isPublic } = await c.req.json<{
     name: string;
     bio?: string;
     public?: boolean;
   }>();
-  if (!name) return c.json({ error: "name required" }, 400);
+  if (!name || typeof name !== "string") return c.json({ error: "name required" }, 400);
+  if (name.length > 100) return c.json({ error: "name exceeds 100 characters" }, 400);
+  if (bio && typeof bio === "string" && bio.length > 500) return c.json({ error: "bio exceeds 500 characters" }, 400);
 
   await c.env.DB.prepare(
     `INSERT INTO profiles (fingerprint, name, bio, public, created_at)
@@ -117,12 +163,14 @@ app.post("/profiles", authMiddleware, async (c) => {
     .bind(fp, name, bio || "", isPublic ? 1 : 0, name, bio || "", isPublic ? 1 : 0)
     .run();
 
+  profileCache.delete(fp);
   return c.json({ ok: true });
 });
 
 // GET /profiles — list/search public profiles (LIKE-based; profiles_fts removed)
 app.get("/profiles", async (c) => {
-  const q = c.req.query("q");
+  c.header("Cache-Control", "public, max-age=30");
+  const q = c.req.query("q")?.slice(0, 100);
   let result;
   if (q) {
     result = await c.env.DB.prepare(
@@ -150,15 +198,24 @@ app.get("/profiles", async (c) => {
   return c.json({ profiles });
 });
 
-// GET /profiles/:fp — single profile
+// GET /profiles/:fp — single profile (cached 60s)
 app.get("/profiles/:fp", async (c) => {
   const fp = c.req.param("fp")!;
-  const p = await c.env.DB.prepare(
-    "SELECT fingerprint, name, bio, online_at, public FROM profiles WHERE fingerprint = ?"
-  )
-    .bind(fp)
-    .first();
-  if (!p) return c.json({ error: "Profile not found" }, 404);
+
+  const cached = getCached<any>(profileCache, fp, 60_000);
+  let p: any;
+  if (cached) {
+    p = cached;
+  } else {
+    p = await c.env.DB.prepare(
+      "SELECT fingerprint, name, bio, online_at, public FROM profiles WHERE fingerprint = ?"
+    )
+      .bind(fp)
+      .first();
+    if (!p) return c.json({ error: "Profile not found" }, 404);
+    setCache(profileCache, fp, p);
+  }
+
   const online = p.online_at
     ? Date.now() - new Date((p.online_at as string) + "Z").getTime() < 300000
     : false;
@@ -182,28 +239,69 @@ app.post("/profiles/ping", authMiddleware, async (c) => {
 
 const CHANNEL_NAME_RE = /^[a-z0-9-]{1,50}$/;
 
-// GET /channels?q=&sort=
+// GET /channels?q=&sort= (cached 30s)
 app.get("/channels", async (c) => {
-  const q = c.req.query("q");
-  const sort = c.req.query("sort");
-  const channels = await listChannels(c.env.DB, q, sort);
+  c.header("Cache-Control", "public, max-age=15");
+  const q = c.req.query("q") || "";
+  const sort = c.req.query("sort") || "";
+  const cacheKey = `${q}|${sort}`;
+
+  const cached = getCached<any[]>(channelListCache, cacheKey, 30_000);
+  if (cached) {
+    return c.json({ channels: cached });
+  }
+
+  const channels = await listChannels(c.env.DB, q || undefined, sort || undefined);
+  setCache(channelListCache, cacheKey, channels);
   return c.json({ channels });
 });
 
-// GET /channels/:name — metadata + recent 50 messages
+// GET /channels/:name — metadata (cached 30s) + recent 50 messages (always fresh)
 app.get("/channels/:name", async (c) => {
+  c.header("Cache-Control", "public, max-age=5");
   const name = c.req.param("name");
+
+  // Try channel metadata cache to skip that D1 read.
+  const cachedMeta = getCached<any>(channelMetaCache, name, 30_000);
+  if (cachedMeta) {
+    // Still fetch fresh messages.
+    const db = c.env.DB;
+    const messagesResult = await db.prepare(
+      `SELECT m.id, m.channel, m.author, m.payload, m.signature, m.parent_id, m.created_at, p.name as author_name
+       FROM channel_messages m
+       LEFT JOIN profiles p ON p.fingerprint = m.author AND p.public = 1
+       WHERE m.channel = ?
+       ORDER BY m.created_at DESC
+       LIMIT 50`
+    ).bind(name).all();
+    const messages = (messagesResult.results ?? []).map((m: any) => {
+      let payload: any = m.payload;
+      try { payload = JSON.parse(m.payload); } catch {}
+      return { ...m, payload };
+    });
+    return c.json({ channel: cachedMeta, messages });
+  }
+
   const result = await getChannel(c.env.DB, name);
   if (!result) return c.json({ error: "Channel not found" }, 404);
+
+  // Cache the channel metadata for next time.
+  setCache(channelMetaCache, name, result.channel);
   return c.json(result);
 });
 
-// POST /channels — create new channel (auth + profile)
+// POST /channels — create new channel (auth + profile, rate limited)
 app.post("/channels", authMiddleware, async (c) => {
   const profileErr = await requireProfile(c);
   if (profileErr) return profileErr;
 
   const fp = c.get("fingerprint");
+
+  // Rate limit: 5 channel creations/min per user.
+  if (!checkRateLimit(fp, "_channel_create", 5)) {
+    return c.json({ error: "Rate limit exceeded" }, 429);
+  }
+
   const body = await c.req.json<{ name: string; description?: string; schema?: any; isPublic?: boolean }>();
 
   if (!body.name || !CHANNEL_NAME_RE.test(body.name)) {
@@ -226,6 +324,9 @@ app.post("/channels", authMiddleware, async (c) => {
   if (existing) return c.json({ error: "Channel already exists" }, 409);
 
   const schemaStr = body.schema ? JSON.stringify(body.schema) : null;
+  if (schemaStr && schemaStr.length > 4096) {
+    return c.json({ error: "schema exceeds 4096 bytes" }, 400);
+  }
 
   const isPublic = body.isPublic !== false ? 1 : 0;
   const encryptionKey = isPublic ? null : await generateChannelKey();
@@ -249,19 +350,26 @@ app.post("/channels", authMiddleware, async (c) => {
 
   // FTS sync handled by triggers in schema.sql.
 
-  const channel = await c.env.DB.prepare("SELECT * FROM channels WHERE name = ?")
-    .bind(body.name)
-    .first();
+  // Construct channel from input data + generated fields, avoiding an extra D1 read.
+  const channel: any = {
+    name: body.name,
+    description,
+    created_by: fp,
+    schema: schemaStr,
+    message_count: 0,
+    subscriber_count: 1, // creator auto-followed above
+    is_public: isPublic,
+    encryption_key: undefined, // never expose
+    created_at: new Date().toISOString(),
+  };
+  delete channel.encryption_key;
 
-  // Return key to the creator for private channels; never expose encryption_key in the channel object.
   const response: any = { channel };
   if (encryptionKey) {
     response.key = encryptionKey;
   }
-  // Strip encryption_key from the channel object so it's not leaked via the response body.
-  if (channel && (channel as any).encryption_key !== undefined) {
-    delete (channel as any).encryption_key;
-  }
+
+  invalidateChannelCaches();
   return c.json(response, 201);
 });
 
@@ -317,6 +425,14 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
     parent_id?: string;
     pow?: { nonce: number; timestamp: number };
   }>();
+
+  // Validate optional string field lengths.
+  if (body.signature && (typeof body.signature !== "string" || body.signature.length > 512)) {
+    return c.json({ error: "signature too long (max 512)" }, 400);
+  }
+  if (body.parent_id && (typeof body.parent_id !== "string" || body.parent_id.length > 36)) {
+    return c.json({ error: "invalid parent_id" }, 400);
+  }
 
   const cfg = getConfig(c.env as any);
 
@@ -389,6 +505,7 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
         body: JSON.stringify(message),
       }));
     } catch {}
+    invalidateChannelCaches(name);
     return c.json({ message }, 201);
   }
 
@@ -402,6 +519,7 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
     body.parent_id
   );
   if (!r.ok) return c.json({ error: r.error }, r.status as any);
+  invalidateChannelCaches(name);
   return c.json({ message: r.message }, 201);
 });
 
@@ -410,11 +528,17 @@ app.get("/channels/:name/ws", async (c) => {
   const name = c.req.param("name");
   const fp = c.req.query("fp");
   if (!fp) return c.json({ error: "fp query param required" }, 400);
+  if (fp.length > 128) return c.json({ error: "fp too long" }, 400);
 
   const channel = await c.env.DB.prepare("SELECT name FROM channels WHERE name = ?")
     .bind(name)
     .first();
   if (!channel) return c.json({ error: "Channel not found" }, 404);
+
+  // Verify the fingerprint belongs to an existing profile.
+  const profile = await c.env.DB.prepare("SELECT fingerprint FROM profiles WHERE fingerprint = ?")
+    .bind(fp).first();
+  if (!profile) return c.json({ error: "Unknown fingerprint. Register a profile first." }, 403);
 
   const room = c.env.CHANNEL_ROOM.get(c.env.CHANNEL_ROOM.idFromName(name));
   // Include channel name in the forwarded path so the DO can learn it
@@ -444,13 +568,14 @@ app.delete("/channels/:name", authMiddleware, async (c) => {
     c.env.DB.prepare("DELETE FROM channels WHERE name = ?").bind(name),
   ]);
 
+  invalidateChannelCaches(name);
   return c.body(null, 204);
 });
 
 // POST /channels/:name/search?q=
 app.post("/channels/:name/search", async (c) => {
   const name = c.req.param("name");
-  const q = c.req.query("q");
+  const q = c.req.query("q")?.slice(0, 200);
   if (!q) return c.json({ error: "q query param required" }, 400);
   const messages = await searchChannel(c.env.DB, name, q);
   return c.json({ messages });
@@ -484,6 +609,7 @@ app.delete("/channels/:name/messages/:id", authMiddleware, async (c) => {
       .bind(name),
   ]);
 
+  invalidateChannelCaches(name);
   return c.body(null, 204);
 });
 
@@ -500,6 +626,11 @@ app.post("/channels/:name/follow", authMiddleware, async (c) => {
 
   const name = c.req.param("name");
   const fp = c.get("fingerprint");
+
+  // Rate limit: 30 follow actions/min per user.
+  if (!checkRateLimit(fp, "_follow", 30)) {
+    return c.json({ error: "Rate limit exceeded" }, 429);
+  }
 
   const ch = await c.env.DB.prepare("SELECT name, is_public, created_by FROM channels WHERE name = ?")
     .bind(name)
@@ -643,7 +774,7 @@ app.get("/chat/search", authMiddleware, async (c) => {
     return c.json({ error: "Search rate limit exceeded" }, 429);
   }
 
-  const q = c.req.query("q")?.trim();
+  const q = c.req.query("q")?.trim()?.slice(0, 100);
   if (!q || q.length < 2) return c.json({ results: [] });
 
   // Search by name, fingerprint, or bot_ID. Exclude self.
@@ -678,7 +809,8 @@ app.post("/chat/new", authMiddleware, async (c) => {
 
   const fp = c.get("fingerprint");
   const body = await c.req.json<{ participant: string }>();
-  if (!body.participant) return c.json({ error: "participant required" }, 400);
+  if (!body.participant || typeof body.participant !== "string") return c.json({ error: "participant required" }, 400);
+  if (body.participant.length > 200) return c.json({ error: "participant identifier too long" }, 400);
 
   // Look up by fingerprint first, then by name if not found.
   let otherFp = body.participant;
@@ -796,7 +928,8 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
   const chatId = c.req.param("id")!;
   const fp = c.get("fingerprint");
   const body = await c.req.json<{ content: string; pow?: { nonce: number; timestamp: number } }>();
-  if (!body.content) return c.json({ error: "content required" }, 400);
+  if (!body.content || typeof body.content !== "string") return c.json({ error: "content required" }, 400);
+  if (body.content.length > 4096) return c.json({ error: "content exceeds 4096 characters" }, 400);
 
   const cfg = getConfig(c.env as any);
 
@@ -892,6 +1025,7 @@ app.get("/chat/:id/ws", async (c) => {
   const chatId = c.req.param("id")!;
   const fp = c.req.query("fp");
   if (!fp) return c.json({ error: "fp query param required" }, 400);
+  if (fp.length > 128) return c.json({ error: "fp too long" }, 400);
 
   // Verify participant
   const chat = await c.env.DB.prepare(

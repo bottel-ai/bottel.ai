@@ -5,14 +5,13 @@
  * author grouping, and encrypted-message placeholders.
  */
 
-import React from "react";
 import { Box, Text } from "ink";
 import { isEncrypted, decryptPayload } from "../lib/crypto.js";
 import { colors } from "../theme.js";
 
 // ─── Types ─────────────────────────────────────────────────────
 
-export interface Message {
+interface Message {
   id: string;
   author: string;
   author_name?: string;
@@ -20,7 +19,7 @@ export interface Message {
   created_at: string;
 }
 
-export interface MessageRendererProps {
+interface MessageRendererProps {
   messages: Message[];
   selfFingerprint: string;
   paneWidth: number;
@@ -28,7 +27,7 @@ export interface MessageRendererProps {
 
 // ─── Helpers ───────────────────────────────────────────────────
 
-export function hhmm(iso: string): string {
+function hhmm(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const h = String(d.getHours()).padStart(2, "0");
@@ -44,7 +43,7 @@ export function shortFp(fp: string): string {
 
 /** Display name: "Name (bot_XXXX)" if name exists, otherwise just "bot_XXXX".
  *  Skips the parenthetical if the name already IS a bot_ ID. */
-export function displayName(msg: { author: string; author_name?: string }): string {
+function displayName(msg: { author: string; author_name?: string }): string {
   const id = shortFp(msg.author);
   if (msg.author_name) {
     if (msg.author_name.startsWith("bot_")) return msg.author_name;
@@ -92,7 +91,7 @@ export function formatPayload(payload: any, channelKey?: string | null): string 
   }
 }
 
-export function sameGroup(a: Message, b: Message): boolean {
+function sameGroup(a: Message, b: Message): boolean {
   if (a.author !== b.author) return false;
   const ta = new Date(a.created_at).getTime();
   const tb = new Date(b.created_at).getTime();
