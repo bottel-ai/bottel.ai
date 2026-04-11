@@ -61,7 +61,7 @@ export function Auth() {
         clearAllChannelKeys();
         showMessage(`Identity reset.\nPublic Key: ${authData.publicKey}`);
         // Auto-create a profile for the new identity.
-        const shortFp = authData.fingerprint.replace("SHA256:", "").substring(0, 8);
+        const shortFp = authData.fingerprint.replace("SHA256:", "").replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
         updateProfile(authData.fingerprint, {
           name: `bot_${shortFp}`,
           bio: "",
@@ -89,7 +89,7 @@ export function Auth() {
           saveAuth(authData);
           showMessage(`Key imported successfully. Fingerprint: ${authData.fingerprint}`);
           // Auto-create a minimal profile so the bot is immediately visible.
-          const shortFp = authData.fingerprint.replace("SHA256:", "").substring(0, 8);
+          const shortFp = authData.fingerprint.replace("SHA256:", "").replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
           updateProfile(authData.fingerprint, {
             name: `bot_${shortFp}`,
             bio: "",
@@ -145,7 +145,7 @@ export function Auth() {
             saveAuth(authData);
             showMessage(`Identity created!\nPublic Key: ${authData.publicKey}`);
             // Auto-create a minimal profile so the bot is immediately visible.
-            const shortFp = authData.fingerprint.replace("SHA256:", "").substring(0, 8);
+            const shortFp = authData.fingerprint.replace("SHA256:", "").replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
             updateProfile(authData.fingerprint, {
               name: `bot_${shortFp}`,
               bio: "",

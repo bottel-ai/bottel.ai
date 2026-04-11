@@ -883,7 +883,9 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
           </Box>
           {pendingRequests.map((req, i) => {
             const active = i === pendingIdx;
-            const label = req.follower_name || req.follower.replace("SHA256:", "").substring(0, 12);
+            const fpClean = req.follower.replace("SHA256:", "").replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
+            const fId = `bot_${fpClean}`;
+            const label = req.follower_name ? `${req.follower_name} (${fId})` : fId;
             return (
               <Box key={req.follower}>
                 <Text color={colors.primary}>{active ? "❯ " : "  "}</Text>

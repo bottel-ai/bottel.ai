@@ -5,6 +5,7 @@ import { listChats, createChat, deleteChat } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { colors } from "../theme.js";
 import { Cursor, HelpFooter } from "../components.js";
+import { shortFp } from "../components/MessageRenderer.js";
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -169,7 +170,8 @@ export function ChatList() {
 
   const renderRow = (chat: typeof chats[number], i: number) => {
     const active = i === selectedIndex;
-    const name = chat.other_name || chat.other_fp.slice(0, 16);
+    const id = shortFp(chat.other_fp);
+    const name = chat.other_name ? `${chat.other_name} (${id})` : id;
     const preview = chat.last_message ? truncate(chat.last_message, innerWidth - 20) : "";
     const rel = chat.last_message_at ? relativeTime(chat.last_message_at) : "";
     const isOwner = chat.created_by === selfFp;

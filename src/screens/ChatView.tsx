@@ -6,34 +6,10 @@ import { getChatMessages, sendDirectMessage, openChatWs } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { colors } from "../theme.js";
 import { HelpFooter } from "../components.js";
-
-// ─── Helpers ────────────────────────────────────────────────────
-
-function hhmm(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
-}
-
-function shortFp(fp: string): string {
-  const hash = fp.replace(/^SHA256:/, "");
-  return hash.slice(0, 12);
-}
+import { hhmm, shortFp, displayName as displayNameBase, sanitizeBody } from "../components/MessageRenderer.js";
 
 function displayName(msg: DirectMessage): string {
-  return msg.sender_name || shortFp(msg.sender);
-}
-
-function sanitizeBody(s: string): string {
-  return s
-    .replace(/\r\n?/g, "\n")
-    .replace(/\t/g, "  ")
-    // eslint-disable-next-line no-control-regex
-    .replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "")
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
+  return displayNameBase({ author: msg.sender, author_name: msg.sender_name ?? undefined });
 }
 
 function sameGroup(a: DirectMessage, b: DirectMessage): boolean {

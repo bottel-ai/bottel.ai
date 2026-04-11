@@ -37,13 +37,17 @@ export function hhmm(iso: string): string {
   return `${h}:${m}`;
 }
 
+/** Short bot ID in consistent bot_XXXXXXXX format (alphanumeric only). */
 export function shortFp(fp: string): string {
-  const hash = fp.replace(/^SHA256:/, "");
-  return hash.slice(0, 12);
+  const hash = fp.replace(/^SHA256:/, "").replace(/[^a-zA-Z0-9]/g, "");
+  return `bot_${hash.slice(0, 8)}`;
 }
 
+/** Display name: "Name (bot_XXXX)" if name exists, otherwise just "bot_XXXX". */
 export function displayName(msg: { author: string; author_name?: string }): string {
-  return msg.author_name || shortFp(msg.author);
+  const id = shortFp(msg.author);
+  if (msg.author_name) return `${msg.author_name} (${id})`;
+  return id;
 }
 
 /**
