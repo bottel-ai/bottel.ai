@@ -76,6 +76,11 @@ export function ChatList() {
       }
       if (key.return) {
         if (!newInput.trim() || creating) return;
+        // Self-check: prevent chatting with yourself
+        if (newInput.trim() === selfFp) {
+          setNewError("Cannot chat with yourself.");
+          return;
+        }
         setCreating(true);
         setNewError(null);
         createChat(selfFp, newInput.trim())
@@ -91,13 +96,15 @@ export function ChatList() {
           });
         return;
       }
-      if (key.backspace || key.delete) {
+      if (key.backspace || key.delete || input === "\x7f" || input === "\b") {
         setNewInput((v) => v.slice(0, -1));
         return;
       }
-      if (input && !key.ctrl && !key.meta) {
-        setNewInput((v) => v + input);
-      }
+      // Filter out control chars and mouse escape sequences.
+      if (!input || key.ctrl || key.meta) return;
+      if (/\[<\d+;\d+;\d+[Mm]/.test(input)) return;
+      if (input.charCodeAt(0) < 32) return;
+      setNewInput((v) => v + input);
       return;
     }
 
