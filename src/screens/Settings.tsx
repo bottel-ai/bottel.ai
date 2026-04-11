@@ -6,9 +6,10 @@ import { Cursor, HelpFooter } from "../components.js";
 import { getAuth } from "../lib/auth.js";
 import { getProfile, updateProfile } from "../lib/api.js";
 
-const MENU_ITEMS = [
+// Visibility label is built dynamically based on current state.
+const STATIC_ITEMS = [
   { label: "Profile", description: "Identity, keys, edit profile" },
-  { label: "Public Profile", description: "Toggle name visibility in channels" },
+  { label: "Visibility", description: "" }, // dynamic
   { label: "About", description: "About bottel.ai" },
   { label: "Back", description: "Return to home" },
 ];
@@ -35,20 +36,20 @@ export function Settings() {
       return;
     }
     if (key.upArrow) {
-      dispatch({ type: "UPDATE_SETTINGS", state: (s) => ({ selectedIndex: (s.selectedIndex - 1 + MENU_ITEMS.length) % MENU_ITEMS.length }) });
+      dispatch({ type: "UPDATE_SETTINGS", state: (s) => ({ selectedIndex: (s.selectedIndex - 1 + STATIC_ITEMS.length) % STATIC_ITEMS.length }) });
       setMessage(null);
     }
     if (key.downArrow || key.tab) {
-      dispatch({ type: "UPDATE_SETTINGS", state: (s) => ({ selectedIndex: (s.selectedIndex + 1) % MENU_ITEMS.length }) });
+      dispatch({ type: "UPDATE_SETTINGS", state: (s) => ({ selectedIndex: (s.selectedIndex + 1) % STATIC_ITEMS.length }) });
       setMessage(null);
     }
     if (key.return) {
-      const item = MENU_ITEMS[selectedIndex];
+      const item = STATIC_ITEMS[selectedIndex];
       switch (item?.label) {
         case "Profile":
           navigate({ name: "auth" });
           break;
-        case "Public Profile": {
+        case "Visibility": {
           const auth = getAuth();
           if (!auth) {
             setMessage("No identity found. Create one first.");
@@ -90,17 +91,26 @@ export function Settings() {
 
   // Sub-page header (breadcrumb + separator) is rendered by App.tsx.
 
-  MENU_ITEMS.forEach((item, i) => {
+  STATIC_ITEMS.forEach((item, i) => {
     const isSelected = i === selectedIndex;
+    let label = item.label;
     let description = item.description;
-    if (item.label === "Public Profile" && isPublic !== null) {
-      description += isPublic ? " (Public \u2713)" : " (Private \u2717)";
+    if (item.label === "Visibility") {
+      if (isPublic === true) {
+        label = "Visibility (public)";
+        description = "Your name is visible in channels";
+      } else if (isPublic === false) {
+        label = "Visibility (private)";
+        description = "Only your fingerprint is shown";
+      } else {
+        description = "Loading...";
+      }
     }
     allRows.push(
       <Box key={item.label}>
         <Cursor active={isSelected} />
         <Text bold={isSelected} color={isSelected ? colors.primary : undefined}>
-          {item.label.padEnd(18)}
+          {label.padEnd(24)}
         </Text>
         <Text color={colors.muted}>{description}</Text>
       </Box>
