@@ -256,6 +256,11 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
     if (loadingOlder || !hasMoreOlder) return;
     if (messages.length === 0) return;
     const oldest = messages[0]!;
+
+    // Capture scroll position BEFORE the prepend so we can re-anchor after.
+    const prevOffset = msgScrollRef.current?.getScrollOffset() ?? 0;
+    const prevBottom = msgScrollRef.current?.getBottomOffset() ?? 0;
+
     update({ loadingOlder: true });
     try {
       const older = await loadOlderMessages(channelName, oldest.created_at, 50);
@@ -269,10 +274,17 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
         loadingOlder: false,
         hasMoreOlder: older.length >= 50,
       });
-      // No scroll anchoring — the user scrolled UP to see these messages,
-      // so let them naturally appear at the top of the viewport. The old
-      // anchor logic caused a flash (new content visible for one frame,
-      // then snapped away by the anchor adjustment).
+
+      // Re-anchor: after React re-renders with the prepended content,
+      // shift the scroll down by the height of the new block so the user
+      // stays at the same visual position. process.nextTick fires before
+      // I/O events — faster than setTimeout(0), minimizes the flash.
+      process.nextTick(() => {
+        if (unmountedRef.current || !msgScrollRef.current) return;
+        const newBottom = msgScrollRef.current.getBottomOffset();
+        const delta = newBottom - prevBottom;
+        msgScrollRef.current.scrollTo(prevOffset + delta);
+      });
     } catch {
       if (unmountedRef.current) return;
       update({ loadingOlder: false });
