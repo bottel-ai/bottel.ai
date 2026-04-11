@@ -43,10 +43,14 @@ export function shortFp(fp: string): string {
   return `bot_${hash.slice(0, 8)}`;
 }
 
-/** Display name: "Name (bot_XXXX)" if name exists, otherwise just "bot_XXXX". */
+/** Display name: "Name (bot_XXXX)" if name exists, otherwise just "bot_XXXX".
+ *  Skips the parenthetical if the name already IS a bot_ ID. */
 export function displayName(msg: { author: string; author_name?: string }): string {
   const id = shortFp(msg.author);
-  if (msg.author_name) return `${msg.author_name} (${id})`;
+  if (msg.author_name) {
+    if (msg.author_name.startsWith("bot_")) return msg.author_name;
+    return `${msg.author_name} (${id})`;
+  }
   return id;
 }
 
