@@ -102,10 +102,16 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   // Internal ScrollView ref for the messages area.
   const msgScrollRef = useRef<ScrollViewRef>(null);
 
-  // Calculate the height available for the scrollable messages area.
-  // Must account for all conditional notices rendered above the ScrollView.
-  // Heights are approximate line counts; overestimating is fine (leaves a
-  // small gap at the bottom) but underestimating causes overlap.
+  // Prefetch buffer — older messages fetched in the background before the
+  // user scrolls to the top. Merging is instant (no network, no spinner).
+  const prefetchBuf = useRef<ChannelMessage[]>([]);
+  const prefetchHasMore = useRef(true);
+  const prefetching = useRef(false);
+
+  // New-message indicator — instead of auto-scrolling to bottom on every
+  // WS message, show "N new messages below" and let the user jump manually.
+  const [newMsgCount, setNewMsgCount] = useState(0);
+  const isAtBottom = useRef(true);
 
   const [channel, setChannel] = useState<Channel | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -150,8 +156,13 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
     // Reset join state for new channel.
     setJoinState(null);
     setShowJoinPrompt(false);
-    // Reset pagination flags whenever we open a new channel.
+    // Reset pagination + prefetch state.
     update({ loading: true, loadingOlder: false, hasMoreOlder: true });
+    prefetchBuf.current = [];
+    prefetchHasMore.current = true;
+    prefetching.current = false;
+    setNewMsgCount(0);
+    isAtBottom.current = true;
     // Enforce a minimum loading window so the spinner is visible long enough
     // to feel intentional (avoids a sub-100ms flash on a fast network).
     const MIN_LOADING_MS = 1000;
@@ -171,6 +182,10 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
             loading: false,
             hasMoreOlder: msgs.length >= 50,
           });
+          // Start prefetching the next page in the background.
+          if (msgs.length >= 50 && sorted.length > 0) {
+            void doPrefetch(sorted[0]!.created_at);
+          }
           // Load encryption key for private channels.
           if (!ch.is_public) {
             if (hasChannelKey(channelName)) {
@@ -241,65 +256,105 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   }, [channelName]);
 
   // ─── Scroll-up to load older messages ─────────────────────────
+  // ─── Prefetch + instant merge ───────────────────────────────
   //
-  // Strategy:
-  //   1. On Up / PageUp / mouse-wheel-up, if the global ScrollView is at
-  //      offset 0 AND there's more history AND we're not already loading,
-  //      kick off a fetch.
-  //   2. Capture `getBottom()` BEFORE the fetch resolves.
-  //   3. After the prepend lands and React re-renders, run a useEffect
-  //      keyed on the messages length to compute the new bottom and
-  //      adjust the scroll offset by the delta — keeping the user pinned
-  //      to whatever they were looking at before the prepend.
+  // After initial load, prefetch the next page in the background. When
+  // the user scrolls to the top, merge the buffer instantly (no network,
+  // no spinner, no flash). Then start prefetching the next page.
 
-  const loadOlder = async () => {
-    if (loadingOlder || !hasMoreOlder) return;
-    if (messages.length === 0) return;
-    const oldest = messages[0]!;
-
-    // Capture scroll position BEFORE the prepend so we can re-anchor after.
-    const prevOffset = msgScrollRef.current?.getScrollOffset() ?? 0;
-    const prevBottom = msgScrollRef.current?.getBottomOffset() ?? 0;
-
-    update({ loadingOlder: true });
+  const doPrefetch = async (beforeTs: string) => {
+    if (prefetching.current || !prefetchHasMore.current) return;
+    prefetching.current = true;
     try {
-      const older = await loadOlderMessages(channelName, oldest.created_at, 50);
+      const older = await loadOlderMessages(channelName, beforeTs, 50);
       if (unmountedRef.current) return;
-      if (older.length === 0) {
-        update({ loadingOlder: false, hasMoreOlder: false });
-        return;
-      }
-      dispatch({ type: "PREPEND_CHANNEL_MESSAGES", messages: older });
-      update({
-        loadingOlder: false,
-        hasMoreOlder: older.length >= 50,
-      });
-
-      // Re-anchor: after React re-renders with the prepended content,
-      // shift the scroll down by the height of the new block so the user
-      // stays at the same visual position. process.nextTick fires before
-      // I/O events — faster than setTimeout(0), minimizes the flash.
-      process.nextTick(() => {
-        if (unmountedRef.current || !msgScrollRef.current) return;
-        const newBottom = msgScrollRef.current.getBottomOffset();
-        const delta = newBottom - prevBottom;
-        msgScrollRef.current.scrollTo(prevOffset + delta);
-      });
+      prefetchBuf.current = older;
+      prefetchHasMore.current = older.length >= 50;
     } catch {
-      if (unmountedRef.current) return;
-      update({ loadingOlder: false });
+      // Prefetch failure is silent — user can still trigger a live fetch.
+    } finally {
+      prefetching.current = false;
     }
   };
 
-  // Scroll to bottom when the last message changes (new message arrives).
+  const mergeOlder = () => {
+    const buf = prefetchBuf.current;
+    if (buf.length === 0) {
+      update({ hasMoreOlder: false });
+      return;
+    }
+    // Capture scroll position before merge.
+    const prevOffset = msgScrollRef.current?.getScrollOffset() ?? 0;
+    const prevBottom = msgScrollRef.current?.getBottomOffset() ?? 0;
+
+    dispatch({ type: "PREPEND_CHANNEL_MESSAGES", messages: buf });
+    update({ hasMoreOlder: prefetchHasMore.current });
+    prefetchBuf.current = [];
+
+    // Re-anchor so the viewport stays at the same visual position.
+    process.nextTick(() => {
+      if (unmountedRef.current || !msgScrollRef.current) return;
+      const newBottom = msgScrollRef.current.getBottomOffset();
+      const delta = newBottom - prevBottom;
+      msgScrollRef.current.scrollTo(prevOffset + delta);
+    });
+
+    // Start prefetching the next page from the new oldest message.
+    const allMsgs = state.channelView.messages;
+    if (allMsgs.length > 0 && prefetchHasMore.current) {
+      // Use buf's oldest message as the cursor (it's now merged).
+      const sorted = [...buf].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      if (sorted.length > 0) {
+        void doPrefetch(sorted[0]!.created_at);
+      }
+    }
+  };
+
+  // Track whether the user is at the bottom of the scroll. If they are,
+  // auto-scroll on new messages. If not, show a "N new messages" indicator.
   const lastMsgId = messages[messages.length - 1]?.id ?? null;
+  const prevMsgIdRef = useRef<string | null>(null);
   useEffect(() => {
-    const t = setTimeout(() => {
-      const bottom = msgScrollRef.current?.getBottomOffset() ?? 0;
-      msgScrollRef.current?.scrollTo(bottom);
-    }, 0);
-    return () => clearTimeout(t);
+    if (prevMsgIdRef.current === null) {
+      // First load — always scroll to bottom.
+      prevMsgIdRef.current = lastMsgId;
+      const t = setTimeout(() => {
+        const bottom = msgScrollRef.current?.getBottomOffset() ?? 0;
+        msgScrollRef.current?.scrollTo(bottom);
+      }, 0);
+      return () => clearTimeout(t);
+    }
+    if (lastMsgId !== prevMsgIdRef.current) {
+      prevMsgIdRef.current = lastMsgId;
+      if (isAtBottom.current) {
+        // User is at the bottom — auto-scroll silently.
+        const t = setTimeout(() => {
+          const bottom = msgScrollRef.current?.getBottomOffset() ?? 0;
+          msgScrollRef.current?.scrollTo(bottom);
+        }, 0);
+        return () => clearTimeout(t);
+      }
+      // User has scrolled up — don't jump, just increment the counter.
+      setNewMsgCount((n) => n + 1);
+    }
   }, [lastMsgId]);
+
+  // Update isAtBottom whenever the user scrolls.
+  const checkIfAtBottom = () => {
+    if (!msgScrollRef.current) return;
+    const offset = msgScrollRef.current.getScrollOffset();
+    const bottom = msgScrollRef.current.getBottomOffset();
+    isAtBottom.current = offset >= bottom - 2; // within 2 lines of bottom
+  };
+
+  const jumpToBottom = () => {
+    const bottom = msgScrollRef.current?.getBottomOffset() ?? 0;
+    msgScrollRef.current?.scrollTo(bottom);
+    isAtBottom.current = true;
+    setNewMsgCount(0);
+  };
 
   // ─── Mouse wheel scrolling ──────────────────────────────────
   //
@@ -323,9 +378,11 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
         if ((button & 0x43) === 0x40) {
           // Wheel up
           msgScrollRef.current.scrollTo(Math.max(0, offset - 3));
+          checkIfAtBottom();
         } else if ((button & 0x43) === 0x41) {
           // Wheel down
           msgScrollRef.current.scrollTo(Math.min(bottom, offset + 3));
+          checkIfAtBottom();
         }
       }
     };
@@ -536,19 +593,32 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
       return;
     }
 
-    // Scroll-up-to-load-more: when the viewport is already at the top,
-    // an Up arrow or PageUp fetches the previous page of history.
-    if ((key.upArrow || key.pageUp) && hasMoreOlder && !loadingOlder) {
+    // Scroll-up-to-load-more: when at the top, merge the prefetched
+    // buffer instantly. If the buffer is empty and there's more history,
+    // fall back to a live fetch.
+    if ((key.upArrow || key.pageUp) && hasMoreOlder) {
       if ((msgScrollRef.current?.getScrollOffset() ?? 0) <= 0) {
-        void loadOlder();
+        if (prefetchBuf.current.length > 0) {
+          mergeOlder();
+        }
+        // If buffer is empty and we're not already prefetching, the user
+        // hit the top before prefetch finished. The spinner at the top
+        // of the message list (from loadingOlder) would show, but with
+        // prefetching that case is rare. Just let them scroll up normally.
         return;
       }
     }
     // Up/Down/PageUp/PageDown: scroll the internal messages ScrollView.
-    if (key.upArrow) { msgScrollRef.current?.scrollBy(-1); return; }
-    if (key.downArrow) { msgScrollRef.current?.scrollBy(1); return; }
-    if (key.pageUp) { msgScrollRef.current?.scrollBy(-10); return; }
-    if (key.pageDown) { msgScrollRef.current?.scrollBy(10); return; }
+    if (key.upArrow) { msgScrollRef.current?.scrollBy(-1); checkIfAtBottom(); return; }
+    if (key.downArrow) { msgScrollRef.current?.scrollBy(1); checkIfAtBottom(); return; }
+    if (key.pageUp) { msgScrollRef.current?.scrollBy(-10); checkIfAtBottom(); return; }
+    if (key.pageDown) { msgScrollRef.current?.scrollBy(10); checkIfAtBottom(); return; }
+
+    // g = jump to bottom (latest messages) and clear the new-message counter.
+    if ((char === "g" || char === "G") && !inputBufRef.current && newMsgCount > 0) {
+      jumpToBottom();
+      return;
+    }
 
     if (key.return) {
       void handleSubmit();
@@ -866,6 +936,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   if (joinState === "pending" && !showJoinPrompt) chromeLines += 1;
   if (showPending && pendingRequests.length > 0) chromeLines += pendingRequests.length + 3;
   if (channel && !channel.is_public) chromeLines += 1;
+  if (newMsgCount > 0) chromeLines += 1;
   const scrollHeight = Math.max(5, termHeight - chromeLines);
 
   const statusDot = wsConnected ? (
@@ -957,6 +1028,18 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
       <ScrollView ref={msgScrollRef} height={scrollHeight}>
         {renderMessages()}
       </ScrollView>
+
+      {/* New messages indicator — shown when the user has scrolled up */}
+      {newMsgCount > 0 && (
+        <Box paddingX={2} marginTop={1}>
+          <Text color={colors.primary} bold>
+            ↓ {newMsgCount} new message{newMsgCount === 1 ? "" : "s"} below
+          </Text>
+          <Text color={colors.subtle}>  — press </Text>
+          <Text bold color={colors.primary}>g</Text>
+          <Text color={colors.subtle}> to jump to latest</Text>
+        </Box>
+      )}
 
       <Box marginTop={1} flexDirection="column">
         {renderInput()}
