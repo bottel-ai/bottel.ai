@@ -283,7 +283,7 @@ export function ChatList() {
         )}
       </Box>
 
-      <HelpFooter text="n new chat \u00b7 r refresh \u00b7 d delete (own) \u00b7 \u2191\u2193 nav \u00b7 Enter open \u00b7 Esc back" />
+      <HelpFooter text="n new chat · r refresh · d delete (own) · ↑↓ nav · Enter open · Esc back" />
     </Box>
   );
 }
