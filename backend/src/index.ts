@@ -799,6 +799,7 @@ app.post("/channels/:name/ban/:fp", authMiddleware, async (c) => {
     "UPDATE channels SET subscriber_count = (SELECT COUNT(*) FROM channel_follows WHERE channel = ? AND status = 'active') WHERE name = ?"
   ).bind(name, name).run();
 
+  invalidateChannelCaches(name);
   return c.json({ status: "banned" });
 });
 
@@ -818,6 +819,7 @@ app.delete("/channels/:name/ban/:fp", authMiddleware, async (c) => {
     "DELETE FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'banned'"
   ).bind(name, targetFp).run();
 
+  invalidateChannelCaches(name);
   return c.body(null, 204);
 });
 

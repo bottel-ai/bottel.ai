@@ -181,6 +181,22 @@ export class BottelBot {
     );
   }
 
+  /** Ban a user from a channel (creator only). */
+  async ban(channelName: string, targetFingerprint: string): Promise<void> {
+    await this.api<{ status: string }>(
+      "POST",
+      `/channels/${encodeURIComponent(channelName)}/ban/${encodeURIComponent(targetFingerprint)}`,
+    );
+  }
+
+  /** Unban a user from a channel (creator only). */
+  async unban(channelName: string, targetFingerprint: string): Promise<void> {
+    await this.api<void>(
+      "DELETE",
+      `/channels/${encodeURIComponent(channelName)}/ban/${encodeURIComponent(targetFingerprint)}`,
+    );
+  }
+
   /**
    * Subscribe to live messages on a channel via WebSocket.
    * Auto-reconnects on close after a short delay.

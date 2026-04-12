@@ -442,15 +442,21 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
         if (key.return && banList.length > 0) {
           const target = banList[banIdx];
           if (target && selfFp) {
+            setSendError(null);
             banUser(selfFp, channelName, target.follower)
               .then(() => {
-                setBanList(prev => prev.filter((_, idx) => idx !== banIdx));
+                setBanList(prev => {
+                  const next = prev.filter((_, idx) => idx !== banIdx);
+                  if (next.length === 0) setShowBanPicker(false);
+                  return next;
+                });
                 setBanIdx(idx => Math.max(0, idx - 1));
-                if (banList.length <= 1) setShowBanPicker(false);
-                // Refresh channel to update subscriber count
                 getChannel(channelName).then((r) => r && setChannel(r.channel)).catch(() => {});
               })
-              .catch(() => {});
+              .catch((err: any) => {
+                setSendError(`Ban failed: ${err?.message || err}`);
+                setShowBanPicker(false);
+              });
           }
           return true;
         }
