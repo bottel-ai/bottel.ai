@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getChannel, joinChannel, checkJoined, publishMessage, API_URL, type Channel } from "../lib/api";
+import { getChannel, joinChannel, checkJoined, publishMessage, loadOlderMessages, API_URL, type Channel } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { displayName, formatTime } from "../lib/format";
 import { Skeleton, Breadcrumb } from "../components";
@@ -60,6 +60,13 @@ export function ChannelView() {
   // WebSocket connection status
   const [wsConnected, setWsConnected] = useState(false);
 
+  // Prefetch older messages
+  const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const prefetchBuf = useRef<Message[]>([]);
+  const prefetchHasMore = useRef(true);
+  const prefetching = useRef(false);
+
   const loggedIn = isLoggedIn();
   const identity = loggedIn ? getIdentity() : null;
 
@@ -81,9 +88,64 @@ export function ChannelView() {
     if (atBottom) setNewMsgCount(0);
   }, []);
 
+  // Prefetch older messages in the background
+  const doPrefetch = useCallback(async (beforeTs: string) => {
+    if (prefetching.current || !prefetchHasMore.current || !name) return;
+    prefetching.current = true;
+    try {
+      const older = await loadOlderMessages(name, beforeTs, 50);
+      prefetchBuf.current = older;
+      prefetchHasMore.current = older.length >= 50;
+    } catch { /* silent */ }
+    finally { prefetching.current = false; }
+  }, [name]);
+
+  // Merge prefetched older messages when user scrolls to top
+  const mergeOlder = useCallback(() => {
+    const buf = prefetchBuf.current;
+    if (buf.length === 0) { setHasMoreOlder(false); return; }
+    const el = scrollContainerRef.current;
+    const prevScrollHeight = el?.scrollHeight ?? 0;
+
+    const sorted = [...buf].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    setMessages(prev => prev ? [...sorted, ...prev] : sorted);
+    setHasMoreOlder(prefetchHasMore.current);
+    prefetchBuf.current = [];
+
+    // Re-anchor scroll so the view doesn't jump
+    requestAnimationFrame(() => {
+      if (el) {
+        const newScrollHeight = el.scrollHeight;
+        el.scrollTop = newScrollHeight - prevScrollHeight;
+      }
+    });
+
+    // Prefetch the next page
+    if (prefetchHasMore.current && sorted.length > 0) {
+      void doPrefetch(sorted[0].created_at);
+    }
+  }, [doPrefetch]);
+
+  // Detect scroll to top → merge older messages
+  const handleScrollWithPrefetch = useCallback(() => {
+    handleScroll();
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    if (el.scrollTop < 100 && hasMoreOlder && prefetchBuf.current.length > 0) {
+      mergeOlder();
+    }
+  }, [handleScroll, hasMoreOlder, mergeOlder]);
+
   // Load channel + messages on mount
   useEffect(() => {
     if (!name) return;
+    setHasMoreOlder(true);
+    prefetchBuf.current = [];
+    prefetchHasMore.current = true;
+    prefetching.current = false;
+
     getChannel(name)
       .then(({ channel: ch, messages: msgs }) => {
         setChannel(ch);
@@ -92,6 +154,11 @@ export function ChannelView() {
           (a: Message, b: Message) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
         setMessages(sorted);
+        setHasMoreOlder(msgs.length >= 50);
+        // Start prefetching older messages in the background
+        if (msgs.length >= 50 && sorted.length > 0) {
+          void doPrefetch(sorted[0].created_at);
+        }
       })
       .catch((err) => setError(err.message));
 
@@ -325,7 +392,7 @@ export function ChannelView() {
       {/* ── Scrollable messages ── */}
       <div
         ref={scrollContainerRef}
-        onScroll={handleScroll}
+        onScroll={handleScrollWithPrefetch}
         style={{ flex: 1, minHeight: 0, overflowY: "auto" }}
         className="w-full"
       >
@@ -348,7 +415,12 @@ export function ChannelView() {
             </p>
           ) : (
             <div className="flex flex-col">
-              <p className="text-text-muted text-xs font-mono mb-3">— start of channel —</p>
+              {loadingOlder && (
+                <p className="text-text-muted text-xs font-mono mb-3">loading older messages...</p>
+              )}
+              {!hasMoreOlder && (
+                <p className="text-text-muted text-xs font-mono mb-3">— start of channel —</p>
+              )}
 
               {messages.map((msg, i) => {
                 const prev = i > 0 ? messages[i - 1] : null;

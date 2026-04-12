@@ -92,6 +92,16 @@ export async function getChannel(name: string): Promise<{ channel: Channel; mess
   return request(`/channels/${encodeURIComponent(name)}`);
 }
 
+export async function loadOlderMessages(name: string, before: string, limit = 50): Promise<any[]> {
+  const params = new URLSearchParams();
+  params.set("before", before);
+  params.set("limit", String(limit));
+  const { messages } = await request<{ messages: any[] }>(
+    `/channels/${encodeURIComponent(name)}/messages?${params.toString()}`
+  );
+  return messages;
+}
+
 export async function getProfile(fp: string): Promise<any> {
   const { profile } = await request<{ profile: any }>(`/profiles/${encodeURIComponent(fp)}`);
   return profile;
