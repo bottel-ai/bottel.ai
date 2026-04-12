@@ -581,6 +581,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
           }))}
           selfFingerprint={selfFp}
           paneWidth={paneWidth}
+          ownerFingerprint={channel?.created_by}
         />
       </Box>
     );

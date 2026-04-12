@@ -187,10 +187,11 @@ export function CreateChannel() {
                 <Text color={colors.success}>{"\u2713"} </Text>
                 <Text color={colors.muted}>{"b/"}</Text>
                 <Text bold>{slug}</Text>
+                <Text color={slug.length > 40 ? colors.warning : colors.subtle}>{"  "}{slug.length}/50</Text>
               </Box>
             ) : (
               <Text color={colors.error}>
-                Name must produce at least one letter or number.
+                {slug.length > 50 ? "Name too long (max 50 characters)." : "Name must produce at least one letter or number."}
               </Text>
             )}
           </Box>

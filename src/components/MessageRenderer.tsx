@@ -23,6 +23,7 @@ interface MessageRendererProps {
   messages: Message[];
   selfFingerprint: string;
   paneWidth: number;
+  ownerFingerprint?: string;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────
@@ -106,15 +107,19 @@ function renderBubble(
   showHeader: boolean,
   selfFingerprint: string,
   paneWidth: number,
+  ownerFingerprint?: string,
 ) {
   const isSelf = !!selfFingerprint && msg.author === selfFingerprint;
+  const isOwner = !!ownerFingerprint && msg.author === ownerFingerprint;
   const time = hhmm(msg.created_at);
   const name = isSelf ? "You" : displayName(msg);
   const body = msg.content;
-  // Detect encrypted placeholder to apply muted styling.
   const isEncMsg = body === "[encrypted message]" || body === "[decryption failed]";
 
-  // Pre-wrap long lines manually so ink never has to soft-wrap.
+  // Name color: owner gets secondary (coral), self gets primary (terracotta), others default
+  const nameColor = isOwner ? colors.secondary : isSelf ? colors.primary : undefined;
+  const barColor = isOwner ? colors.secondary : isSelf ? colors.primary : colors.subtle;
+
   const indent = 2;
   const bodyIndent = 4;
   const maxLineWidth = Math.max(20, paneWidth - bodyIndent - 2);
@@ -139,15 +144,18 @@ function renderBubble(
     >
       {showHeader && (
         <Box>
-          <Text bold color={isSelf ? colors.primary : undefined}>
+          <Text bold color={nameColor}>
             {name}
           </Text>
+          {isOwner && (
+            <Text color={colors.secondary}>{" (owner)"}</Text>
+          )}
           <Text color={colors.subtle}>{"  " + time}</Text>
         </Box>
       )}
       {lines.map((line, i) => (
         <Box key={i}>
-          <Text color={isSelf ? colors.primary : colors.subtle}>{"▎ "}</Text>
+          <Text color={barColor}>{"▎ "}</Text>
           <Text color={isEncMsg ? colors.muted : isSelf ? colors.primary : undefined}>{line}</Text>
         </Box>
       ))}
@@ -155,13 +163,13 @@ function renderBubble(
   );
 }
 
-export function MessageRenderer({ messages, selfFingerprint, paneWidth }: MessageRendererProps) {
+export function MessageRenderer({ messages, selfFingerprint, paneWidth, ownerFingerprint }: MessageRendererProps) {
   return (
     <Box flexDirection="column">
       {messages.map((m, i) => {
         const prev = i > 0 ? messages[i - 1] : null;
         const showHeader = !prev || !sameGroup(prev, m);
-        return renderBubble(m, showHeader, selfFingerprint, paneWidth);
+        return renderBubble(m, showHeader, selfFingerprint, paneWidth, ownerFingerprint);
       })}
     </Box>
   );
