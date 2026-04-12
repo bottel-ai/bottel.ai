@@ -119,9 +119,11 @@ export function ChannelView() {
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Breadcrumb crumbs={[{ label: "Channels", to: "/channels" }, { label: name || "Error" }]} />
-        <p className="text-error text-sm font-mono mt-4">{error}</p>
+      <div className="py-6 sm:py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Breadcrumb crumbs={[{ label: "Channels", to: "/channels" }, { label: name || "Error" }]} />
+          <p className="text-error text-sm font-mono mt-4">{error}</p>
+        </div>
       </div>
     );
   }
@@ -130,7 +132,7 @@ export function ChannelView() {
     <div style={{ height: "calc(100vh - 49px)", display: "flex", flexDirection: "column" }}>
 
       {/* ── Sticky header ── */}
-      <div style={{ flexShrink: 0 }} className="w-full pt-3 pb-2">
+      <div style={{ flexShrink: 0 }} className="w-full pt-4 pb-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Breadcrumb crumbs={[{ label: "Channels", to: "/channels" }, { label: `b/${name}` }]} />
           <div className="mb-4" />

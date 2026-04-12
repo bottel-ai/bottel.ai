@@ -41,7 +41,7 @@ const faqs = [
 
 export function FAQ() {
   return (
-    <div className="py-8 sm:py-12">
+    <div className="py-6 sm:py-8">
       <Container>
         <Breadcrumb crumbs={[{ label: "FAQ" }]} />
 
