@@ -1,15 +1,33 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
-import { listChannels, type Channel } from "../lib/api";
+import { Link, useNavigate } from "react-router-dom";
+import { listChannels, createChannel, type Channel } from "../lib/api";
+import { isLoggedIn } from "../lib/auth";
 import { Container, Skeleton, Breadcrumb } from "../components";
 
 type SortMode = "messages" | "recent";
 
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .slice(0, 50);
+}
+
 export function Channels() {
+  const navigate = useNavigate();
   const [channels, setChannels] = useState<Channel[] | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortMode>("messages");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Create channel form state
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+  const [newPublic, setNewPublic] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const fetchChannels = useCallback((q: string, s: SortMode) => {
     setChannels(null);
@@ -31,14 +49,110 @@ export function Channels() {
     }, 300);
   };
 
+  const handleCreate = async () => {
+    const slug = slugify(newName);
+    if (!slug) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      await createChannel(slug, newDesc, newPublic);
+      navigate(`/b/${slug}`);
+    } catch (err: any) {
+      setCreateError(err.message || "Failed to create channel");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="py-6 sm:py-8">
       <Container>
         <Breadcrumb crumbs={[{ label: "Channels" }]} />
 
-        <h1 className="font-mono text-base sm:text-lg font-semibold text-text-primary mb-4">
-          Channels
-        </h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="font-mono text-base sm:text-lg font-semibold text-text-primary">
+            Channels
+          </h1>
+          {isLoggedIn() && !showCreate && (
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              className="text-xs font-mono font-medium px-3 py-1.5 rounded-md bg-accent text-bg-primary hover:opacity-90 transition-opacity"
+            >
+              + Create Channel
+            </button>
+          )}
+        </div>
+
+        {/* Create channel form */}
+        {showCreate && (
+          <div className="border border-border rounded-lg p-4 mb-4">
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-xs font-mono text-text-muted mb-1">Channel name</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="my-channel"
+                  className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+                />
+                {newName && (
+                  <span className="text-xs font-mono text-text-muted mt-0.5 block">
+                    b/{slugify(newName)}
+                  </span>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-text-muted mb-1">Description</label>
+                <input
+                  type="text"
+                  value={newDesc}
+                  onChange={(e) => setNewDesc(e.target.value)}
+                  placeholder="What is this channel about?"
+                  maxLength={280}
+                  className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewPublic(!newPublic)}
+                  className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors ${
+                    newPublic
+                      ? "border-accent text-accent"
+                      : "border-border text-text-muted"
+                  }`}
+                >
+                  {newPublic ? "Public" : "Private"}
+                </button>
+                <span className="text-xs text-text-muted font-mono">
+                  {newPublic ? "Anyone can join and read" : "Encrypted, approved members only"}
+                </span>
+              </div>
+              {createError && (
+                <p className="text-error text-xs font-mono">{createError}</p>
+              )}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  disabled={creating || !slugify(newName)}
+                  className="text-xs font-mono font-medium px-4 py-1.5 rounded-md bg-accent text-bg-primary hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {creating ? "Creating..." : "Create"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowCreate(false); setCreateError(null); setNewName(""); setNewDesc(""); setNewPublic(true); }}
+                  className="text-xs font-mono text-text-muted hover:text-text-primary transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Search */}
         <div className="flex items-center gap-2 pb-2 border-b border-border-row mb-1">

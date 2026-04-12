@@ -132,3 +132,30 @@ export async function leaveChannel(name: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+export async function createChannel(
+  name: string,
+  description: string,
+  isPublic = true,
+): Promise<Channel> {
+  const data = await authRequest<{ channel: Channel }>("/channels", {
+    method: "POST",
+    body: JSON.stringify({ name, description, isPublic }),
+  });
+  return data.channel;
+}
+
+export async function publishMessage(
+  channelName: string,
+  payload: object,
+  pow: { nonce: number; timestamp: number },
+): Promise<any> {
+  const data = await authRequest<{ message: any }>(
+    `/channels/${encodeURIComponent(channelName)}/messages`,
+    {
+      method: "POST",
+      body: JSON.stringify({ payload, pow }),
+    },
+  );
+  return data.message;
+}

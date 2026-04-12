@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getChannel, type Channel } from "../lib/api";
+import { getChannel, joinChannel, publishMessage, type Channel } from "../lib/api";
+import { getIdentity, isLoggedIn } from "../lib/auth";
+import { minePow } from "../lib/pow";
 import { displayName, formatTime } from "../lib/format";
 import { Skeleton, Breadcrumb } from "../components";
 
@@ -39,7 +41,21 @@ export function ChannelView() {
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Message input state
+  const [msgInput, setMsgInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [mining, setMining] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Join state
+  const [joining, setJoining] = useState(false);
+  const [joined, setJoined] = useState(false);
+
+  const loggedIn = isLoggedIn();
+  const identity = loggedIn ? getIdentity() : null;
+
+  const loadChannel = () => {
     if (!name) return;
     getChannel(name)
       .then(({ channel: ch, messages: msgs }) => {
@@ -47,7 +63,57 @@ export function ChannelView() {
         setMessages(msgs);
       })
       .catch((err) => setError(err.message));
+  };
+
+  useEffect(() => {
+    loadChannel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name]);
+
+  const handleSend = async () => {
+    if (!msgInput.trim() || !name || !identity) return;
+    setSendError(null);
+    setSending(true);
+
+    try {
+      // Parse input: try JSON, fallback to text envelope
+      let payload: any;
+      try {
+        payload = JSON.parse(msgInput);
+      } catch {
+        payload = { type: "text", text: msgInput };
+      }
+
+      // Mine POW
+      setMining(true);
+      const pow = await minePow(name, identity.fingerprint, payload);
+      setMining(false);
+
+      // Publish
+      await publishMessage(name, payload, pow);
+      setMsgInput("");
+      loadChannel();
+    } catch (err: any) {
+      setSendError(err.message || "Failed to send message");
+      setMining(false);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleJoin = async () => {
+    if (!name) return;
+    setJoining(true);
+    try {
+      await joinChannel(name);
+      setJoined(true);
+      loadChannel();
+    } catch (err: any) {
+      setSendError(err.message || "Failed to join channel");
+    } finally {
+      setJoining(false);
+    }
+  };
 
   if (error) {
     return (
@@ -82,6 +148,16 @@ export function ChannelView() {
                 )}
                 {!channel.is_public && (
                   <p className="text-xs text-text-muted mt-1">Private · encrypted · approved members only</p>
+                )}
+                {loggedIn && !joined && (
+                  <button
+                    type="button"
+                    onClick={handleJoin}
+                    disabled={joining}
+                    className="mt-1.5 text-xs font-mono font-medium px-3 py-1 rounded-md bg-accent text-bg-primary hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {joining ? "Joining..." : "Join Channel"}
+                  </button>
                 )}
               </>
             ) : (
@@ -157,17 +233,50 @@ export function ChannelView() {
 
       {/* ── Sticky footer ── */}
       <div style={{ flexShrink: 0 }} className="w-full py-2">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between border-t border-border pt-2">
-          <div className="flex items-center gap-1.5 text-xs text-text-muted font-mono">
-            <span className="text-accent-green">●</span>
-            <span>
-              {channel ? `${channel.subscriber_count} member${channel.subscriber_count === 1 ? "" : "s"}` : ""}
-              {channel && !channel.is_public ? "  ·  encrypted" : ""}
-            </span>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          {/* Message input */}
+          {loggedIn && (
+            <div className="pb-2">
+              {sendError && (
+                <p className="text-error text-xs font-mono mb-1">{sendError}</p>
+              )}
+              <div className="flex items-center gap-2">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={msgInput}
+                  onChange={(e) => setMsgInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !sending) handleSend(); }}
+                  placeholder="Type a message..."
+                  disabled={sending}
+                  className="flex-1 bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={handleSend}
+                  disabled={sending || !msgInput.trim()}
+                  className="text-xs font-mono font-medium px-3 py-1.5 rounded-md bg-accent text-bg-primary hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
+                >
+                  {mining ? "Mining..." : sending ? "Sending..." : "Send"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between border-t border-border pt-2">
+            <div className="flex items-center gap-1.5 text-xs text-text-muted font-mono">
+              <span className="text-accent-green">●</span>
+              <span>
+                {channel ? `${channel.subscriber_count} member${channel.subscriber_count === 1 ? "" : "s"}` : ""}
+                {channel && !channel.is_public ? "  ·  encrypted" : ""}
+              </span>
+            </div>
+            <Link to="/channels" className="text-xs text-text-muted font-mono hover:text-text-primary transition-colors">
+              Esc back
+            </Link>
           </div>
-          <Link to="/channels" className="text-xs text-text-muted font-mono hover:text-text-primary transition-colors">
-            Esc back
-          </Link>
+
         </div>
       </div>
 

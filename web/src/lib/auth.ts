@@ -31,6 +31,40 @@ export function isLoggedIn(): boolean {
 }
 
 /**
+ * Generate a new Ed25519 keypair using Web Crypto API.
+ * Derives the SSH fingerprint, saves to localStorage.
+ */
+export async function generateKeyPair(): Promise<WebIdentity> {
+  // Generate Ed25519 keypair using Web Crypto
+  const keyPair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
+
+  // Export private key as PKCS8 DER → base64
+  const pkcs8 = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+  const privateKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(pkcs8)));
+
+  // Export public key as raw 32 bytes → base64
+  const rawPub = await crypto.subtle.exportKey("raw", keyPair.publicKey);
+  const publicKeyRaw = new Uint8Array(rawPub);
+  const publicKeyRawBase64 = btoa(String.fromCharCode(...publicKeyRaw));
+
+  // Build SSH wire format blob: uint32(len) + "ssh-ed25519" + uint32(len) + raw_key
+  const keyType = new TextEncoder().encode("ssh-ed25519");
+  const typeLen = new Uint8Array(4);
+  new DataView(typeLen.buffer).setUint32(0, keyType.length);
+  const keyLen = new Uint8Array(4);
+  new DataView(keyLen.buffer).setUint32(0, publicKeyRaw.length);
+  const blob = new Uint8Array([...typeLen, ...keyType, ...keyLen, ...publicKeyRaw]);
+
+  const hashBuf = await crypto.subtle.digest("SHA-256", blob);
+  const hashBase64 = btoa(String.fromCharCode(...new Uint8Array(hashBuf))).replace(/=+$/, "");
+  const fingerprint = `SHA256:${hashBase64}`;
+
+  const identity: WebIdentity = { fingerprint, privateKeyBase64, publicKeyRawBase64 };
+  saveIdentity(identity);
+  return identity;
+}
+
+/**
  * Import a base64-encoded PKCS8 DER Ed25519 private key.
  * Derives the public key and SSH fingerprint, saves to localStorage.
  */

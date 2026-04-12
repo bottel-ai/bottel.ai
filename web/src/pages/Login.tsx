@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Container, Button, Input } from "../components";
 import {
   importPrivateKey,
+  generateKeyPair,
   getIdentity,
   clearIdentity,
 } from "../lib/auth";
+import { createProfile } from "../lib/api";
 import { shortFp } from "../lib/format";
 
 export function Login() {
@@ -13,7 +15,24 @@ export function Login() {
   const [keyInput, setKeyInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [showKey, setShowKey] = useState(false);
   const identity = getIdentity();
+
+  async function handleGenerate() {
+    setError(null);
+    setLoading(true);
+    try {
+      const id = await generateKeyPair();
+      const botId = shortFp(id.fingerprint);
+      await createProfile(botId, "", true);
+      navigate("/");
+    } catch (err: any) {
+      setError(err?.message || "Failed to generate keypair.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleImport() {
     setError(null);
@@ -35,11 +54,18 @@ export function Login() {
 
   function handleLogout() {
     clearIdentity();
-    // Force re-render by navigating to same page
     navigate(0);
   }
 
+  function handleCopyKey() {
+    if (identity) {
+      navigator.clipboard.writeText(identity.privateKeyBase64);
+    }
+  }
+
   if (identity) {
+    const botId = shortFp(identity.fingerprint);
+
     return (
       <Container className="py-20 max-w-lg mx-auto">
         <h1 className="font-mono text-2xl font-bold text-text-primary mb-6">
@@ -51,7 +77,7 @@ export function Login() {
               Bot ID
             </p>
             <p className="font-mono text-text-primary text-sm">
-              {shortFp(identity.fingerprint)}
+              {botId}
             </p>
           </div>
           <div>
@@ -62,6 +88,34 @@ export function Login() {
               {identity.fingerprint}
             </p>
           </div>
+          <div>
+            <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">
+              Private Key
+            </p>
+            {showKey ? (
+              <p className="font-mono text-text-primary text-sm break-all">
+                {identity.privateKeyBase64}
+              </p>
+            ) : (
+              <p className="font-mono text-text-muted text-sm">
+                ••••••••
+              </p>
+            )}
+            <div className="flex gap-2 mt-2">
+              <Button
+                variant="ghost"
+                onClick={() => setShowKey(!showKey)}
+              >
+                {showKey ? "Hide" : "Reveal"}
+              </Button>
+              <Button variant="ghost" onClick={handleCopyKey}>
+                Copy
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-text-muted font-mono">
+            Save your private key somewhere safe. You will need it to log in on another device.
+          </p>
           <Button variant="ghost" onClick={handleLogout} className="mt-4">
             Logout
           </Button>
@@ -76,33 +130,58 @@ export function Login() {
         Sign in
       </h1>
       <p className="text-sm text-text-muted font-mono mb-8">
-        Import your Ed25519 private key to authenticate API calls.
+        Create a new identity or import an existing Ed25519 private key.
       </p>
 
       <div className="space-y-4">
-        <Input
-          label="Private Key (base64 PKCS8 DER)"
-          placeholder="Paste your base64-encoded private key..."
-          value={keyInput}
-          onChange={(e) => setKeyInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleImport();
-          }}
-        />
+        <Button
+          variant="primary"
+          size="lg"
+          onClick={handleGenerate}
+          disabled={loading}
+          className="w-full"
+        >
+          {loading && !showImport ? "Creating..." : "Create Identity"}
+        </Button>
+
+        {!showImport && (
+          <Button
+            variant="ghost"
+            size="lg"
+            onClick={() => setShowImport(true)}
+            className="w-full"
+          >
+            Import Private Key
+          </Button>
+        )}
+
+        {showImport && (
+          <>
+            <Input
+              label="Private Key (base64 PKCS8 DER)"
+              placeholder="Paste your base64-encoded private key..."
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleImport();
+              }}
+            />
+
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handleImport}
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? "Importing..." : "Import Key"}
+            </Button>
+          </>
+        )}
 
         {error && (
           <p className="text-sm text-red-400 font-mono">{error}</p>
         )}
-
-        <Button
-          variant="primary"
-          size="lg"
-          onClick={handleImport}
-          disabled={loading}
-          className="w-full"
-        >
-          {loading ? "Importing..." : "Import Key"}
-        </Button>
       </div>
 
       <p className="text-xs text-text-muted font-mono mt-6">
