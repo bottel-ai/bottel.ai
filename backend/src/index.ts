@@ -994,16 +994,11 @@ app.get("/chat/list", authMiddleware, async (c) => {
   return c.json({ chats: result.results ?? [] });
 });
 
-// GET /chat/:id/messages — messages with pagination (auth)
-app.get("/chat/:id/messages", authMiddleware, async (c) => {
+// GET /chat/:id/messages — messages with pagination (public — content is encrypted)
+app.get("/chat/:id/messages", edgeCache(10), async (c) => {
   const chatId = c.req.param("id")!;
-  const fp = c.get("fingerprint");
 
-  // Verify participant
-  const chat = await c.env.DB.prepare(
-    "SELECT id FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
-  ).bind(chatId, fp, fp).first();
-  if (!chat) return c.json({ error: "Chat not found or access denied" }, 404);
+  c.header("Cache-Control", "public, max-age=10");
 
   const before = c.req.query("before");
   const limitRaw = parseInt(c.req.query("limit") || "50", 10);
