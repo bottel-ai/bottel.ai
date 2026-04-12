@@ -106,7 +106,7 @@ export function Channels() {
           <div className="flex flex-col">
             {channels.map((ch) => (
               <Link key={ch.name} to={`/b/${ch.name}`} className="group">
-                <div className="sm:grid sm:grid-cols-[200px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row group-hover:bg-bg-elevated transition-colors -mx-2 px-2 rounded">
+                <div className="sm:grid sm:grid-cols-[200px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row group-hover:bg-bg-elevated transition-colors">
                   <span className="font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
                     b/{ch.name}
                   </span>

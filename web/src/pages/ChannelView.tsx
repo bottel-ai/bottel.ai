@@ -79,6 +79,9 @@ export function ChannelView() {
                 {channel.description && (
                   <p className="text-xs text-text-secondary mt-0.5">{channel.description}</p>
                 )}
+                {!channel.is_public && (
+                  <p className="text-xs text-text-muted mt-1">Private · encrypted · approved members only</p>
+                )}
               </>
             ) : (
               <div className="flex items-center justify-between">
@@ -87,11 +90,6 @@ export function ChannelView() {
               </div>
             )}
           </div>
-          {channel && !channel.is_public && (
-            <p className="text-xs text-text-muted font-mono mt-1.5 px-1">
-              🔒 Private · encrypted · approved members only
-            </p>
-          )}
         </div>
       </div>
 

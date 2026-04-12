@@ -78,6 +78,8 @@ function setCache<T>(cache: Map<string, CacheEntry<T>>, key: string, data: T): v
 function invalidateChannelCaches(name?: string): void {
   channelListCache.clear();
   if (name) channelMetaCache.delete(name);
+  // Edge cache is TTL-based and auto-expires. No explicit purge needed
+  // since max-age is short (5-15s) and mutations are infrequent.
 }
 
 const app = new Hono<AppEnv>();
@@ -89,8 +91,46 @@ app.use("*", cors());
 // Global request body size limit: 64 KB. Individual routes enforce tighter limits.
 app.use("*", bodyLimit({ maxSize: 64 * 1024 }));
 
+// =====================================================================
+// Edge cache middleware — caches GET responses at Cloudflare's edge POPs.
+// Only applied to public read-only endpoints. Authenticated or mutation
+// endpoints skip this entirely.
+// =====================================================================
+
+function edgeCache(maxAge: number) {
+  return async (c: any, next: () => Promise<void>) => {
+    // Only cache GET requests, skip if auth header present
+    if (c.req.method !== "GET" || c.req.header("X-Fingerprint")) {
+      await next();
+      return;
+    }
+
+    const cache = caches.default;
+    const cacheKey = new Request(c.req.url, { method: "GET" });
+
+    // Check edge cache
+    const cached = await cache.match(cacheKey);
+    if (cached) {
+      return new Response(cached.body, cached);
+    }
+
+    // Miss — run the handler
+    await next();
+
+    // Clone and store in edge cache
+    const res = c.res;
+    if (res && res.status === 200) {
+      const cloned = res.clone();
+      const headers = new Headers(cloned.headers);
+      headers.set("Cache-Control", `public, max-age=${maxAge}`);
+      const toCache = new Response(cloned.body, { status: 200, headers });
+      c.executionCtx.waitUntil(cache.put(cacheKey, toCache));
+    }
+  };
+}
+
 // Health check
-app.get("/", (c) => {
+app.get("/", edgeCache(3600), (c) => {
   c.header("Cache-Control", "public, max-age=3600");
   return c.json({ name: "bottel.ai", version: "0.2.0", status: "ok", surfaces: ["profiles", "channels", "mcp"] });
 });
@@ -99,7 +139,7 @@ app.get("/", (c) => {
 // Platform stats (cached, refreshed at most once per minute)
 // =====================================================================
 
-app.get("/stats", async (c) => {
+app.get("/stats", edgeCache(60), async (c) => {
   c.header("Cache-Control", "public, max-age=60");
   const row = await c.env.DB.prepare(
     "SELECT channels, users, messages, updated_at FROM platform_stats WHERE key = 'global'"
@@ -168,7 +208,7 @@ app.post("/profiles", authMiddleware, async (c) => {
 });
 
 // GET /profiles — list/search public profiles (LIKE-based; profiles_fts removed)
-app.get("/profiles", async (c) => {
+app.get("/profiles", edgeCache(30), async (c) => {
   c.header("Cache-Control", "public, max-age=30");
   const q = c.req.query("q")?.slice(0, 100);
   let result;
@@ -240,7 +280,7 @@ app.post("/profiles/ping", authMiddleware, async (c) => {
 const CHANNEL_NAME_RE = /^[a-z0-9-]{1,50}$/;
 
 // GET /channels?q=&sort= (cached 30s)
-app.get("/channels", async (c) => {
+app.get("/channels", edgeCache(15), async (c) => {
   c.header("Cache-Control", "public, max-age=15");
   const q = c.req.query("q") || "";
   const sort = c.req.query("sort") || "";
@@ -257,7 +297,7 @@ app.get("/channels", async (c) => {
 });
 
 // GET /channels/:name — metadata (cached 30s) + recent 50 messages (always fresh)
-app.get("/channels/:name", async (c) => {
+app.get("/channels/:name", edgeCache(5), async (c) => {
   c.header("Cache-Control", "public, max-age=5");
   const name = c.req.param("name");
 
