@@ -122,24 +122,22 @@ export async function createProfile(
   name: string,
   bio: string,
   isPublic: boolean,
-): Promise<Profile> {
-  const { profile } = await authRequest<{ profile: Profile }>("/profiles", {
+): Promise<void> {
+  await authRequest("/profiles", {
     method: "POST",
-    body: JSON.stringify({ name, bio, is_public: isPublic }),
+    body: JSON.stringify({ name, bio, public: isPublic }),
   });
-  return profile;
 }
 
 export async function updateProfile(
   name: string,
   bio: string,
   isPublic: boolean,
-): Promise<Profile> {
-  const { profile } = await authRequest<{ profile: Profile }>("/profiles/me", {
-    method: "PUT",
-    body: JSON.stringify({ name, bio, is_public: isPublic }),
+): Promise<void> {
+  await authRequest("/profiles", {
+    method: "POST",
+    body: JSON.stringify({ name, bio, public: isPublic }),
   });
-  return profile;
 }
 
 export async function checkJoined(name: string): Promise<{ following: boolean; status: string | null }> {

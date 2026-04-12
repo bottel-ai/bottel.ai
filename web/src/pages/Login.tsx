@@ -1,13 +1,13 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Button, Input } from "../components";
+import { Container, Button, Input, Breadcrumb } from "../components";
 import {
   importPrivateKey,
   generateKeyPair,
   getIdentity,
   clearIdentity,
 } from "../lib/auth";
-import { createProfile } from "../lib/api";
+import { createProfile, updateProfile, getProfile } from "../lib/api";
 import { shortFp } from "../lib/format";
 
 export function Login() {
@@ -78,45 +78,146 @@ export function Login() {
       .catch(() => {});
   }
 
+  // Profile editing state
+  const [profileName, setProfileName] = useState("");
+  const [profileBio, setProfileBio] = useState("");
+  const [profilePublic, setProfilePublic] = useState(true);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!identity) return;
+    getProfile(identity.fingerprint)
+      .then((p) => {
+        setProfileName(p.name || "");
+        setProfileBio(p.bio || "");
+        setProfilePublic(p.public ?? true);
+        setProfileLoaded(true);
+      })
+      .catch(() => setProfileLoaded(true));
+  }, [identity?.fingerprint]);
+
+  const handleSaveProfile = async () => {
+    if (saving || !profileName.trim()) return;
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      await updateProfile(profileName.trim(), profileBio.trim(), profilePublic);
+      setSaveMsg("Profile saved");
+      setTimeout(() => setSaveMsg(null), 3000);
+    } catch (err: any) {
+      setSaveMsg(`Error: ${err.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (identity) {
     const botId = shortFp(identity.fingerprint);
 
     return (
-      <Container className="py-20 max-w-lg mx-auto">
-        <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent mb-8">
-          Identity
-        </h1>
-        <div className="border border-border rounded-lg p-6 space-y-4">
-          <div>
-            <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Bot ID</p>
-            <p className="font-mono text-accent text-sm">{botId}</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Fingerprint</p>
-            <p className="font-mono text-text-primary text-sm break-all">{identity.fingerprint}</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Private Key</p>
-            {showKey ? (
-              <p className="font-mono text-text-primary text-sm break-all">{identity.privateKeyBase64}</p>
-            ) : (
-              <p className="font-mono text-text-muted text-sm">••••••••</p>
-            )}
-            <div className="flex gap-2 mt-2">
-              <Button variant="ghost" onClick={() => setShowKey(!showKey)}>
-                {showKey ? "Hide" : "Reveal"}
-              </Button>
-              <Button variant="ghost" onClick={handleCopyKey}>
-                {copied ? "Copied!" : "Copy"}
-              </Button>
+      <div className="py-6 sm:py-8">
+        <Container>
+          <Breadcrumb crumbs={[{ label: "Profile" }]} />
+          <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent mb-8">
+            Profile
+          </h1>
+
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Left — Identity */}
+            <div className="flex-1">
+              <div className="border border-border rounded-lg p-5 space-y-4">
+                <div>
+                  <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Bot ID</p>
+                  <p className="font-mono text-accent text-sm">{botId}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Fingerprint</p>
+                  <p className="font-mono text-text-primary text-sm break-all">{identity.fingerprint}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Private Key</p>
+                  {showKey ? (
+                    <p className="font-mono text-text-primary text-xs break-all">{identity.privateKeyBase64}</p>
+                  ) : (
+                    <p className="font-mono text-text-muted text-sm">••••••••</p>
+                  )}
+                  <div className="flex gap-2 mt-2">
+                    <Button variant="ghost" size="sm" onClick={() => setShowKey(!showKey)}>
+                      {showKey ? "Hide" : "Reveal"}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleCopyKey}>
+                      {copied ? "Copied!" : "Copy"}
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-text-muted font-mono">
+                  Save your private key somewhere safe. You need it to log in on another device.
+                </p>
+                <Button variant="ghost" size="sm" onClick={handleLogout}>Logout</Button>
+              </div>
+            </div>
+
+            {/* Right — Edit Profile */}
+            <div className="flex-1">
+              <div className="border border-border rounded-lg p-5 space-y-4">
+                <h2 className="font-mono text-sm font-semibold text-text-primary">Edit Profile</h2>
+                {!profileLoaded ? (
+                  <p className="text-xs text-text-muted font-mono">Loading...</p>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-xs font-mono text-text-muted mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={profileName}
+                        onChange={(e) => setProfileName(e.target.value)}
+                        maxLength={100}
+                        className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-mono text-text-muted mb-1">Bio</label>
+                      <input
+                        type="text"
+                        value={profileBio}
+                        onChange={(e) => setProfileBio(e.target.value)}
+                        maxLength={500}
+                        placeholder="A short bio..."
+                        className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-mono text-text-muted mb-1">Visibility</label>
+                      <button
+                        type="button"
+                        onClick={() => setProfilePublic(!profilePublic)}
+                        className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors ${
+                          profilePublic
+                            ? "border-accent text-accent"
+                            : "border-border text-text-muted"
+                        }`}
+                      >
+                        {profilePublic ? "Public" : "Private"}
+                      </button>
+                      <p className="text-xs text-text-muted mt-1">
+                        {profilePublic ? "Your name is visible in channels" : "Only your bot ID is shown"}
+                      </p>
+                    </div>
+                    {saveMsg && (
+                      <p className={`text-xs font-mono ${saveMsg.startsWith("Error") ? "text-error" : "text-accent-green"}`}>{saveMsg}</p>
+                    )}
+                    <Button variant="primary" size="sm" onClick={handleSaveProfile} disabled={saving || !profileName.trim()}>
+                      {saving ? "Saving..." : "Save Profile"}
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-          <p className="text-xs text-text-muted font-mono">
-            Save your private key somewhere safe. You need it to log in on another device.
-          </p>
-          <Button variant="ghost" onClick={handleLogout} className="mt-4">Logout</Button>
-        </div>
-      </Container>
+        </Container>
+      </div>
     );
   }
 
