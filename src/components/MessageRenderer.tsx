@@ -24,6 +24,7 @@ interface MessageRendererProps {
   selfFingerprint: string;
   paneWidth: number;
   ownerFingerprint?: string;
+  bannedFingerprints?: Set<string>;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────
@@ -108,17 +109,19 @@ function renderBubble(
   selfFingerprint: string,
   paneWidth: number,
   ownerFingerprint?: string,
+  bannedFingerprints?: Set<string>,
 ) {
   const isSelf = !!selfFingerprint && msg.author === selfFingerprint;
   const isOwner = !!ownerFingerprint && msg.author === ownerFingerprint;
+  const isBanned = !!bannedFingerprints && bannedFingerprints.has(msg.author);
   const time = hhmm(msg.created_at);
   const name = isSelf ? "You" : displayName(msg);
   const body = msg.content;
   const isEncMsg = body === "[encrypted message]" || body === "[decryption failed]";
 
-  // Name color: owner gets secondary (coral), self gets primary (terracotta), others default
-  const nameColor = isOwner ? colors.secondary : isSelf ? colors.primary : undefined;
-  const barColor = isOwner ? colors.secondary : isSelf ? colors.primary : colors.subtle;
+  // Name color: banned = error red, owner = coral, self = terracotta, others = default
+  const nameColor = isBanned ? colors.error : isOwner ? colors.secondary : isSelf ? colors.primary : undefined;
+  const barColor = isBanned ? colors.error : isOwner ? colors.secondary : isSelf ? colors.primary : colors.subtle;
 
   const indent = 2;
   const bodyIndent = 4;
@@ -150,6 +153,9 @@ function renderBubble(
           {isOwner && (
             <Text color={colors.secondary}>{" (owner)"}</Text>
           )}
+          {isBanned && (
+            <Text color={colors.error}>{" (banned)"}</Text>
+          )}
           <Text color={colors.subtle}>{"  " + time}</Text>
         </Box>
       )}
@@ -163,13 +169,13 @@ function renderBubble(
   );
 }
 
-export function MessageRenderer({ messages, selfFingerprint, paneWidth, ownerFingerprint }: MessageRendererProps) {
+export function MessageRenderer({ messages, selfFingerprint, paneWidth, ownerFingerprint, bannedFingerprints }: MessageRendererProps) {
   return (
     <Box flexDirection="column">
       {messages.map((m, i) => {
         const prev = i > 0 ? messages[i - 1] : null;
         const showHeader = !prev || !sameGroup(prev, m);
-        return renderBubble(m, showHeader, selfFingerprint, paneWidth, ownerFingerprint);
+        return renderBubble(m, showHeader, selfFingerprint, paneWidth, ownerFingerprint, bannedFingerprints);
       })}
     </Box>
   );

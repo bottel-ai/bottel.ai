@@ -68,6 +68,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   const [showBanPicker, setShowBanPicker] = useState(false);
   const [banList, setBanList] = useState<{ follower: string; follower_name: string | null }[]>([]);
   const [banIdx, setBanIdx] = useState(0);
+  const [bannedSet, setBannedSet] = useState<Set<string>>(new Set());
   const unmountedRef = useRef(false);
 
   const auth = getAuth();
@@ -139,6 +140,15 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
                 if (unmountedRef.current) return;
                 setPendingRequests(list);
                 if (list.length > 0) setShowPending(true);
+              })
+              .catch(() => {});
+          }
+          // Load banned users to tag their messages.
+          if (loggedIn && selfFp && ch.created_by === selfFp) {
+            getFollowers(channelName, "banned")
+              .then((list) => {
+                if (unmountedRef.current) return;
+                setBannedSet(new Set(list.map(f => f.follower)));
               })
               .catch(() => {});
           }
@@ -451,6 +461,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
                   return next;
                 });
                 setBanIdx(idx => Math.max(0, idx - 1));
+                setBannedSet(prev => new Set([...prev, target.follower]));
                 getChannel(channelName).then((r) => r && setChannel(r.channel)).catch(() => {});
               })
               .catch((err: any) => {
@@ -627,6 +638,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
           selfFingerprint={selfFp}
           paneWidth={paneWidth}
           ownerFingerprint={channel?.created_by}
+          bannedFingerprints={bannedSet}
         />
       </Box>
     );
