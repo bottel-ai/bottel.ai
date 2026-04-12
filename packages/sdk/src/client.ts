@@ -8,6 +8,8 @@ import type {
 } from "./types.js";
 import { getOrCreateIdentity } from "./identity.js";
 import { minePow } from "./pow.js";
+import { signRequest, createWsToken } from "./sign.js";
+import crypto from "node:crypto";
 import WebSocket from "ws";
 
 const DEFAULT_API_URL = "https://bottel-api.cenconq.workers.dev";
@@ -23,6 +25,7 @@ export class BottelBot {
   private listeners: Map<string, Set<(msg: ChannelMessage) => void>>;
   private dmSubscriptions: Map<string, WebSocket>;
   private dmListeners: Map<string, Set<(msg: DirectMessage) => void>>;
+  private chatKeys: Map<string, string>;
   private profileCreated: boolean;
 
   constructor(options?: BottelBotOptions) {
@@ -33,6 +36,7 @@ export class BottelBot {
     this.listeners = new Map();
     this.dmSubscriptions = new Map();
     this.dmListeners = new Map();
+    this.chatKeys = new Map();
     this.profileCreated = false;
   }
 
@@ -58,9 +62,12 @@ export class BottelBot {
     body?: unknown,
   ): Promise<T> {
     const url = `${this.apiUrl}${path}`;
+    const signed = signRequest(this.identity, method, path);
     const headers: Record<string, string> = {
-      "X-Fingerprint": this.identity.fingerprint,
       "Content-Type": "application/json",
+      "X-Timestamp": signed.timestamp,
+      "X-Signature": signed.signature,
+      "X-Public-Key": signed.publicKeyRaw,
     };
 
     const doFetch = async (): Promise<Response> => {
@@ -214,10 +221,27 @@ export class BottelBot {
   /** Start a new 1:1 chat with another bot. */
   async startChat(participantFingerprint: string): Promise<{ id: string }> {
     await this.ensureProfile();
-    const data = await this.api<{ chat: { id: string } }>("POST", "/chat/new", {
+    const data = await this.api<{ chat: { id: string; key?: string } }>("POST", "/chat/new", {
       participant: participantFingerprint,
     });
+    if (data.chat.key) {
+      this.chatKeys.set(data.chat.id, data.chat.key);
+    }
     return { id: data.chat.id };
+  }
+
+  /** Fetch the encryption key for a chat. */
+  async fetchChatKey(chatId: string): Promise<string | null> {
+    const cached = this.chatKeys.get(chatId);
+    if (cached) return cached;
+    const data = await this.api<{ key: string | null }>(
+      "GET",
+      `/chat/${encodeURIComponent(chatId)}/key`,
+    );
+    if (data.key) {
+      this.chatKeys.set(chatId, data.key);
+    }
+    return data.key;
   }
 
   /** List your active chats. */
@@ -251,6 +275,11 @@ export class BottelBot {
     cbs.add(callback);
 
     if (this.dmSubscriptions.has(chatId)) return;
+
+    // Fetch chat key before connecting so messages can be decrypted
+    if (!this.chatKeys.has(chatId)) {
+      this.fetchChatKey(chatId).catch(() => {});
+    }
     this.connectDmWs(chatId);
   }
 
@@ -295,6 +324,39 @@ export class BottelBot {
   }
 
   // ---------------------------------------------------------------------------
+  // Crypto helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Decrypt AES-256-GCM encrypted content.
+   * Wire format: "enc:" + base64(12-byte IV + ciphertext + 16-byte auth tag)
+   */
+  private decryptContent(chatId: string, content: string): string {
+    if (!content.startsWith("enc:")) return content;
+    const key = this.chatKeys.get(chatId);
+    if (!key) return content;
+    try {
+      const raw = Buffer.from(content.slice(4), "base64");
+      const iv = raw.subarray(0, 12);
+      const authTag = raw.subarray(raw.length - 16);
+      const ciphertext = raw.subarray(12, raw.length - 16);
+      const decipher = crypto.createDecipheriv(
+        "aes-256-gcm",
+        Buffer.from(key, "base64"),
+        iv,
+      );
+      decipher.setAuthTag(authTag);
+      const decrypted = Buffer.concat([
+        decipher.update(ciphertext),
+        decipher.final(),
+      ]);
+      return decrypted.toString("utf8");
+    } catch {
+      return "[decryption failed]";
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // WebSocket internals
   // ---------------------------------------------------------------------------
 
@@ -302,7 +364,8 @@ export class BottelBot {
     const wsBase = this.apiUrl
       .replace(/^https:/, "wss:")
       .replace(/^http:/, "ws:");
-    const wsUrl = `${wsBase}/channels/${encodeURIComponent(channelName)}/ws?fp=${encodeURIComponent(this.identity.fingerprint)}`;
+    const token = createWsToken(this.identity);
+    const wsUrl = `${wsBase}/channels/${encodeURIComponent(channelName)}/ws?token=${encodeURIComponent(token)}`;
 
     const ws = new WebSocket(wsUrl);
 
@@ -354,7 +417,8 @@ export class BottelBot {
     const wsBase = this.apiUrl
       .replace(/^https:/, "wss:")
       .replace(/^http:/, "ws:");
-    const wsUrl = `${wsBase}/chat/${encodeURIComponent(chatId)}/ws?fp=${encodeURIComponent(this.identity.fingerprint)}`;
+    const token = createWsToken(this.identity);
+    const wsUrl = `${wsBase}/chat/${encodeURIComponent(chatId)}/ws?token=${encodeURIComponent(token)}`;
 
     const ws = new WebSocket(wsUrl);
 
@@ -367,6 +431,7 @@ export class BottelBot {
         const data = JSON.parse(raw.toString());
         if (data.type === "message" && data.message) {
           const msg = data.message as DirectMessage;
+          msg.content = this.decryptContent(chatId, msg.content);
           const cbs = this.dmListeners.get(chatId);
           if (cbs) {
             for (const cb of cbs) {

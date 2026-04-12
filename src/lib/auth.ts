@@ -88,6 +88,77 @@ export function clearAuth(): void {
   config.set("auth", null);
 }
 
+/**
+ * Extract the raw 32-byte Ed25519 public key from an SSH-format public key
+ * string ("ssh-ed25519 AAAA...").
+ */
+function extractRawPublicKey(sshPublicKey: string): Buffer {
+  const parts = sshPublicKey.split(" ");
+  const blob = Buffer.from(parts[1]!, "base64");
+  // Wire format: uint32(len) + "ssh-ed25519" (11 bytes) + uint32(len) + 32-byte key
+  // Skip 4 + 11 + 4 = 19 bytes to get the raw key
+  return blob.subarray(blob.length - 32);
+}
+
+/**
+ * Sign an HTTP request for Ed25519 auth.
+ *
+ * Returns the timestamp, base64 signature, and base64 raw public key,
+ * or null if the user is not logged in.
+ */
+export function signRequest(
+  method: string,
+  path: string
+): { timestamp: string; signature: string; publicKeyRaw: string } | null {
+  const auth = getAuth();
+  if (!auth) return null;
+
+  const timestamp = String(Date.now());
+  const cleanPath = new URL(path, "http://x").pathname;
+  const payload = timestamp + "\n" + method.toUpperCase() + "\n" + cleanPath;
+
+  const privateKeyObject = crypto.createPrivateKey({
+    key: Buffer.from(auth.privateKey, "base64"),
+    format: "der",
+    type: "pkcs8",
+  });
+
+  const signatureBuffer = crypto.sign(null, Buffer.from(payload), privateKeyObject);
+  const rawKey = extractRawPublicKey(auth.publicKey);
+
+  return {
+    timestamp,
+    signature: signatureBuffer.toString("base64"),
+    publicKeyRaw: rawKey.toString("base64"),
+  };
+}
+
+/**
+ * Create a signed token for WebSocket authentication.
+ *
+ * Token format: base64(timestamp + ":" + signature + ":" + publicKeyRawBase64)
+ * The payload signed is just the timestamp string (milliseconds).
+ */
+export function createWsToken(): string | null {
+  const auth = getAuth();
+  if (!auth) return null;
+
+  const timestamp = String(Date.now());
+
+  const privateKeyObject = crypto.createPrivateKey({
+    key: Buffer.from(auth.privateKey, "base64"),
+    format: "der",
+    type: "pkcs8",
+  });
+
+  const signatureBuffer = crypto.sign(null, Buffer.from(timestamp), privateKeyObject);
+  const rawKey = extractRawPublicKey(auth.publicKey);
+
+  const tokenPlain =
+    timestamp + ":" + signatureBuffer.toString("base64") + ":" + rawKey.toString("base64");
+  return Buffer.from(tokenPlain).toString("base64");
+}
+
 
 /** Import a private key from a base64-encoded PKCS8 DER string. */
 export function importPrivateKey(privateKeyBase64: string): AuthData {

@@ -4,8 +4,10 @@ import Spinner from "ink-spinner";
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import { useStore } from "../state.js";
 import type { DirectMessage } from "../state.js";
-import { getChatMessages, sendDirectMessage, openChatWs } from "../lib/api.js";
+import { getChatMessages, sendDirectMessage, openChatWs, fetchChatKey } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
+import { isEncrypted, decryptPayload } from "../lib/crypto.js";
+import { getChatKey, saveChatKey } from "../lib/keys.js";
 import { minePow } from "../lib/pow.js";
 import { colors } from "../theme.js";
 import { MessageRenderer, sanitizeBody } from "../components/MessageRenderer.js";
@@ -36,6 +38,7 @@ export function ChatView({ chatId, termHeight, termWidth }: ChatViewProps) {
   const auth = getAuth();
   const loggedIn = isLoggedIn();
   const selfFp = auth?.fingerprint ?? "";
+  const [chatKey, setChatKey] = useState<string | null>(null);
 
   const update = (s: Partial<typeof state.chatView>) =>
     dispatch({ type: "UPDATE_CHAT_VIEW", state: s });
@@ -48,6 +51,19 @@ export function ChatView({ chatId, termHeight, termWidth }: ChatViewProps) {
     unmountedRef.current = false;
     if (!loggedIn || !selfFp) return;
     update({ loading: true });
+
+    // Fetch chat key (try cache first, then server)
+    const cached = getChatKey(chatId);
+    if (cached) {
+      setChatKey(cached);
+    } else {
+      fetchChatKey(selfFp, chatId)
+        .then((k) => {
+          if (unmountedRef.current) return;
+          if (k) { saveChatKey(chatId, k); setChatKey(k); }
+        })
+        .catch(() => {});
+    }
 
     getChatMessages(selfFp, chatId)
       .then((msgs) => {
@@ -189,12 +205,21 @@ export function ChatView({ chatId, termHeight, termWidth }: ChatViewProps) {
     );
   };
 
+  // Helper: decrypt DM content if encrypted
+  const decryptDmContent = (content: string, key: string | null): string => {
+    if (isEncrypted(content) && key) {
+      try { return decryptPayload(content, key); } catch { return "[decryption failed]"; }
+    }
+    if (isEncrypted(content)) return "[encrypted message]";
+    return sanitizeBody(content);
+  };
+
   // Normalize DirectMessage → MessageRenderer's Message interface
   const normalizedMessages = messages.map((m) => ({
     id: m.id,
     author: m.sender,
     author_name: m.sender_name ?? undefined,
-    content: sanitizeBody(m.content),
+    content: decryptDmContent(m.content, chatKey),
     created_at: m.created_at,
   }));
 

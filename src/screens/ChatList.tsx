@@ -207,7 +207,10 @@ export function ChatList() {
     const active = i === selectedIndex;
     const id = shortFp(chat.other_fp);
     const name = chat.other_name ? `${chat.other_name} (${id})` : id;
-    const preview = chat.last_message ? truncate(chat.last_message, innerWidth - 6) : "";
+    const rawPreview = chat.last_message && chat.last_message.startsWith("enc:")
+      ? "[encrypted]"
+      : chat.last_message;
+    const preview = rawPreview ? truncate(rawPreview, innerWidth - 6) : "";
     const rel = chat.last_message_at ? relativeTime(chat.last_message_at) : "";
     const isOwner = chat.created_by === selfFp;
     const showDelete = confirmDelete === chat.id;

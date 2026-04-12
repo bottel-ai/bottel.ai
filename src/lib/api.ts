@@ -1,10 +1,21 @@
 import type { Channel, ChannelMessage, DirectChat, DirectMessage } from "../state.js";
+import { signRequest, createWsToken } from "./auth.js";
 
 function getBaseUrl(): string {
   return process.env.BOTTEL_API_URL || "https://bottel-api.cenconq.workers.dev";
 }
 
-function authHeaders(fp: string) {
+function authHeaders(fp: string, method: string, path: string): Record<string, string> {
+  const signed = signRequest(method, path);
+  if (signed) {
+    return {
+      "Content-Type": "application/json",
+      "X-Timestamp": signed.timestamp,
+      "X-Signature": signed.signature,
+      "X-Public-Key": signed.publicKeyRaw,
+    };
+  }
+  // Fallback to legacy (shouldn't happen if logged in)
   return { "X-Fingerprint": fp, "Content-Type": "application/json" };
 }
 
@@ -48,7 +59,7 @@ export async function updateProfile(
 ): Promise<void> {
   await request("/profiles", {
     method: "POST",
-    headers: authHeaders(fp),
+    headers: authHeaders(fp, "POST", "/profiles"),
     body: JSON.stringify(body),
   });
 }
@@ -69,7 +80,7 @@ export async function createProfile(
 export async function pingOnline(fp: string): Promise<void> {
   await request("/profiles/ping", {
     method: "POST",
-    headers: authHeaders(fp),
+    headers: authHeaders(fp, "POST", "/profiles/ping"),
   });
 }
 
@@ -109,7 +120,7 @@ export async function createChannel(
 ): Promise<Channel> {
   const { channel } = await request<{ channel: Channel }>("/channels", {
     method: "POST",
-    headers: authHeaders(fp),
+    headers: authHeaders(fp, "POST", "/channels"),
     body: JSON.stringify(body),
   });
   return channel;
@@ -144,7 +155,7 @@ export async function publishMessage(
     `/channels/${encodeURIComponent(name)}/messages`,
     {
       method: "POST",
-      headers: authHeaders(fp),
+      headers: authHeaders(fp, "POST", `/channels/${encodeURIComponent(name)}/messages`),
       body: JSON.stringify({ payload, parent_id, pow }),
     }
   );
@@ -159,7 +170,7 @@ export async function joinChannel(
 ): Promise<{ status: string; already?: boolean }> {
   return request(`/channels/${encodeURIComponent(name)}/follow`, {
     method: "POST",
-    headers: authHeaders(fp),
+    headers: authHeaders(fp, "POST", `/channels/${encodeURIComponent(name)}/follow`),
   });
 }
 
@@ -169,7 +180,7 @@ export async function deleteChannel(
 ): Promise<void> {
   await request(`/channels/${encodeURIComponent(name)}`, {
     method: "DELETE",
-    headers: authHeaders(fp),
+    headers: authHeaders(fp, "DELETE", `/channels/${encodeURIComponent(name)}`),
   });
 }
 
@@ -179,7 +190,7 @@ export async function leaveChannel(
 ): Promise<void> {
   await request(`/channels/${encodeURIComponent(name)}/follow`, {
     method: "DELETE",
-    headers: authHeaders(fp),
+    headers: authHeaders(fp, "DELETE", `/channels/${encodeURIComponent(name)}/follow`),
   });
 }
 
@@ -188,7 +199,7 @@ export async function checkJoined(
   name: string
 ): Promise<{ following: boolean; status: string | null }> {
   return request(`/channels/${encodeURIComponent(name)}/follow`, {
-    headers: authHeaders(fp),
+    headers: authHeaders(fp, "GET", `/channels/${encodeURIComponent(name)}/follow`),
   });
 }
 
@@ -210,7 +221,7 @@ export async function approveFollower(
 ): Promise<void> {
   await request(
     `/channels/${encodeURIComponent(channelName)}/follow/${encodeURIComponent(followerFp)}/approve`,
-    { method: "POST", headers: authHeaders(fp) }
+    { method: "POST", headers: authHeaders(fp, "POST", `/channels/${encodeURIComponent(channelName)}/follow/${encodeURIComponent(followerFp)}/approve`) }
   );
 }
 
@@ -219,7 +230,17 @@ export async function approveFollower(
 export async function fetchChannelKey(fp: string, name: string): Promise<string | null> {
   const { key } = await request<{ key: string | null }>(
     `/channels/${encodeURIComponent(name)}/key`,
-    { headers: authHeaders(fp) }
+    { headers: authHeaders(fp, "GET", `/channels/${encodeURIComponent(name)}/key`) }
+  );
+  return key;
+}
+
+// ─── Chat key (DM encryption) ───────────────────────────────
+
+export async function fetchChatKey(fp: string, chatId: string): Promise<string | null> {
+  const { key } = await request<{ key: string | null }>(
+    `/chat/${encodeURIComponent(chatId)}/key`,
+    { headers: authHeaders(fp, "GET", `/chat/${encodeURIComponent(chatId)}/key`) }
   );
   return key;
 }
@@ -239,14 +260,14 @@ export async function searchBots(
 ): Promise<BotSearchResult[]> {
   const { results } = await request<{ results: BotSearchResult[] }>(
     `/chat/search?q=${encodeURIComponent(query)}`,
-    { headers: authHeaders(fp) }
+    { headers: authHeaders(fp, "GET", "/chat/search") }
   );
   return results;
 }
 
 export async function listChats(fp: string): Promise<DirectChat[]> {
   const { chats } = await request<{ chats: DirectChat[] }>("/chat/list", {
-    headers: authHeaders(fp),
+    headers: authHeaders(fp, "GET", "/chat/list"),
   });
   return chats;
 }
@@ -254,7 +275,7 @@ export async function listChats(fp: string): Promise<DirectChat[]> {
 export async function createChat(fp: string, participant: string): Promise<DirectChat> {
   const { chat } = await request<{ chat: DirectChat }>("/chat/new", {
     method: "POST",
-    headers: authHeaders(fp),
+    headers: authHeaders(fp, "POST", "/chat/new"),
     body: JSON.stringify({ participant }),
   });
   return chat;
@@ -271,7 +292,7 @@ export async function getChatMessages(
   const qs = params.toString();
   const { messages } = await request<{ messages: DirectMessage[] }>(
     `/chat/${encodeURIComponent(chatId)}/messages${qs ? `?${qs}` : ""}`,
-    { headers: authHeaders(fp) }
+    { headers: authHeaders(fp, "GET", `/chat/${encodeURIComponent(chatId)}/messages`) }
   );
   return messages;
 }
@@ -286,7 +307,7 @@ export async function sendDirectMessage(
     `/chat/${encodeURIComponent(chatId)}/messages`,
     {
       method: "POST",
-      headers: authHeaders(fp),
+      headers: authHeaders(fp, "POST", `/chat/${encodeURIComponent(chatId)}/messages`),
       body: JSON.stringify({ content, pow }),
     }
   );
@@ -296,14 +317,18 @@ export async function sendDirectMessage(
 export async function deleteChat(fp: string, chatId: string): Promise<void> {
   await request(`/chat/${encodeURIComponent(chatId)}`, {
     method: "DELETE",
-    headers: authHeaders(fp),
+    headers: authHeaders(fp, "DELETE", `/chat/${encodeURIComponent(chatId)}`),
   });
 }
 
 export function openChatWs(chatId: string, fp: string): WebSocket {
   const wsBase = getBaseUrl().replace(/^http/, "ws");
+  const token = createWsToken();
+  const param = token
+    ? `token=${encodeURIComponent(token)}`
+    : `fp=${encodeURIComponent(fp)}`;
   return new WebSocket(
-    `${wsBase}/chat/${encodeURIComponent(chatId)}/ws?fp=${encodeURIComponent(fp)}`
+    `${wsBase}/chat/${encodeURIComponent(chatId)}/ws?${param}`
   );
 }
 
@@ -311,7 +336,11 @@ export function openChatWs(chatId: string, fp: string): WebSocket {
 
 export function openChannelWs(name: string, fp: string): WebSocket {
   const wsBase = getBaseUrl().replace(/^http/, "ws");
+  const token = createWsToken();
+  const param = token
+    ? `token=${encodeURIComponent(token)}`
+    : `fp=${encodeURIComponent(fp)}`;
   return new WebSocket(
-    `${wsBase}/channels/${encodeURIComponent(name)}/ws?fp=${encodeURIComponent(fp)}`
+    `${wsBase}/channels/${encodeURIComponent(name)}/ws?${param}`
   );
 }

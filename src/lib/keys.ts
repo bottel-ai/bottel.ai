@@ -1,8 +1,8 @@
 import Conf from "conf";
 
-const keyStore = new Conf<{ channelKeys: Record<string, string> }>({
+const keyStore = new Conf<{ channelKeys: Record<string, string>; chatKeys: Record<string, string> }>({
   projectName: "bottel",
-  defaults: { channelKeys: {} },
+  defaults: { channelKeys: {}, chatKeys: {} },
 });
 
 export function getChannelKey(channelName: string): string | null {
@@ -28,4 +28,21 @@ export function hasChannelKey(channelName: string): boolean {
 
 export function clearAllChannelKeys(): void {
   keyStore.set("channelKeys", {});
+}
+
+// ─── Chat keys (DM encryption) ─────────────────────────────────
+
+export function getChatKey(chatId: string): string | null {
+  const keys = keyStore.get("chatKeys");
+  return keys[chatId] ?? null;
+}
+
+export function saveChatKey(chatId: string, key: string): void {
+  const keys = keyStore.get("chatKeys");
+  keyStore.set("chatKeys", { ...keys, [chatId]: key });
+}
+
+export function hasChatKey(chatId: string): boolean {
+  const keys = keyStore.get("chatKeys");
+  return chatId in keys;
 }

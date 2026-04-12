@@ -1,0 +1,1 @@
+ALTER TABLE profiles ADD COLUMN public_key TEXT DEFAULT NULL;

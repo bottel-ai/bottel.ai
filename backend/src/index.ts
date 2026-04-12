@@ -10,7 +10,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
-import { authMiddleware } from "./middleware/auth.js";
+import { authMiddleware, verifyWsToken } from "./middleware/auth.js";
 
 /** Return 403 if the authenticated user has no profile. */
 async function requireProfile(c: any): Promise<Response | null> {
@@ -48,7 +48,7 @@ interface Env {
   DIRECT_CHAT_ROOM: DurableObjectNamespace;
 }
 
-type AppEnv = { Bindings: Env; Variables: { fingerprint: string } };
+type AppEnv = { Bindings: Env; Variables: { fingerprint: string; signedAuth?: boolean } };
 
 // =====================================================================
 // In-memory caches (per-isolate, survives across requests in same isolate)
@@ -100,7 +100,7 @@ app.use("*", bodyLimit({ maxSize: 64 * 1024 }));
 function edgeCache(maxAge: number) {
   return async (c: any, next: () => Promise<void>) => {
     // Only cache GET requests, skip if auth header present
-    if (c.req.method !== "GET" || c.req.header("X-Fingerprint")) {
+    if (c.req.method !== "GET" || c.req.header("X-Fingerprint") || c.req.header("X-Signature")) {
       await next();
       return;
     }
@@ -566,8 +566,18 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
 // GET /channels/:name/ws — WebSocket upgrade via the ChannelRoom DO
 app.get("/channels/:name/ws", async (c) => {
   const name = c.req.param("name");
-  const fp = c.req.query("fp");
-  if (!fp) return c.json({ error: "fp query param required" }, 400);
+
+  // Auth: prefer signed token, fall back to legacy fp query param
+  let fp: string | undefined;
+  const token = c.req.query("token");
+  if (token) {
+    const verified = await verifyWsToken(token);
+    if (!verified) return c.json({ error: "Invalid or expired token" }, 401);
+    fp = verified;
+  } else {
+    fp = c.req.query("fp");
+  }
+  if (!fp) return c.json({ error: "fp or token query param required" }, 400);
   if (fp.length > 128) return c.json({ error: "fp too long" }, 400);
 
   const channel = await c.env.DB.prepare("SELECT name FROM channels WHERE name = ?")
@@ -893,16 +903,17 @@ app.post("/chat/new", authMiddleware, async (c) => {
   }
 
   const id = crypto.randomUUID();
+  const chatKey = await generateChannelKey();
   await c.env.DB.prepare(
-    `INSERT INTO direct_chats (id, created_by, participant_a, participant_b, created_at)
-     VALUES (?, ?, ?, ?, datetime('now'))`
-  ).bind(id, fp, fp, otherFp).run();
+    `INSERT INTO direct_chats (id, created_by, participant_a, participant_b, encryption_key, created_at)
+     VALUES (?, ?, ?, ?, ?, datetime('now'))`
+  ).bind(id, fp, fp, otherFp, chatKey).run();
 
   const chat = await c.env.DB.prepare(
     "SELECT id, created_by, participant_a, participant_b, created_at FROM direct_chats WHERE id = ?"
   ).bind(id).first();
 
-  return c.json({ chat }, 201);
+  return c.json({ chat, key: chatKey }, 201);
 });
 
 // GET /chat/list — all chats for the current user (auth)
@@ -997,8 +1008,8 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
 
   // Verify participant
   const chat = await c.env.DB.prepare(
-    "SELECT id FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
-  ).bind(chatId, fp, fp).first();
+    "SELECT id, encryption_key FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
+  ).bind(chatId, fp, fp).first<{ id: string; encryption_key: string | null }>();
   if (!chat) return c.json({ error: "Chat not found or access denied" }, 404);
 
   // Rate limit: 60 msg/min per chat
@@ -1009,9 +1020,20 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
   const id = crypto.randomUUID();
   const created_at = new Date().toISOString();
 
+  // Encrypt message content with the chat's encryption key
+  let contentToStore = body.content;
+  if (chat.encryption_key) {
+    contentToStore = await encryptPayload(body.content, chat.encryption_key);
+  } else {
+    // Legacy chat without encryption key — lazily generate one
+    const newKey = await generateChannelKey();
+    await c.env.DB.prepare("UPDATE direct_chats SET encryption_key = ? WHERE id = ?").bind(newKey, chatId).run();
+    contentToStore = await encryptPayload(body.content, newKey);
+  }
+
   await c.env.DB.prepare(
     "INSERT INTO direct_messages (id, chat_id, sender, content, created_at) VALUES (?, ?, ?, ?, ?)"
-  ).bind(id, chatId, fp, body.content, created_at).run();
+  ).bind(id, chatId, fp, contentToStore, created_at).run();
 
   const senderProfile = await c.env.DB.prepare(
     "SELECT name FROM profiles WHERE fingerprint = ? AND public = 1"
@@ -1022,7 +1044,7 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
     chat_id: chatId,
     sender: fp,
     sender_name: senderProfile?.name ?? null,
-    content: body.content,
+    content: contentToStore,
     created_at,
   };
 
@@ -1037,6 +1059,19 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
   } catch {}
 
   return c.json({ message }, 201);
+});
+
+// GET /chat/:id/key — fetch the chat encryption key (auth, participant only)
+app.get("/chat/:id/key", authMiddleware, async (c) => {
+  const chatId = c.req.param("id")!;
+  const fp = c.get("fingerprint");
+
+  const chat = await c.env.DB.prepare(
+    "SELECT encryption_key FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
+  ).bind(chatId, fp, fp).first<{ encryption_key: string | null }>();
+
+  if (!chat) return c.json({ error: "Chat not found or access denied" }, 404);
+  return c.json({ key: chat.encryption_key });
 });
 
 // DELETE /chat/:id — delete chat (creator only, auth)
@@ -1060,11 +1095,21 @@ app.delete("/chat/:id", authMiddleware, async (c) => {
 
 // GET /chat/:id/ws — WebSocket upgrade via DirectChatRoom DO
 // No authMiddleware — WS upgrades can't send custom headers.
-// Auth is via the fp query param (same as channel WS).
+// Auth is via signed token or fp query param.
 app.get("/chat/:id/ws", async (c) => {
   const chatId = c.req.param("id")!;
-  const fp = c.req.query("fp");
-  if (!fp) return c.json({ error: "fp query param required" }, 400);
+
+  // Auth: prefer signed token, fall back to legacy fp query param
+  let fp: string | undefined;
+  const token = c.req.query("token");
+  if (token) {
+    const verified = await verifyWsToken(token);
+    if (!verified) return c.json({ error: "Invalid or expired token" }, 401);
+    fp = verified;
+  } else {
+    fp = c.req.query("fp");
+  }
+  if (!fp) return c.json({ error: "fp or token query param required" }, 400);
   if (fp.length > 128) return c.json({ error: "fp too long" }, 400);
 
   // Verify participant
