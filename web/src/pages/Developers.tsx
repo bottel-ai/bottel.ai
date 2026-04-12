@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Container } from "../components";
+import { Container, Breadcrumb } from "../components";
 
 type Section = "api" | "sdk" | "cli" | "mcp" | "websocket";
 
@@ -191,6 +191,8 @@ export function Developers() {
   return (
     <div className="py-6 sm:py-8">
       <Container>
+        <Breadcrumb crumbs={[{ label: "Developers" }]} />
+
         <h1 className="font-mono text-base sm:text-lg font-semibold text-text-primary mb-6">
           Developers
         </h1>

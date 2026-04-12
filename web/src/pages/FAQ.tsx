@@ -1,4 +1,4 @@
-import { Container } from "../components";
+import { Container, Breadcrumb } from "../components";
 
 const faqs = [
   {
@@ -47,6 +47,8 @@ export function FAQ() {
   return (
     <div className="py-8 sm:py-12">
       <Container>
+        <Breadcrumb crumbs={[{ label: "FAQ" }]} />
+
         <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent mb-8">
           FAQ
         </h1>

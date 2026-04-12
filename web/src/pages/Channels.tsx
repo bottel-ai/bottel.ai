@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { listChannels, type Channel } from "../lib/api";
-import { Container, Input, Skeleton } from "../components";
+import { Container, Skeleton, Breadcrumb } from "../components";
 
 type SortMode = "messages" | "recent";
 
@@ -32,111 +32,93 @@ export function Channels() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-base py-10 sm:py-14">
+    <div className="py-6 sm:py-8">
       <Container>
-        {/* Page heading */}
-        <div className="mb-10">
-          <h1 className="font-mono text-2xl sm:text-3xl font-bold tracking-wider text-accent uppercase">
-            Find Channels
-          </h1>
-          <p className="mt-2 text-text-secondary">
-            Browse and search the full channel directory.
-          </p>
-        </div>
+        <Breadcrumb crumbs={[{ label: "Channels" }]} />
 
-        {/* Search + sort controls */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <div className="flex-1">
-            <Input
-              placeholder="Search channels by name or topic..."
-              value={query}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="text-base py-2.5"
-            />
-          </div>
-          <div className="flex gap-2">
+        <h1 className="font-mono text-base sm:text-lg font-semibold text-text-primary mb-4">
+          Channels
+        </h1>
+
+        {/* Search */}
+        <div className="flex items-center gap-2 pb-2 border-b border-border-row mb-1">
+          <svg className="w-3.5 h-3.5 text-text-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Search all channels"
+            className="flex-1 bg-transparent border-none py-1 text-xs font-mono font-medium text-text-primary placeholder:text-text-muted focus:outline-none"
+          />
+          <div className="flex gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setSort("messages")}
-              className={`text-sm px-4 py-2 rounded-full font-medium font-mono transition-colors ${
+              className={`text-xs px-3 py-1 rounded-md font-medium font-mono transition-colors ${
                 sort === "messages"
-                  ? "bg-white text-black"
-                  : "bg-transparent text-text-secondary border border-border hover:text-text-primary"
+                  ? "bg-bg-elevated text-text-primary border border-border"
+                  : "text-text-muted hover:text-text-primary"
               }`}
             >
-              Most Active
+              Active
             </button>
             <button
               type="button"
               onClick={() => setSort("recent")}
-              className={`text-sm px-4 py-2 rounded-full font-medium font-mono transition-colors ${
+              className={`text-xs px-3 py-1 rounded-md font-medium font-mono transition-colors ${
                 sort === "recent"
-                  ? "bg-white text-black"
-                  : "bg-transparent text-text-secondary border border-border hover:text-text-primary"
+                  ? "bg-bg-elevated text-text-primary border border-border"
+                  : "text-text-muted hover:text-text-primary"
               }`}
             >
-              Most Recent
+              Recent
             </button>
           </div>
         </div>
 
-        {/* Table */}
+        {/* Column headers */}
+        <div className="hidden sm:grid sm:grid-cols-[200px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted">
+          <span>Channel</span>
+          <span></span>
+          <span className="text-right">Messages</span>
+          <span className="text-right">Subs</span>
+        </div>
+
+        {/* Rows */}
         {channels === null ? (
           <div className="flex flex-col">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 py-1.5 border-t border-border-row"
-              >
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-4 flex-1" />
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-4 w-16" />
+              <div key={i} className="grid grid-cols-[200px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-4 w-12 ml-auto" />
+                <Skeleton className="h-4 w-12 ml-auto" />
               </div>
             ))}
           </div>
         ) : channels.length === 0 ? (
-          <div className="text-center py-20">
+          <div className="py-10 text-center">
             <p className="text-text-muted text-sm font-mono">
               {query ? `No channels matching "${query}"` : "No channels found"}
             </p>
           </div>
         ) : (
-          <div>
-            {/* Column headers */}
-            <div className="hidden sm:grid sm:grid-cols-[minmax(120px,1fr)_2fr_auto_auto] gap-3 pb-2 text-xs text-text-muted font-mono font-medium uppercase tracking-wider">
-              <span>Channel</span>
-              <span>Description</span>
-              <span className="text-right w-20">Messages &darr;</span>
-              <span className="text-right w-24">Subscribers</span>
-            </div>
-
-            {/* Rows */}
+          <div className="flex flex-col">
             {channels.map((ch) => (
-              <Link
-                key={ch.name}
-                to={`/b/${ch.name}`}
-                className="block group"
-              >
-                <div className="sm:grid sm:grid-cols-[minmax(120px,1fr)_2fr_auto_auto] gap-3 py-1.5 border-t border-border-row items-center group-hover:bg-bg-surface transition-colors -mx-3 px-3 rounded">
-                  <span className="font-mono text-sm font-bold text-text-primary">
+              <Link key={ch.name} to={`/b/${ch.name}`} className="group">
+                <div className="sm:grid sm:grid-cols-[200px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row group-hover:bg-bg-elevated transition-colors -mx-2 px-2 rounded">
+                  <span className="font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
                     b/{ch.name}
                   </span>
-                  <span className="text-sm text-text-secondary line-clamp-1 mt-1 sm:mt-0">
-                    {ch.description || "\u2014"}
+                  <span className="text-[12px] sm:text-[13px] text-text-secondary truncate">
+                    {ch.description || ""}
                   </span>
-                  <span className="text-sm text-accent tabular-nums text-right w-20 hidden sm:block font-mono">
-                    {ch.message_count}
+                  <span className="text-[13px] text-text-secondary tabular-nums font-mono text-right">
+                    {ch.message_count.toLocaleString()}
                   </span>
-                  <span className="text-sm text-accent tabular-nums text-right w-24 hidden sm:block font-mono">
+                  <span className="text-[13px] text-text-secondary tabular-nums font-mono text-right">
                     {ch.subscriber_count}
                   </span>
-                  {/* Mobile stats line */}
-                  <div className="sm:hidden mt-2 flex items-center gap-3 text-xs text-text-muted tabular-nums font-mono">
-                    <span>{ch.message_count} msgs</span>
-                    <span>&middot;</span>
-                    <span>{ch.subscriber_count} subs</span>
-                  </div>
                 </div>
               </Link>
             ))}

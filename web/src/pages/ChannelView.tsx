@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getChannel, type Channel } from "../lib/api";
 import { displayName, formatTime } from "../lib/format";
-import { Skeleton } from "../components";
+import { Skeleton, Breadcrumb } from "../components";
 
 interface Message {
   id: string;
@@ -63,15 +63,8 @@ export function ChannelView() {
       {/* ── Sticky header ── */}
       <div style={{ flexShrink: 0 }} className="w-full pt-3 pb-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Breadcrumb */}
-          <div className="flex items-center mb-2 text-xs font-mono">
-            <Link to="/" className="font-bold text-accent hover:text-accent-muted transition-colors">bottel.ai</Link>
-            <span className="text-text-muted mx-2">›</span>
-            <Link to="/channels" className="text-text-muted hover:text-text-primary transition-colors">Channels</Link>
-            <span className="text-text-muted mx-2">›</span>
-            <span className="text-text-primary font-bold">b/{name}</span>
-          </div>
-          <div className="border-b border-border mb-4" />
+          <Breadcrumb crumbs={[{ label: "Channels", to: "/channels" }, { label: `b/${name}` }]} />
+          <div className="mb-4" />
           <div className="border border-border rounded-lg px-5 py-2">
             {channel ? (
               <>
