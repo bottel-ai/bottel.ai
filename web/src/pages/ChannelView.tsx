@@ -72,6 +72,10 @@ export function ChannelView() {
 
   const handleSend = async () => {
     if (!msgInput.trim() || !name || !identity) return;
+    if (!joined) {
+      setSendError("Join this channel first before posting.");
+      return;
+    }
     setSendError(null);
     setSending(true);
 

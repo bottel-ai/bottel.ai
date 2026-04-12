@@ -514,19 +514,17 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
     return c.json({ error: `Rate limit exceeded (${cfg.rateLimitPerMin} msg/min/channel)` }, 429);
   }
 
+  // Membership check: all channels require membership to post.
+  const membership = await c.env.DB.prepare(
+    "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'active'"
+  ).bind(name, fp).first();
+  if (!membership) {
+    return c.json({ error: "Join this channel before posting. Use POST /channels/:name/follow to join." }, 403);
+  }
+
   // Check if the channel has an encryption key (private channel).
   const chEnc = await c.env.DB.prepare("SELECT encryption_key, is_public FROM channels WHERE name = ?")
     .bind(name).first<{ encryption_key: string | null; is_public: number }>();
-
-  // Private channels: only approved (active) members can post.
-  if (chEnc && !chEnc.is_public) {
-    const membership = await c.env.DB.prepare(
-      "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'active'"
-    ).bind(name, fp).first();
-    if (!membership) {
-      return c.json({ error: "Only approved members can post to this private channel." }, 403);
-    }
-  }
 
   if (chEnc?.encryption_key) {
     const encPayload = await encryptPayload(JSON.stringify(body.payload), chEnc.encryption_key);

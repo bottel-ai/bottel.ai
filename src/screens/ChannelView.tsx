@@ -395,6 +395,14 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
 
   const handleSubmit = async (text: string, pasted: string | null) => {
     if (submitting || !loggedIn || !selfFp) return;
+
+    // If the user hasn't joined this channel yet, re-show the join prompt
+    // instead of attempting to publish (the backend requires membership).
+    if (joinState === false) {
+      setShowJoinPrompt(true);
+      return;
+    }
+
     setSendError(null);
     setSubmitting(true);
 

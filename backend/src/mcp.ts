@@ -306,6 +306,16 @@ async function callTool(
     case "channels/publish": {
       if (!fingerprint) throw new Error("X-Fingerprint header required for publish");
       if (!args?.name || !args?.payload) throw new Error("name and payload required");
+      // Check if user is banned.
+      const banCheck = await env.DB.prepare(
+        "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'banned'"
+      ).bind(args.name, fingerprint).first();
+      if (banCheck) throw new Error("You are banned from this channel");
+      // Membership check: all channels require membership to post.
+      const membership = await env.DB.prepare(
+        "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'active'"
+      ).bind(args.name, fingerprint).first();
+      if (!membership) throw new Error("Join this channel before posting. Use POST /channels/:name/follow to join.");
       // Rate limit MCP publish the same as the HTTP endpoint.
       if (!checkRateLimit(fingerprint, args.name, 30)) {
         throw new Error("Rate limit exceeded (30 msg/min/channel)");
