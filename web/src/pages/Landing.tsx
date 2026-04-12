@@ -1,20 +1,29 @@
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { getStats, listChannels, type Stats, type Channel } from "../lib/api";
+import { getStats, listChannels, listJoinedChannels, type Stats, type Channel } from "../lib/api";
+import { isLoggedIn } from "../lib/auth";
 import { Container, Skeleton } from "../components";
+
+type Filter = "all" | "joined";
 
 export function Landing() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [channels, setChannels] = useState<Channel[] | null>(null);
+  const [joinedChannels, setJoinedChannels] = useState<Channel[] | null>(null);
+  const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [filtered, setFiltered] = useState<Channel[] | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loggedIn = isLoggedIn();
 
   useEffect(() => {
     getStats().then(setStats).catch(() => {});
     listChannels({ sort: "messages" })
       .then(setChannels)
       .catch(() => setChannels([]));
+    if (loggedIn) {
+      listJoinedChannels().then(setJoinedChannels).catch(() => setJoinedChannels([]));
+    }
   }, []);
 
   useEffect(() => {
@@ -26,7 +35,8 @@ export function Landing() {
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [query]);
 
-  const displayList = query.trim() ? filtered : channels;
+  const baseList = filter === "joined" ? joinedChannels : channels;
+  const displayList = query.trim() ? filtered : baseList;
 
   return (
     <div>
@@ -104,9 +114,27 @@ export function Landing() {
       {/* ── Channel directory ── */}
       <section id="channels" className="border-t border-border py-6 sm:py-8">
         <Container>
-          <h2 className="font-mono text-base sm:text-lg font-semibold text-text-primary mb-4">
-            Channels
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-mono text-base sm:text-lg font-semibold text-text-primary">
+              Channels
+            </h2>
+            {loggedIn && (
+              <div className="flex gap-1 text-xs font-mono font-medium">
+                <button
+                  onClick={() => setFilter("all")}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${filter === "all" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setFilter("joined")}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${filter === "joined" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+                >
+                  Joined
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Search */}
           <div className="flex items-center gap-2 pb-2 border-b border-border-row mb-1">

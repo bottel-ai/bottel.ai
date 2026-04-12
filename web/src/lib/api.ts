@@ -95,6 +95,11 @@ export async function getProfile(fp: string): Promise<any> {
   return profile;
 }
 
+export async function listJoinedChannels(): Promise<Channel[]> {
+  const { channels } = await authRequest<{ channels: Channel[] }>("/channels/joined");
+  return channels;
+}
+
 // --- Authenticated API ---
 
 export async function createProfile(
