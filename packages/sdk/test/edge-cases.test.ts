@@ -12,29 +12,8 @@
  *   npx vitest run test/edge-cases.test.ts
  */
 
-import { apiFetch, createProfile, generateIdentity, uniqueName, sleep, createBot, API_URL } from "./helpers.js";
+import { apiFetch, createProfile, generateIdentity, uniqueName, sleep, createBot } from "./helpers.js";
 import { describe, it, expect, afterAll } from "vitest";
-
-// ---------------------------------------------------------------------------
-// POW helpers (inline miner for raw API tests)
-// ---------------------------------------------------------------------------
-
-async function hashPayload(payload: any): Promise<string> {
-  const { createHash } = await import("node:crypto");
-  return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
-}
-
-async function minePow(channel: string, author: string, payload: any): Promise<{ nonce: number; timestamp: number }> {
-  const payloadHash = await hashPayload(payload);
-  const timestamp = Date.now();
-  const { createHash } = await import("node:crypto");
-  let nonce = 0;
-  while (true) {
-    const hash = createHash("sha256").update(`${channel}:${author}:${timestamp}:${payloadHash}:${nonce}`).digest();
-    if (hash[0] === 0 && hash[1] === 0 && (hash[2]! & 0xC0) === 0) return { nonce, timestamp };
-    nonce++;
-  }
-}
 
 // ===========================================================================
 // 1. Channel Name Validation
@@ -185,14 +164,13 @@ describe("Payload Boundaries", () => {
 
   it("accepts minimal payload: {}", async () => {
     const payload = {};
-    const pow = await minePow(chan, identity.fingerprint, payload);
     const res = await apiFetch(`/channels/${chan}/messages`, {
       method: "POST",
       fingerprint: identity.fingerprint,
-      body: JSON.stringify({ payload, nonce: pow.nonce, timestamp: pow.timestamp }),
+      body: JSON.stringify({ payload }),
     });
     expect(res.status).toBe(201);
-  }, 60_000);
+  });
 
   it("accepts payload near 4096 bytes", async () => {
     // Build a payload just under 4096 bytes
@@ -201,14 +179,13 @@ describe("Payload Boundaries", () => {
     const payloadSize = JSON.stringify(payload).length;
     expect(payloadSize).toBeLessThanOrEqual(4096);
 
-    const pow = await minePow(chan, identity.fingerprint, payload);
     const res = await apiFetch(`/channels/${chan}/messages`, {
       method: "POST",
       fingerprint: identity.fingerprint,
-      body: JSON.stringify({ payload, nonce: pow.nonce, timestamp: pow.timestamp }),
+      body: JSON.stringify({ payload }),
     });
     expect(res.status).toBe(201);
-  }, 60_000);
+  });
 
   it("rejects payload > 4096 bytes", async () => {
     const filler = "x".repeat(5000);
@@ -216,14 +193,13 @@ describe("Payload Boundaries", () => {
     const payloadSize = JSON.stringify(payload).length;
     expect(payloadSize).toBeGreaterThan(4096);
 
-    const pow = await minePow(chan, identity.fingerprint, payload);
     const res = await apiFetch(`/channels/${chan}/messages`, {
       method: "POST",
       fingerprint: identity.fingerprint,
-      body: JSON.stringify({ payload, nonce: pow.nonce, timestamp: pow.timestamp }),
+      body: JSON.stringify({ payload }),
     });
     expect(res.status).toBe(400);
-  }, 60_000);
+  });
 });
 
 // ===========================================================================
@@ -256,11 +232,10 @@ describe("Message Pagination", () => {
   it("GET messages with before param returns only older messages", async () => {
     // Publish two messages
     const payload1 = { text: "first" };
-    const pow1 = await minePow(chan, identity.fingerprint, payload1);
     const res1 = await apiFetch(`/channels/${chan}/messages`, {
       method: "POST",
       fingerprint: identity.fingerprint,
-      body: JSON.stringify({ payload: payload1, nonce: pow1.nonce, timestamp: pow1.timestamp }),
+      body: JSON.stringify({ payload: payload1 }),
     });
     expect(res1.status).toBe(201);
     const msg1: any = await res1.json();
@@ -268,11 +243,10 @@ describe("Message Pagination", () => {
     await sleep(10);
 
     const payload2 = { text: "second" };
-    const pow2 = await minePow(chan, identity.fingerprint, payload2);
     const res2 = await apiFetch(`/channels/${chan}/messages`, {
       method: "POST",
       fingerprint: identity.fingerprint,
-      body: JSON.stringify({ payload: payload2, nonce: pow2.nonce, timestamp: pow2.timestamp }),
+      body: JSON.stringify({ payload: payload2 }),
     });
     expect(res2.status).toBe(201);
     const msg2: any = await res2.json();
@@ -581,11 +555,10 @@ describe("Message Deletion Edge Cases", () => {
 
     // Publish a message as author
     const payload = { text: "authored message" };
-    const pow = await minePow(chan, author.fingerprint, payload);
     const pubRes = await apiFetch(`/channels/${chan}/messages`, {
       method: "POST",
       fingerprint: author.fingerprint,
-      body: JSON.stringify({ payload, nonce: pow.nonce, timestamp: pow.timestamp }),
+      body: JSON.stringify({ payload }),
     });
     expect(pubRes.status).toBe(201);
     const msg = await pubRes.json() as any;
@@ -596,7 +569,7 @@ describe("Message Deletion Edge Cases", () => {
       fingerprint: other.fingerprint,
     });
     expect(res.status).toBe(403);
-  }, 60_000);
+  });
 });
 
 // ===========================================================================

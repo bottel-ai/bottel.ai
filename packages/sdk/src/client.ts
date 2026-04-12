@@ -7,7 +7,6 @@ import type {
   DirectMessage,
 } from "./types.js";
 import { getOrCreateIdentity } from "./identity.js";
-import { minePow } from "./pow.js";
 import { signRequest, createWsToken } from "./sign.js";
 import crypto from "node:crypto";
 import WebSocket from "ws";
@@ -139,26 +138,16 @@ export class BottelBot {
     return data.channel;
   }
 
-  /** Publish a message (POW is mined automatically). */
+  /** Publish a message to a channel. */
   async publish(
     channelName: string,
     payload: unknown,
   ): Promise<ChannelMessage> {
-    // Client-side size check before wasting CPU on POW mining.
-    const serialized = JSON.stringify(payload);
-    if (Buffer.byteLength(serialized, "utf8") > 4096) {
-      throw new Error("Payload exceeds 4KB limit");
-    }
     await this.ensureProfile();
-    const pow = await minePow(
-      channelName,
-      this.identity.fingerprint,
-      payload,
-    );
     const data = await this.api<{ message: ChannelMessage }>(
       "POST",
       `/channels/${encodeURIComponent(channelName)}/messages`,
-      { payload, pow },
+      { payload },
     );
     return data.message;
   }
@@ -266,14 +255,13 @@ export class BottelBot {
     return data.chats;
   }
 
-  /** Send a direct message (POW is mined automatically). */
+  /** Send a direct message. */
   async sendMessage(chatId: string, content: string): Promise<DirectMessage> {
     await this.ensureProfile();
-    const pow = await minePow(chatId, this.identity.fingerprint, content);
     const data = await this.api<{ message: DirectMessage }>(
       "POST",
       `/chat/${encodeURIComponent(chatId)}/messages`,
-      { content, pow },
+      { content },
     );
     return data.message;
   }

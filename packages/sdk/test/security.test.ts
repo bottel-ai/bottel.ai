@@ -1,9 +1,8 @@
 /**
  * Security integration tests for bottel.ai.
  *
- * Covers: POW verification, POW replay protection, rate limiting,
- * authentication enforcement (401), profile-gated actions (403),
- * and private channel encryption.
+ * Covers: rate limiting, authentication enforcement (401),
+ * profile-gated actions (403), and private channel encryption.
  *
  * Prerequisites:
  *   - The bottel.ai backend must be running at http://localhost:8787
@@ -12,219 +11,12 @@
  *   npx vitest run test/security.test.ts
  */
 
-import { apiFetch, createProfile, generateIdentity, uniqueName, sleep, API_URL } from "./helpers.js";
+import { apiFetch, createProfile, generateIdentity, uniqueName } from "./helpers.js";
 import { createBot } from "./helpers.js";
 import { describe, it, expect, afterAll } from "vitest";
 
-// ---------------------------------------------------------------------------
-// POW helpers (inline miner with custom options for security testing)
-// ---------------------------------------------------------------------------
-
-async function hashPayload(payload: any): Promise<string> {
-  const json = JSON.stringify(payload);
-  const buf = Buffer.from(json, "utf-8");
-  const hash = (await import("node:crypto")).createHash("sha256").update(buf).digest("hex");
-  return hash;
-}
-
-async function minePowCustom(
-  channel: string, author: string, payload: any,
-  opts?: { difficulty?: number; timestampOverride?: number }
-): Promise<{ nonce: number; timestamp: number }> {
-  const payloadHash = await hashPayload(payload);
-  const timestamp = opts?.timestampOverride ?? Date.now();
-  const difficulty = opts?.difficulty ?? 18;
-  let nonce = 0;
-  const { createHash } = await import("node:crypto");
-  while (true) {
-    const challenge = `${channel}:${author}:${timestamp}:${payloadHash}:${nonce}`;
-    const hash = createHash("sha256").update(challenge).digest();
-    // Check leading zero bits
-    let zeroBits = 0;
-    for (const byte of hash) {
-      if (byte === 0) { zeroBits += 8; continue; }
-      zeroBits += Math.clz32(byte) - 24;
-      break;
-    }
-    if (zeroBits >= difficulty) return { nonce, timestamp };
-    nonce++;
-  }
-}
-
 // ===========================================================================
-// 1. POW Verification
-// ===========================================================================
-
-describe("POW Verification", () => {
-  const identity = generateIdentity();
-  const identityName = uniqueName("pow-bot");
-  const chan = uniqueName("pow-chan");
-
-  // Setup: create profile and channel
-  it("setup: create profile and channel", async () => {
-    await createProfile(identity.fingerprint, identityName);
-    const res = await apiFetch("/channels", {
-      method: "POST",
-      fingerprint: identity.fingerprint,
-      body: JSON.stringify({ name: chan, description: "pow verification tests" }),
-    });
-    expect(res.status).toBe(201);
-  });
-
-  it("valid 18-bit POW is accepted (publish succeeds)", async () => {
-    const payload = { text: "valid pow test" };
-    const pow = await minePowCustom(chan, identity.fingerprint, payload);
-
-    const res = await apiFetch(`/channels/${chan}/messages`, {
-      method: "POST",
-      fingerprint: identity.fingerprint,
-      body: JSON.stringify({
-        payload,
-        nonce: pow.nonce,
-        timestamp: pow.timestamp,
-      }),
-    });
-    expect(res.status).toBe(201);
-    const body = await res.json();
-    expect(body).toHaveProperty("id");
-    expect(body.payload).toEqual(payload);
-  }, 60000);
-
-  it("missing POW field returns 400", async () => {
-    const res = await apiFetch(`/channels/${chan}/messages`, {
-      method: "POST",
-      fingerprint: identity.fingerprint,
-      body: JSON.stringify({ payload: { text: "no pow" } }),
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it("POW with expired timestamp (>5min old) returns 400", async () => {
-    const payload = { text: "expired pow" };
-    const pow = await minePowCustom(chan, identity.fingerprint, payload, {
-      timestampOverride: Date.now() - 6 * 60 * 1000,
-    });
-
-    const res = await apiFetch(`/channels/${chan}/messages`, {
-      method: "POST",
-      fingerprint: identity.fingerprint,
-      body: JSON.stringify({
-        payload,
-        nonce: pow.nonce,
-        timestamp: pow.timestamp,
-      }),
-    });
-    expect(res.status).toBe(400);
-  }, 60000);
-
-  it("POW with future timestamp (>30s ahead) returns 400", async () => {
-    const payload = { text: "future pow" };
-    const pow = await minePowCustom(chan, identity.fingerprint, payload, {
-      timestampOverride: Date.now() + 60_000,
-    });
-
-    const res = await apiFetch(`/channels/${chan}/messages`, {
-      method: "POST",
-      fingerprint: identity.fingerprint,
-      body: JSON.stringify({
-        payload,
-        nonce: pow.nonce,
-        timestamp: pow.timestamp,
-      }),
-    });
-    expect(res.status).toBe(400);
-  }, 60000);
-});
-
-// ===========================================================================
-// 2. POW Replay Protection
-// ===========================================================================
-
-describe("POW Replay Protection", () => {
-  it("same POW timestamp reused on same channel is rejected (400)", async () => {
-    const identity = generateIdentity();
-    const name = uniqueName("replay-bot");
-    const chan = uniqueName("replay-chan");
-
-    await createProfile(identity.fingerprint, name);
-    await apiFetch("/channels", {
-      method: "POST",
-      fingerprint: identity.fingerprint,
-      body: JSON.stringify({ name: chan, description: "replay test" }),
-    });
-
-    // First message with a fixed timestamp
-    const fixedTimestamp = Date.now();
-    const payload1 = { text: "first" };
-    const pow1 = await minePowCustom(chan, identity.fingerprint, payload1, {
-      timestampOverride: fixedTimestamp,
-    });
-
-    const res1 = await apiFetch(`/channels/${chan}/messages`, {
-      method: "POST",
-      fingerprint: identity.fingerprint,
-      body: JSON.stringify({
-        payload: payload1,
-        nonce: pow1.nonce,
-        timestamp: pow1.timestamp,
-      }),
-    });
-    expect(res1.status).toBe(201);
-
-    // Second message reusing the same timestamp
-    const payload2 = { text: "second" };
-    const pow2 = await minePowCustom(chan, identity.fingerprint, payload2, {
-      timestampOverride: fixedTimestamp,
-    });
-
-    const res2 = await apiFetch(`/channels/${chan}/messages`, {
-      method: "POST",
-      fingerprint: identity.fingerprint,
-      body: JSON.stringify({
-        payload: payload2,
-        nonce: pow2.nonce,
-        timestamp: pow2.timestamp,
-      }),
-    });
-    expect(res2.status).toBe(400);
-  }, 60000);
-
-  it("strictly increasing timestamps are accepted", async () => {
-    const identity = generateIdentity();
-    const name = uniqueName("incr-bot");
-    const chan = uniqueName("incr-chan");
-
-    await createProfile(identity.fingerprint, name);
-    await apiFetch("/channels", {
-      method: "POST",
-      fingerprint: identity.fingerprint,
-      body: JSON.stringify({ name: chan, description: "increasing ts test" }),
-    });
-
-    const baseTs = Date.now();
-
-    for (let i = 0; i < 3; i++) {
-      const payload = { text: `msg-${i}` };
-      const pow = await minePowCustom(chan, identity.fingerprint, payload, {
-        timestampOverride: baseTs + i + 1,
-      });
-
-      const res = await apiFetch(`/channels/${chan}/messages`, {
-        method: "POST",
-        fingerprint: identity.fingerprint,
-        body: JSON.stringify({
-          payload,
-          nonce: pow.nonce,
-          timestamp: pow.timestamp,
-        }),
-      });
-      expect(res.status).toBe(201);
-    }
-  }, 60000);
-});
-
-// ===========================================================================
-// 3. Rate Limiting
+// 1. Rate Limiting
 // ===========================================================================
 
 describe("Rate Limiting — Channel Messages", () => {
@@ -240,23 +32,15 @@ describe("Rate Limiting — Channel Messages", () => {
       body: JSON.stringify({ name: chan, description: "rate limit test" }),
     });
 
-    const baseTs = Date.now();
     let hitRateLimit = false;
 
     for (let i = 0; i < 31; i++) {
       const payload = { text: `rl-${i}` };
-      const pow = await minePowCustom(chan, identity.fingerprint, payload, {
-        timestampOverride: baseTs + i + 1,
-      });
 
       const res = await apiFetch(`/channels/${chan}/messages`, {
         method: "POST",
         fingerprint: identity.fingerprint,
-        body: JSON.stringify({
-          payload,
-          nonce: pow.nonce,
-          timestamp: pow.timestamp,
-        }),
+        body: JSON.stringify({ payload }),
       });
 
       if (i < 30) {
@@ -338,7 +122,7 @@ describe("Rate Limiting — Chat Search", () => {
 });
 
 // ===========================================================================
-// 4. Authentication — 401 without X-Fingerprint
+// 2. Authentication — 401 without X-Fingerprint
 // ===========================================================================
 
 describe("Authentication (401 without X-Fingerprint)", () => {
@@ -370,7 +154,7 @@ describe("Authentication (401 without X-Fingerprint)", () => {
 });
 
 // ===========================================================================
-// 5. Profile-Gated Actions — 403 without profile
+// 3. Profile-Gated Actions — 403 without profile
 // ===========================================================================
 
 describe("Profile-Gated Actions (403 without profile)", () => {
@@ -406,7 +190,7 @@ describe("Profile-Gated Actions (403 without profile)", () => {
 });
 
 // ===========================================================================
-// 6. Encryption — Private Channel
+// 4. Encryption — Private Channel
 // ===========================================================================
 
 describe("Encryption — Private Channel", () => {

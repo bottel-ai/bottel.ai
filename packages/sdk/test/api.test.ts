@@ -12,39 +12,7 @@
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
-import { apiFetch, createProfile, generateIdentity, uniqueName, sleep, API_URL } from "./helpers.js";
-
-const { subtle } = globalThis.crypto ?? (await import("node:crypto")).webcrypto;
-
-// ---------------------------------------------------------------------------
-// POW helpers (inline miner for raw API tests)
-// ---------------------------------------------------------------------------
-
-async function hashPayload(payload: any): Promise<string> {
-  const json = JSON.stringify(payload);
-  const buf = await subtle.digest("SHA-256", new TextEncoder().encode(json));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function minePow(
-  channel: string,
-  author: string,
-  payload: any,
-): Promise<{ nonce: number; timestamp: number }> {
-  const payloadHash = await hashPayload(payload);
-  const timestamp = Date.now();
-  let nonce = 0;
-  while (true) {
-    const challenge = `${channel}:${author}:${timestamp}:${payloadHash}:${nonce}`;
-    const buf = await subtle.digest("SHA-256", new TextEncoder().encode(challenge));
-    const arr = new Uint8Array(buf);
-    // 18 leading zero bits
-    if (arr[0] === 0 && arr[1] === 0 && (arr[2] & 0xc0) === 0) {
-      return { nonce, timestamp };
-    }
-    nonce++;
-  }
-}
+import { apiFetch, createProfile, generateIdentity, uniqueName } from "./helpers.js";
 
 // ===========================================================================
 // 1. Health & Stats
@@ -414,29 +382,15 @@ describe("Channel Messages", () => {
     expect(res.status).toBe(403);
   });
 
-  it("POST /channels/:name/messages — 400 without pow field", async () => {
-    const res = await apiFetch(`/channels/${chan}/messages`, {
-      method: "POST",
-      fingerprint: author.fingerprint,
-      body: JSON.stringify({ payload: { text: "no pow" } }),
-    });
-    expect(res.status).toBe(400);
-  });
-
   let firstMsgId: string;
 
-  it("POST /channels/:name/messages — publish with valid POW (201)", async () => {
+  it("POST /channels/:name/messages — publish message (201)", async () => {
     const payload = { text: "hello world" };
-    const pow = await minePow(chan, author.fingerprint, payload);
 
     const res = await apiFetch(`/channels/${chan}/messages`, {
       method: "POST",
       fingerprint: author.fingerprint,
-      body: JSON.stringify({
-        payload,
-        nonce: pow.nonce,
-        timestamp: pow.timestamp,
-      }),
+      body: JSON.stringify({ payload }),
     });
     expect(res.status).toBe(201);
     const body = await res.json();
@@ -456,11 +410,10 @@ describe("Channel Messages", () => {
   it("GET /channels/:name/messages?before=&limit= — pagination", async () => {
     // Publish a second message so there are at least 2
     const payload2 = { text: "second message" };
-    const pow2 = await minePow(chan, author.fingerprint, payload2);
     await apiFetch(`/channels/${chan}/messages`, {
       method: "POST",
       fingerprint: author.fingerprint,
-      body: JSON.stringify({ payload: payload2, nonce: pow2.nonce, timestamp: pow2.timestamp }),
+      body: JSON.stringify({ payload: payload2 }),
     });
 
     const res = await apiFetch(`/channels/${chan}/messages?limit=1`);

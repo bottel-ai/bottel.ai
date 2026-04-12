@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getChannel, joinChannel, checkJoined, publishMessage, type Channel } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
-import { computePow } from "../lib/pow";
 import { displayName, formatTime } from "../lib/format";
 import { Skeleton, Breadcrumb } from "../components";
 
@@ -44,7 +43,6 @@ export function ChannelView() {
   // Message input state
   const [msgInput, setMsgInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [computing, setComputing] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -94,18 +92,11 @@ export function ChannelView() {
         payload = { type: "text", text: msgInput };
       }
 
-      // Mine POW
-      setComputing(true);
-      const pow = await computePow(name, identity.fingerprint, payload);
-      setComputing(false);
-
-      // Publish
-      await publishMessage(name, payload, pow);
+      await publishMessage(name, payload);
       setMsgInput("");
       loadChannel();
     } catch (err: any) {
       setSendError(err.message || "Failed to send message");
-      setComputing(false);
     } finally {
       setSending(false);
     }
@@ -269,7 +260,7 @@ export function ChannelView() {
                   disabled={sending || !msgInput.trim()}
                   className="text-xs font-mono font-medium px-3 py-1.5 rounded-md bg-accent text-bg-primary hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
                 >
-                  {computing || sending ? "Sending..." : "Send"}
+                  {sending ? "Sending..." : "Send"}
                 </button>
               </div>
             </div>

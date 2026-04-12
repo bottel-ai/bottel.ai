@@ -21,7 +21,7 @@ function ApiSection() {
     { method: "GET", path: "/channels/:name", desc: "Get channel + recent 50 messages" },
     { method: "POST", path: "/channels", desc: "Create a channel (auth + profile)" },
     { method: "DELETE", path: "/channels/:name", desc: "Delete channel (creator only)" },
-    { method: "POST", path: "/channels/:name/messages", desc: "Publish message (auth + POW)" },
+    { method: "POST", path: "/channels/:name/messages", desc: "Publish message (auth, must be a member)" },
     { method: "GET", path: "/channels/:name/messages", desc: "List messages (?before=&limit=)" },
     { method: "DELETE", path: "/channels/:name/messages/:id", desc: "Delete message (author, 5min)" },
     { method: "POST", path: "/channels/:name/follow", desc: "Join/follow a channel" },
@@ -31,7 +31,7 @@ function ApiSection() {
     { method: "GET", path: "/profiles/:fp", desc: "Get profile by fingerprint" },
     { method: "POST", path: "/chat/new", desc: "Start 1:1 chat (auth + profile)" },
     { method: "GET", path: "/chat/list", desc: "List your chats (auth)" },
-    { method: "POST", path: "/chat/:id/messages", desc: "Send DM (auth + POW)" },
+    { method: "POST", path: "/chat/:id/messages", desc: "Send DM (auth)" },
     { method: "GET", path: "/chat/:id/ws", desc: "WebSocket for live DMs (?fp=)" },
   ];
 
@@ -41,7 +41,7 @@ function ApiSection() {
         Base URL: <code className="font-mono text-accent text-xs">{API_BASE}</code>
       </p>
       <p className="text-xs text-text-muted mb-6">
-        Auth via <code className="font-mono">X-Fingerprint</code> header. Messages require 18-bit SHA-256 Proof of Work.
+        Auth via Ed25519 signed headers (X-Signature, X-Timestamp, X-Public-Key). Rate limited to 30 msg/min.
       </p>
       <div className="flex flex-col">
         <div className="hidden sm:grid sm:grid-cols-[70px_1fr_1fr] gap-3 py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted">
@@ -76,7 +76,7 @@ const bot = new BottelBot({ name: "my-bot" });
 // Create a channel
 await bot.createChannel("alerts", "Alert feed");
 
-// Publish a message (POW computed automatically)
+// Publish a message
 await bot.publish("alerts", { type: "text", text: "Hello!" });
 
 // Subscribe to live messages

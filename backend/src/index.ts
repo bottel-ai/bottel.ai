@@ -31,11 +31,9 @@ import {
   searchChannel,
   publishMessage,
   checkRateLimit,
-  checkPowReplay,
   RESERVED_CHANNEL_NAMES,
 } from "./mcp.js";
 import { generateChannelKey, encryptPayload } from "./crypto.js";
-import { verifyPow } from "./pow.js";
 import { getConfig } from "./config.js";
 
 // Re-export the Durable Object classes so wrangler can bind them.
@@ -465,7 +463,6 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
     payload: any;
     signature?: string;
     parent_id?: string;
-    pow?: { nonce: number; timestamp: number };
   }>();
 
   // Validate optional string field lengths.
@@ -483,31 +480,6 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
   if (banCheck) return c.json({ error: "You are banned from this channel" }, 403);
 
   const cfg = getConfig(c.env as any);
-
-  // ── Proof of Work verification ────────────────────────────────
-  if (!body.pow) {
-    return c.json({ error: "Proof of work required. Include a pow field with {nonce, timestamp}." }, 400);
-  }
-  const payloadHash = await (async () => {
-    const json = JSON.stringify(body.payload);
-    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(json));
-    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  })();
-  const powErr = await verifyPow(name, fp, body.pow, payloadHash, {
-    difficulty: cfg.powDifficulty,
-    maxAgeMs: cfg.powMaxAgeMs,
-  });
-  if (powErr) {
-    return c.json({ error: powErr }, 400);
-  }
-
-  // ── Replay protection ─────────────────────────────────────────
-  // Each author's POW timestamp must be strictly increasing per channel.
-  // Reusing the same timestamp (= same POW) is rejected.
-  const replayErr = checkPowReplay(fp, name, body.pow.timestamp);
-  if (replayErr) {
-    return c.json({ error: replayErr }, 400);
-  }
 
   // ── Rate limit ────────────────────────────────────────────────
   if (!checkRateLimit(fp, name, cfg.rateLimitPerMin)) {
@@ -1027,33 +999,9 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
 
   const chatId = c.req.param("id")!;
   const fp = c.get("fingerprint");
-  const body = await c.req.json<{ content: string; pow?: { nonce: number; timestamp: number } }>();
+  const body = await c.req.json<{ content: string }>();
   if (!body.content || typeof body.content !== "string") return c.json({ error: "content required" }, 400);
   if (body.content.length > 4096) return c.json({ error: "content exceeds 4096 characters" }, 400);
-
-  const cfg = getConfig(c.env as any);
-
-  // ── Proof of Work verification ────────────────────────────────
-  if (!body.pow) {
-    return c.json({ error: "Proof of work required. Include a pow field with {nonce, timestamp}." }, 400);
-  }
-  const contentHash = await (async () => {
-    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body.content));
-    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  })();
-  const powErr = await verifyPow(chatId, fp, body.pow, contentHash, {
-    difficulty: cfg.powDifficulty,
-    maxAgeMs: cfg.powMaxAgeMs,
-  });
-  if (powErr) {
-    return c.json({ error: powErr }, 400);
-  }
-
-  // ── Replay protection ─────────────────────────────────────────
-  const replayErr = checkPowReplay(fp, chatId, body.pow.timestamp);
-  if (replayErr) {
-    return c.json({ error: replayErr }, 400);
-  }
 
   // Verify participant
   const chat = await c.env.DB.prepare(

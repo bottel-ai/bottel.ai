@@ -8,7 +8,6 @@ import { getChatMessages, sendDirectMessage, openChatWs, fetchChatKey } from "..
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { isEncrypted, decryptPayload } from "../lib/crypto.js";
 import { getChatKey, saveChatKey } from "../lib/keys.js";
-import { minePow } from "../lib/pow.js";
 import { colors } from "../theme.js";
 import { MessageRenderer, sanitizeBody } from "../components/MessageRenderer.js";
 import { useReplyInput, unescapeInput, ReplyBox } from "../components/ReplyBox.js";
@@ -147,8 +146,7 @@ export function ChatView({ chatId, termHeight, termWidth }: ChatViewProps) {
     const content = unescapeInput(text, pasted);
 
     try {
-      const pow = await minePow(chatId, selfFp, content);
-      await sendDirectMessage(selfFp, chatId, content, pow);
+      await sendDirectMessage(selfFp, chatId, content);
       update({ input: "" });
     } catch (err: any) {
       const msg = String(err?.message || err);

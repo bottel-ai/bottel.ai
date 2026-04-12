@@ -124,7 +124,7 @@ describe("Channel Messages", () => {
 
   afterAll(() => msgBot.close());
 
-  it("publish mines POW and returns message with expected fields", async () => {
+  it("publish returns message with expected fields", async () => {
     await msgBot.createChannel(chName, "message test");
     const msg = await msgBot.publish(chName, { hello: "world" });
     expect(msg.id).toBeTruthy();
@@ -140,7 +140,7 @@ describe("Channel Messages", () => {
     );
   });
 
-  it("multiple sequential publishes succeed (unique POW each time)", async () => {
+  it("multiple sequential publishes succeed", async () => {
     const msg1 = await msgBot.publish(chName, { seq: 1 });
     const msg2 = await msgBot.publish(chName, { seq: 2 });
     const msg3 = await msgBot.publish(chName, { seq: 3 });

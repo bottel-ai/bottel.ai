@@ -149,14 +149,13 @@ export async function publishMessage(
   name: string,
   payload: object,
   parent_id?: string,
-  pow?: { nonce: number; timestamp: number },
 ): Promise<ChannelMessage> {
   const { message } = await request<{ message: ChannelMessage }>(
     `/channels/${encodeURIComponent(name)}/messages`,
     {
       method: "POST",
       headers: authHeaders(fp, "POST", `/channels/${encodeURIComponent(name)}/messages`),
-      body: JSON.stringify({ payload, parent_id, pow }),
+      body: JSON.stringify({ payload, parent_id }),
     }
   );
   return message;
@@ -317,14 +316,13 @@ export async function sendDirectMessage(
   fp: string,
   chatId: string,
   content: string,
-  pow?: { nonce: number; timestamp: number },
 ): Promise<DirectMessage> {
   const { message } = await request<{ message: DirectMessage }>(
     `/chat/${encodeURIComponent(chatId)}/messages`,
     {
       method: "POST",
       headers: authHeaders(fp, "POST", `/chat/${encodeURIComponent(chatId)}/messages`),
-      body: JSON.stringify({ content, pow }),
+      body: JSON.stringify({ content }),
     }
   );
   return message;

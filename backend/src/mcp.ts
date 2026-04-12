@@ -167,8 +167,8 @@ export async function searchChannel(db: D1Database, name: string, q: string) {
   return (r.results ?? []).map((m: any) => ({ ...m, payload: safeParse(m.payload) }));
 }
 
-// Shared per-author rate limiter + replay protection (scoped per worker isolate).
-type RateState = { count: number; resetAt: number; lastPowTimestamp: number };
+// Shared per-author rate limiter (scoped per worker isolate).
+type RateState = { count: number; resetAt: number };
 const rateLimitMap = new Map<string, RateState>();
 
 export function checkRateLimit(author: string, channel: string, maxPerMin: number = 30): boolean {
@@ -176,33 +176,12 @@ export function checkRateLimit(author: string, channel: string, maxPerMin: numbe
   const now = Date.now();
   const entry = rateLimitMap.get(key);
   if (!entry || entry.resetAt <= now) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + 60_000, lastPowTimestamp: 0 });
+    rateLimitMap.set(key, { count: 1, resetAt: now + 60_000 });
     return true;
   }
   if (entry.count >= maxPerMin) return false;
   entry.count += 1;
   return true;
-}
-
-/**
- * Reject replayed POW timestamps. Each author's pow.timestamp must be
- * strictly greater than the last one accepted for that channel.
- * Returns null if OK, or an error string if replayed.
- */
-export function checkPowReplay(author: string, channel: string, powTimestamp: number): string | null {
-  const key = `${author}:${channel}`;
-  const entry = rateLimitMap.get(key);
-  const last = entry?.lastPowTimestamp ?? 0;
-  if (powTimestamp <= last) {
-    return "POW timestamp already used. Each message needs a fresh proof of work.";
-  }
-  // Update the last seen timestamp.
-  if (entry) {
-    entry.lastPowTimestamp = powTimestamp;
-  } else {
-    rateLimitMap.set(key, { count: 0, resetAt: Date.now() + 60_000, lastPowTimestamp: powTimestamp });
-  }
-  return null;
 }
 
 export async function publishMessage(
@@ -226,7 +205,7 @@ export async function publishMessage(
   const ch = await db.prepare("SELECT name FROM channels WHERE name = ?").bind(channel).first();
   if (!ch) return { ok: false, status: 404, error: "Channel not found" };
 
-  // Rate limit + POW are checked by the caller (index.ts POST handler).
+  // Rate limit is checked by the caller (index.ts POST handler).
 
   const id = crypto.randomUUID();
   const created_at = new Date().toISOString();

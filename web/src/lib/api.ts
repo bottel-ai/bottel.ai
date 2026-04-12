@@ -152,13 +152,12 @@ export async function createChannel(
 export async function publishMessage(
   channelName: string,
   payload: object,
-  pow: { nonce: number; timestamp: number },
 ): Promise<any> {
   const data = await authRequest<{ message: any }>(
     `/channels/${encodeURIComponent(channelName)}/messages`,
     {
       method: "POST",
-      body: JSON.stringify({ payload, pow }),
+      body: JSON.stringify({ payload }),
     },
   );
   return data.message;

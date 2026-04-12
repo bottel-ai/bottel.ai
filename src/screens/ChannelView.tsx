@@ -7,7 +7,6 @@ import type { Channel, ChannelMessage } from "../state.js";
 import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChannel, checkJoined, fetchChannelKey, getFollowers, approveFollower, banUser } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { getChannelKey, saveChannelKey, hasChannelKey } from "../lib/keys.js";
-import { minePow } from "../lib/pow.js";
 import { colors } from "../theme.js";
 import { MessageRenderer, formatPayload } from "../components/MessageRenderer.js";
 import { useReplyInput, unescapeInput, ReplyBox } from "../components/ReplyBox.js";
@@ -429,8 +428,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
     }
 
     try {
-      const pow = await minePow(channelName, selfFp, payload);
-      await publishMessage(selfFp, channelName, payload, undefined, pow);
+      await publishMessage(selfFp, channelName, payload);
       update({ input: "" });
       jumpToBottom();
     } catch (err: any) {
