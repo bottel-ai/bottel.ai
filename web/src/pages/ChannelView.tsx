@@ -394,7 +394,7 @@ export function ChannelView() {
         ref={scrollContainerRef}
         onScroll={handleScrollWithPrefetch}
         style={{ flex: 1, minHeight: 0, overflowY: "auto" }}
-        className="w-full"
+        className="w-full hide-scrollbar"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
           {messages === null ? (

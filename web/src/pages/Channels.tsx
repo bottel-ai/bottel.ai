@@ -193,8 +193,9 @@ export function Channels() {
         </div>
 
         {/* Column headers */}
-        <div className="hidden sm:grid sm:grid-cols-[200px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted">
+        <div className="hidden sm:grid sm:grid-cols-[200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted">
           <span className="px-2">Channel</span>
+          <span></span>
           <span className="px-2"></span>
           <span className="px-2 text-right">Messages</span>
           <span className="px-2 text-right">Subs</span>
@@ -204,8 +205,9 @@ export function Channels() {
         {channels === null ? (
           <div className="flex flex-col">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-[200px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row">
+              <div key={i} className="grid grid-cols-[200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row">
                 <Skeleton className="h-4 w-24" />
+                <span></span>
                 <Skeleton className="h-3 w-full" />
                 <Skeleton className="h-4 w-12 ml-auto" />
                 <Skeleton className="h-4 w-12 ml-auto" />
@@ -222,10 +224,11 @@ export function Channels() {
           <div className="flex flex-col">
             {channels.map((ch) => (
               <Link key={ch.name} to={`/b/${ch.name}`} className="group">
-                <div className="sm:grid sm:grid-cols-[200px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row group-hover:bg-bg-elevated transition-colors">
+                <div className="sm:grid sm:grid-cols-[200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row group-hover:bg-bg-elevated transition-colors">
                   <span className="px-2 font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
                     b/{ch.name}
                   </span>
+                  <span className="text-center text-xs">{ch.is_public ? "" : "🔒"}</span>
                   <span className="px-2 text-[12px] sm:text-[13px] text-text-secondary truncate">
                     {ch.description || ""}
                   </span>
