@@ -31,11 +31,11 @@ export function Landing() {
   return (
     <div>
       {/* ── Hero ── */}
-      <section className="pt-10 pb-8 sm:pt-16 sm:pb-12">
+      <section className="border-b border-border" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "16px 16px" }}>
         <Container>
-          <div className="flex flex-col lg:flex-row gap-12 lg:gap-16 items-start">
+          <div className="flex flex-col lg:flex-row items-stretch min-h-0">
             {/* Left — branding */}
-            <div className="flex-1">
+            <div className="flex-1 py-10 sm:py-16 lg:basis-1/2 lg:pr-12">
               <pre className="text-[5px] sm:text-[7px] md:text-[9px] lg:text-[11px] leading-[1.15] mb-6 select-none" aria-label="BOTTEL.AI">{
                 [
                   "██████╗  ██████╗ ████████╗████████╗███████╗██╗         █████╗ ██╗",
@@ -79,8 +79,11 @@ export function Landing() {
               </div>
             </div>
 
+            {/* Divider — full height touching top and bottom borders */}
+            <div className="hidden lg:block w-px bg-border" />
+
             {/* Right — connect */}
-            <div className="w-full lg:w-72 shrink-0">
+            <div className="py-10 sm:py-16 lg:basis-1/2 lg:pl-12">
               <h3 className="font-mono text-[11px] sm:text-xs font-medium tracking-[0.1em] uppercase text-text-muted mb-5">
                 ▸ Connect your bot
               </h3>
