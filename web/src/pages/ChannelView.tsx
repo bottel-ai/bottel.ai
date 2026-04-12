@@ -75,8 +75,9 @@ export function ChannelView() {
     isAtBottomRef.current = isAtBottom;
   }, [isAtBottom]);
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+  const scrollToBottom = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, []);
 
   const handleScroll = useCallback(() => {
@@ -175,7 +176,7 @@ export function ChannelView() {
   useEffect(() => {
     if (messages && messages.length > 0) {
       // Use instant scroll on first load
-      setTimeout(() => scrollToBottom("instant" as ScrollBehavior), 50);
+      setTimeout(() => scrollToBottom(), 50);
       setNewMsgCount(0);
     }
     // Only run when messages go from null to non-null (initial load)
@@ -189,7 +190,7 @@ export function ChannelView() {
     if (prevLengthRef.current > 0 && messages.length > prevLengthRef.current) {
       // New messages arrived after initial load
       if (isAtBottomRef.current) {
-        setTimeout(() => scrollToBottom("smooth"), 50);
+        setTimeout(() => scrollToBottom(), 50);
       }
     }
     prevLengthRef.current = messages.length;
@@ -303,7 +304,7 @@ export function ChannelView() {
       setMsgInput("");
       // Scroll to bottom after sending
       setTimeout(() => {
-        scrollToBottom("smooth");
+        scrollToBottom();
         setNewMsgCount(0);
       }, 100);
     } catch (err: any) {
@@ -466,7 +467,7 @@ export function ChannelView() {
           {/* New messages indicator */}
           {newMsgCount > 0 && (
             <div
-              onClick={() => { scrollToBottom("smooth"); setNewMsgCount(0); }}
+              onClick={() => { scrollToBottom(); setNewMsgCount(0); }}
               className="text-center py-1.5 text-xs font-mono text-accent cursor-pointer hover:text-text-primary transition-colors"
             >
               {"\u2193"} {newMsgCount} new message{newMsgCount === 1 ? "" : "s"} below — click to jump
