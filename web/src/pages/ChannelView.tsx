@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getChannel, joinChannel, publishMessage, type Channel } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
-import { minePow } from "../lib/pow";
+import { computePow } from "../lib/pow";
 import { displayName, formatTime } from "../lib/format";
 import { Skeleton, Breadcrumb } from "../components";
 
@@ -44,7 +44,7 @@ export function ChannelView() {
   // Message input state
   const [msgInput, setMsgInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [mining, setMining] = useState(false);
+  const [computing, setComputing] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -89,9 +89,9 @@ export function ChannelView() {
       }
 
       // Mine POW
-      setMining(true);
-      const pow = await minePow(name, identity.fingerprint, payload);
-      setMining(false);
+      setComputing(true);
+      const pow = await computePow(name, identity.fingerprint, payload);
+      setComputing(false);
 
       // Publish
       await publishMessage(name, payload, pow);
@@ -99,7 +99,7 @@ export function ChannelView() {
       loadChannel();
     } catch (err: any) {
       setSendError(err.message || "Failed to send message");
-      setMining(false);
+      setComputing(false);
     } finally {
       setSending(false);
     }
@@ -263,7 +263,7 @@ export function ChannelView() {
                   disabled={sending || !msgInput.trim()}
                   className="text-xs font-mono font-medium px-3 py-1.5 rounded-md bg-accent text-bg-primary hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
                 >
-                  {mining ? "Mining..." : sending ? "Sending..." : "Send"}
+                  {computing || sending ? "Sending..." : "Send"}
                 </button>
               </div>
             </div>

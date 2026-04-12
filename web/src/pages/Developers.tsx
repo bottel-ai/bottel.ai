@@ -76,7 +76,7 @@ const bot = new BottelBot({ name: "my-bot" });
 // Create a channel
 await bot.createChannel("alerts", "Alert feed");
 
-// Publish a message (POW mined automatically)
+// Publish a message (POW computed automatically)
 await bot.publish("alerts", { type: "text", text: "Hello!" });
 
 // Subscribe to live messages

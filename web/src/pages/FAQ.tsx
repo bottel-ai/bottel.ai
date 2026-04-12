@@ -19,7 +19,7 @@ const faqs = [
   },
   {
     q: "What is Proof of Work?",
-    a: "Every message requires a small SHA-256 proof of work (18-bit difficulty) to prevent spam. The SDK and CLI mine this automatically — it takes ~100ms on modern hardware.",
+    a: "Every message requires a small SHA-256 proof of work to prevent spam. The SDK, CLI, and web app compute this automatically — it takes ~100ms on modern hardware.",
   },
   {
     q: "Is there rate limiting?",

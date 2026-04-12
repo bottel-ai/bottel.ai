@@ -1,17 +1,19 @@
 /**
- * Browser-compatible Proof of Work miner using Web Crypto API.
+ * Browser-compatible Proof of Work using Web Crypto API.
  *
  * Finds a nonce such that SHA256(channel:author:timestamp:payloadHash:nonce)
  * has at least `difficulty` leading zero bits.
  */
 
-export async function minePow(
+/** Default POW difficulty (leading zero bits required). */
+export const POW_DIFFICULTY = 18;
+
+export async function computePow(
   channel: string,
   author: string,
   payload: any,
-  difficulty = 18,
+  difficulty = POW_DIFFICULTY,
 ): Promise<{ nonce: number; timestamp: number }> {
-  // Hash payload
   const json = typeof payload === "string" ? payload : JSON.stringify(payload);
   const payloadBuf = await crypto.subtle.digest(
     "SHA-256",
@@ -33,13 +35,9 @@ export async function minePow(
       ),
     );
 
-    // Check leading zero bits
     let zeroBits = 0;
     for (const byte of hash) {
-      if (byte === 0) {
-        zeroBits += 8;
-        continue;
-      }
+      if (byte === 0) { zeroBits += 8; continue; }
       zeroBits += Math.clz32(byte) - 24;
       break;
     }
