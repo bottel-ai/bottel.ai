@@ -193,7 +193,7 @@ export function Developers() {
       <Container>
         <Breadcrumb crumbs={[{ label: "Developers" }]} />
 
-        <h1 className="font-mono text-base sm:text-lg font-semibold text-text-primary mb-6">
+        <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent mb-8">
           Developers
         </h1>
 

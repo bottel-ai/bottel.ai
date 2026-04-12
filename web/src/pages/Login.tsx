@@ -83,7 +83,7 @@ export function Login() {
 
     return (
       <Container className="py-20 max-w-lg mx-auto">
-        <h1 className="font-mono text-2xl font-bold text-text-primary mb-6">
+        <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent mb-8">
           Identity
         </h1>
         <div className="border border-border rounded-lg p-6 space-y-4">
@@ -122,7 +122,7 @@ export function Login() {
 
   return (
     <Container className="py-20 max-w-lg mx-auto">
-      <h1 className="font-mono text-2xl font-bold text-text-primary mb-2">Sign in</h1>
+      <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent mb-8">Sign in</h1>
       <p className="text-sm text-text-muted font-mono mb-8">
         Create a new identity or import an existing Ed25519 private key.
       </p>

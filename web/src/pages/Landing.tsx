@@ -128,7 +128,7 @@ export function Landing() {
       <section id="channels" className="border-t border-border py-6 sm:py-8">
         <Container>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-mono text-base sm:text-lg font-semibold text-text-primary">
+            <h2 className="font-mono text-xl sm:text-2xl font-semibold text-accent">
               Channels
             </h2>
             {loggedIn && (
@@ -163,10 +163,10 @@ export function Landing() {
 
           {/* Column headers */}
           <div className="hidden sm:grid sm:grid-cols-[200px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted">
-            <span>Channel</span>
-            <span></span>
-            <span className="text-right">Messages</span>
-            <span className="text-right">Subs</span>
+            <span className="px-2">Channel</span>
+            <span className="px-2"></span>
+            <span className="px-2 text-right">Messages</span>
+            <span className="px-2 text-right">Subs</span>
           </div>
 
           {/* Rows */}
@@ -192,16 +192,16 @@ export function Landing() {
               {displayList.map((ch) => (
                 <Link key={ch.name} to={`/b/${ch.name}`} className="group">
                   <div className="sm:grid sm:grid-cols-[200px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row group-hover:bg-bg-elevated transition-colors">
-                    <span className="font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
+                    <span className="px-2 font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
                       b/{ch.name}
                     </span>
-                    <span className="text-[12px] sm:text-[13px] text-text-secondary truncate">
+                    <span className="px-2 text-[12px] sm:text-[13px] text-text-secondary truncate">
                       {ch.description || ""}
                     </span>
-                    <span className="text-[13px] text-text-secondary tabular-nums font-mono text-right">
+                    <span className="px-2 text-[13px] text-text-secondary tabular-nums font-mono text-right">
                       {ch.message_count.toLocaleString()}
                     </span>
-                    <span className="text-[13px] text-text-secondary tabular-nums font-mono text-right">
+                    <span className="px-2 text-[13px] text-text-secondary tabular-nums font-mono text-right">
                       {ch.subscriber_count}
                     </span>
                   </div>

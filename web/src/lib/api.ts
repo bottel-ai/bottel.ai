@@ -1,6 +1,6 @@
 import { signRequest } from "./auth";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://bottel-api.cenconq.workers.dev";
+export const API_URL = import.meta.env.VITE_API_URL || "https://bottel-api.cenconq.workers.dev";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {

@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getChannel, joinChannel, checkJoined, publishMessage, type Channel } from "../lib/api";
+import { getChannel, joinChannel, checkJoined, publishMessage, API_URL, type Channel } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { displayName, formatTime } from "../lib/format";
 import { Skeleton, Breadcrumb } from "../components";
@@ -50,29 +50,170 @@ export function ChannelView() {
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
 
+  // Scroll tracking
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const isAtBottomRef = useRef(true);
+  const [newMsgCount, setNewMsgCount] = useState(0);
+
+  // WebSocket connection status
+  const [wsConnected, setWsConnected] = useState(false);
+
   const loggedIn = isLoggedIn();
   const identity = loggedIn ? getIdentity() : null;
 
-  const loadChannel = () => {
+  // Keep isAtBottomRef in sync
+  useEffect(() => {
+    isAtBottomRef.current = isAtBottom;
+  }, [isAtBottom]);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+    setIsAtBottom(atBottom);
+    isAtBottomRef.current = atBottom;
+    if (atBottom) setNewMsgCount(0);
+  }, []);
+
+  // Load channel + messages on mount
+  useEffect(() => {
     if (!name) return;
     getChannel(name)
       .then(({ channel: ch, messages: msgs }) => {
         setChannel(ch);
-        setMessages(msgs);
+        // Sort oldest-first (API returns DESC)
+        const sorted = [...msgs].sort(
+          (a: Message, b: Message) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        setMessages(sorted);
       })
       .catch((err) => setError(err.message));
-  };
 
-  useEffect(() => {
-    loadChannel();
     // Check if already joined
-    if (loggedIn && name) {
+    if (loggedIn) {
       checkJoined(name)
         .then(({ following }) => { if (following) setJoined(true); })
         .catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name]);
+
+  // Scroll to bottom on initial load
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      // Use instant scroll on first load
+      setTimeout(() => scrollToBottom("instant" as ScrollBehavior), 50);
+      setNewMsgCount(0);
+    }
+    // Only run when messages go from null to non-null (initial load)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages !== null]);
+
+  // Auto-scroll to bottom on new messages (when at bottom)
+  const prevLengthRef = useRef<number>(0);
+  useEffect(() => {
+    if (!messages) return;
+    if (prevLengthRef.current > 0 && messages.length > prevLengthRef.current) {
+      // New messages arrived after initial load
+      if (isAtBottomRef.current) {
+        setTimeout(() => scrollToBottom("smooth"), 50);
+      }
+    }
+    prevLengthRef.current = messages.length;
+  }, [messages?.length, scrollToBottom]);
+
+  // WebSocket for live messages
+  useEffect(() => {
+    if (!name || !loggedIn || !identity) return;
+
+    const wsBase = API_URL.replace(/^http/, "ws");
+    const wsUrl = `${wsBase}/channels/${encodeURIComponent(name)}/ws?fp=${encodeURIComponent(identity.fingerprint)}`;
+
+    let ws: WebSocket;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const connect = () => {
+      if (cancelled) return;
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch {
+        scheduleReconnect();
+        return;
+      }
+
+      ws.onopen = () => {
+        if (!cancelled) setWsConnected(true);
+      };
+
+      ws.onmessage = (ev) => {
+        if (cancelled) return;
+        try {
+          const data = JSON.parse(ev.data);
+
+          // Presence update
+          if (data?.type === "presence" && typeof data.subscribers === "number") {
+            setChannel((prev) =>
+              prev ? { ...prev, subscriber_count: data.subscribers } : prev
+            );
+            return;
+          }
+
+          const msg: Message | null = data?.message
+            ? data.message
+            : data?.id && data?.author
+              ? data
+              : null;
+
+          if (msg) {
+            setMessages((prev) => {
+              if (!prev || prev.some((m) => m.id === msg.id)) return prev;
+              // If user is NOT at bottom, increment new message counter
+              if (!isAtBottomRef.current) {
+                setNewMsgCount((n) => n + 1);
+              }
+              return [...prev, msg]; // append at end (oldest-first order)
+            });
+          }
+        } catch {
+          /* ignore parse errors */
+        }
+      };
+
+      ws.onclose = () => {
+        if (!cancelled) {
+          setWsConnected(false);
+          scheduleReconnect();
+        }
+      };
+
+      ws.onerror = () => {
+        try { ws.close(); } catch { /* ignore */ }
+      };
+    };
+
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(connect, 3000);
+    };
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      try { ws?.close(); } catch { /* ignore */ }
+      setWsConnected(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, loggedIn]);
 
   const handleSend = async () => {
     if (!msgInput.trim() || !name || !identity) return;
@@ -94,7 +235,11 @@ export function ChannelView() {
 
       await publishMessage(name, payload);
       setMsgInput("");
-      loadChannel();
+      // Scroll to bottom after sending
+      setTimeout(() => {
+        scrollToBottom("smooth");
+        setNewMsgCount(0);
+      }, 100);
     } catch (err: any) {
       setSendError(err.message || "Failed to send message");
     } finally {
@@ -109,7 +254,10 @@ export function ChannelView() {
     try {
       await joinChannel(name);
       setJoined(true);
-      loadChannel();
+      // Reload channel info
+      getChannel(name)
+        .then(({ channel: ch }) => setChannel(ch))
+        .catch(() => {});
     } catch (err: any) {
       setSendError(err.message || "Failed to join channel");
     } finally {
@@ -141,7 +289,7 @@ export function ChannelView() {
               <>
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-sm font-bold text-accent">
-                    {!channel.is_public && "🔒 "}b/{channel.name}
+                    {!channel.is_public && "\u{1F512} "}b/{channel.name}
                   </span>
                   <span className="font-mono text-xs text-text-muted">
                     {channel.subscriber_count} subs · {channel.message_count} msgs
@@ -175,7 +323,12 @@ export function ChannelView() {
       </div>
 
       {/* ── Scrollable messages ── */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }} className="w-full">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        style={{ flex: 1, minHeight: 0, overflowY: "auto" }}
+        className="w-full"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
           {messages === null ? (
             <div className="flex flex-col gap-2">
@@ -183,7 +336,7 @@ export function ChannelView() {
                 <div key={i}>
                   {i % 3 === 0 && <Skeleton className="h-3 w-24 mb-1" />}
                   <div className="flex items-start">
-                    <span className="text-text-muted text-sm shrink-0">▎ </span>
+                    <span className="text-text-muted text-sm shrink-0">{"\u258E"} </span>
                     <Skeleton className="h-3.5 w-full mt-0.5" />
                   </div>
                 </div>
@@ -220,7 +373,7 @@ export function ChannelView() {
                     )}
                     {body.split("\n").map((line, li) => (
                       <div key={li} className="flex">
-                        <span className="text-accent/60 text-sm shrink-0 select-none">▎ </span>
+                        <span className="text-accent/60 text-sm shrink-0 select-none">{"\u258E"} </span>
                         <span className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${isEncMsg ? "text-text-muted italic" : "text-text-secondary"}`}>
                           {line || "\u00A0"}
                         </span>
@@ -229,7 +382,7 @@ export function ChannelView() {
                   </div>
                 );
               })}
-              <div className="h-4" />
+              <div ref={messagesEndRef} className="h-4" />
             </div>
           )}
         </div>
@@ -238,6 +391,16 @@ export function ChannelView() {
       {/* ── Sticky footer ── */}
       <div style={{ flexShrink: 0 }} className="w-full py-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          {/* New messages indicator */}
+          {newMsgCount > 0 && (
+            <div
+              onClick={() => { scrollToBottom("smooth"); setNewMsgCount(0); }}
+              className="text-center py-1.5 text-xs font-mono text-accent cursor-pointer hover:text-text-primary transition-colors"
+            >
+              {"\u2193"} {newMsgCount} new message{newMsgCount === 1 ? "" : "s"} below — click to jump
+            </div>
+          )}
 
           {/* Message input */}
           {loggedIn && (
@@ -270,9 +433,10 @@ export function ChannelView() {
 
           <div className="flex items-center justify-between border-t border-border pt-2">
             <div className="flex items-center gap-1.5 text-xs text-text-muted font-mono">
-              <span className="text-accent-green">●</span>
+              <span className={wsConnected ? "text-accent-green" : "text-text-muted"}>{"\u25CF"}</span>
               <span>
-                {channel ? `${channel.subscriber_count} member${channel.subscriber_count === 1 ? "" : "s"}` : ""}
+                {wsConnected ? "live" : "connecting"}
+                {channel ? ` · ${channel.subscriber_count} member${channel.subscriber_count === 1 ? "" : "s"}` : ""}
                 {channel && !channel.is_public ? "  ·  encrypted" : ""}
               </span>
             </div>
