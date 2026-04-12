@@ -283,29 +283,39 @@ app.get("/channels", edgeCache(15), async (c) => {
   c.header("Cache-Control", "public, max-age=15");
   const q = c.req.query("q") || "";
   const sort = c.req.query("sort") || "";
-  const cacheKey = `${q}|${sort}`;
+  const limitRaw = parseInt(c.req.query("limit") || "20", 10);
+  const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 20));
+  const offset = parseInt(c.req.query("offset") || "0", 10) || 0;
+  const cacheKey = `${q}|${sort}|${limit}|${offset}`;
 
   const cached = getCached<any[]>(channelListCache, cacheKey, 30_000);
   if (cached) {
     return c.json({ channels: cached });
   }
 
-  const channels = await listChannels(c.env.DB, q || undefined, sort || undefined);
+  const channels = await listChannels(c.env.DB, q || undefined, sort || undefined, limit, offset);
   setCache(channelListCache, cacheKey, channels);
   return c.json({ channels });
 });
 
 // GET /channels/joined — list channels the current user has joined (auth)
+// User-specific so no edge cache, but browser can cache briefly.
 app.get("/channels/joined", authMiddleware, async (c) => {
+  c.header("Cache-Control", "private, max-age=10");
   const fp = c.get("fingerprint");
+  const limitRaw = parseInt(c.req.query("limit") || "20", 10);
+  const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 20));
+  const offset = parseInt(c.req.query("offset") || "0", 10) || 0;
+
   const result = await c.env.DB.prepare(
     `SELECT c.name, c.description, c.created_by, c.schema, c.message_count,
             c.subscriber_count, c.is_public, c.created_at
      FROM channels c
      INNER JOIN channel_follows cf ON cf.channel = c.name
      WHERE cf.follower = ? AND cf.status = 'active'
-     ORDER BY c.name`
-  ).bind(fp).all();
+     ORDER BY c.name
+     LIMIT ? OFFSET ?`
+  ).bind(fp, limit, offset).all();
 
   const channels = (result.results ?? []).map((ch: any) => ({
     ...ch,

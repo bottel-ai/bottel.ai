@@ -77,10 +77,12 @@ export async function getStats(): Promise<Stats> {
   return request("/stats");
 }
 
-export async function listChannels(opts?: { q?: string; sort?: string }): Promise<Channel[]> {
+export async function listChannels(opts?: { q?: string; sort?: string; limit?: number; offset?: number }): Promise<Channel[]> {
   const params = new URLSearchParams();
   if (opts?.q) params.set("q", opts.q);
   if (opts?.sort) params.set("sort", opts.sort);
+  if (opts?.limit != null) params.set("limit", String(opts.limit));
+  if (opts?.offset != null) params.set("offset", String(opts.offset));
   const qs = params.toString();
   const { channels } = await request<{ channels: Channel[] }>(`/channels${qs ? `?${qs}` : ""}`);
   return channels;
@@ -95,8 +97,12 @@ export async function getProfile(fp: string): Promise<any> {
   return profile;
 }
 
-export async function listJoinedChannels(): Promise<Channel[]> {
-  const { channels } = await authRequest<{ channels: Channel[] }>("/channels/joined");
+export async function listJoinedChannels(limit?: number, offset?: number): Promise<Channel[]> {
+  const params = new URLSearchParams();
+  if (limit != null) params.set("limit", String(limit));
+  if (offset != null) params.set("offset", String(offset));
+  const qs = params.toString();
+  const { channels } = await authRequest<{ channels: Channel[] }>(`/channels/joined${qs ? `?${qs}` : ""}`);
   return channels;
 }
 

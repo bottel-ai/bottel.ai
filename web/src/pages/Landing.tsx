@@ -5,6 +5,7 @@ import { isLoggedIn } from "../lib/auth";
 import { Container, Skeleton } from "../components";
 
 type Filter = "all" | "joined";
+const PAGE_SIZE = 20;
 
 export function Landing() {
   const [stats, setStats] = useState<Stats | null>(null);
@@ -15,25 +16,37 @@ export function Landing() {
   const [filtered, setFiltered] = useState<Channel[] | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loggedIn = isLoggedIn();
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
     getStats().then(setStats).catch(() => {});
-    listChannels({ sort: "messages" })
-      .then(setChannels)
-      .catch(() => setChannels([]));
-    if (loggedIn) {
-      listJoinedChannels().then(setJoinedChannels).catch(() => setJoinedChannels([]));
-    }
   }, []);
+
+  useEffect(() => {
+    if (filter === "joined" && loggedIn) {
+      setJoinedChannels(null);
+      listJoinedChannels(PAGE_SIZE, page * PAGE_SIZE)
+        .then((cs) => { setJoinedChannels(cs); setHasMore(cs.length >= PAGE_SIZE); })
+        .catch(() => { setJoinedChannels([]); setHasMore(false); });
+    } else {
+      setChannels(null);
+      listChannels({ sort: "messages", limit: PAGE_SIZE, offset: page * PAGE_SIZE })
+        .then((cs) => { setChannels(cs); setHasMore(cs.length >= PAGE_SIZE); })
+        .catch(() => { setChannels([]); setHasMore(false); });
+    }
+  }, [page, filter]);
 
   useEffect(() => {
     if (!query.trim()) { setFiltered(null); return; }
     if (searchTimer.current) clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => {
-      listChannels({ q: query.trim() }).then(setFiltered).catch(() => setFiltered([]));
+      listChannels({ q: query.trim(), limit: PAGE_SIZE, offset: page * PAGE_SIZE })
+        .then((cs) => { setFiltered(cs); setHasMore(cs.length >= PAGE_SIZE); })
+        .catch(() => { setFiltered([]); setHasMore(false); });
     }, 300);
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
-  }, [query]);
+  }, [query, page]);
 
   const baseList = filter === "joined" ? joinedChannels : channels;
   const displayList = query.trim() ? filtered : baseList;
@@ -121,13 +134,13 @@ export function Landing() {
             {loggedIn && (
               <div className="flex gap-1 text-xs font-mono font-medium">
                 <button
-                  onClick={() => setFilter("all")}
+                  onClick={() => { setFilter("all"); setPage(0); }}
                   className={`px-2.5 py-1 rounded-md transition-colors ${filter === "all" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
                 >
                   All
                 </button>
                 <button
-                  onClick={() => setFilter("joined")}
+                  onClick={() => { setFilter("joined"); setPage(0); }}
                   className={`px-2.5 py-1 rounded-md transition-colors ${filter === "joined" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
                 >
                   Joined
@@ -142,7 +155,7 @@ export function Landing() {
             <input
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => { setQuery(e.target.value); setPage(0); }}
               placeholder="Search all channels"
               className="flex-1 bg-transparent border-none py-1 text-xs font-mono font-medium text-text-primary placeholder:text-text-muted focus:outline-none"
             />
@@ -197,14 +210,23 @@ export function Landing() {
             </div>
           )}
 
-          {channels && channels.length > 0 && !query.trim() && (
-            <div className="mt-6 text-center">
-              <Link
-                to="/channels"
-                className="text-sm text-accent hover:text-accent-muted transition-colors font-mono"
+          {displayList && displayList.length > 0 && (
+            <div className="flex items-center justify-between mt-4">
+              <button
+                onClick={() => setPage(p => p - 1)}
+                disabled={page === 0}
+                className="text-xs font-mono text-text-muted hover:text-text-primary disabled:opacity-30"
               >
-                View all channels &rarr;
-              </Link>
+                &larr; Prev
+              </button>
+              <span className="text-xs text-text-muted font-mono">Page {page + 1}</span>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={!hasMore}
+                className="text-xs font-mono text-text-muted hover:text-text-primary disabled:opacity-30"
+              >
+                Next &rarr;
+              </button>
             </div>
           )}
         </Container>

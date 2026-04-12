@@ -106,9 +106,9 @@ export async function listChannels(opts?: {
   return channels;
 }
 
-export async function listJoinedChannels(fp: string): Promise<Channel[]> {
+export async function listJoinedChannels(fp: string, limit = 20, offset = 0): Promise<Channel[]> {
   const { channels } = await request<{ channels: Channel[] }>(
-    "/channels/joined",
+    `/channels/joined?limit=${limit}&offset=${offset}`,
     { headers: authHeaders(fp, "GET", "/channels/joined") }
   );
   return channels;

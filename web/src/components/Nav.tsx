@@ -22,7 +22,7 @@ export function Nav() {
           to="/"
           className="font-mono text-text-primary text-base sm:text-lg font-semibold tracking-[0.12em]"
         >
-          bottel.ai
+          bot<span className="text-accent">tel</span>.ai
         </Link>
 
         <div className="flex items-center gap-4 sm:gap-6">

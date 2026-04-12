@@ -96,8 +96,10 @@ const TOOLS = [
 
 // --- Shared channel logic (also called from index.ts HTTP routes) ---
 
-export async function listChannels(db: D1Database, q?: string, sort?: string) {
+export async function listChannels(db: D1Database, q?: string, sort?: string, limit = 20, offset = 0) {
   let rows: any[];
+  const lim = Math.min(100, Math.max(1, limit));
+  const off = Math.max(0, offset);
   if (q && q.trim()) {
     const ftsQuery = q.split(/\s+/).filter(Boolean).map((w) => `"${w.replace(/"/g, "")}"*`).join(" ");
     if (!ftsQuery) return [];
@@ -107,13 +109,12 @@ export async function listChannels(db: D1Database, q?: string, sort?: string) {
        JOIN channels c ON c.rowid = fts.rowid
        WHERE channels_fts MATCH ?
        ORDER BY rank
-       LIMIT 50`
-    ).bind(ftsQuery).all();
+       LIMIT ? OFFSET ?`
+    ).bind(ftsQuery, lim, off).all();
     rows = r.results ?? [];
   } else {
     const order = sort === "recent" ? "created_at DESC" : "message_count DESC";
-    // `order` is derived from a strict equality check above, not user input — safe from injection.
-    const r = await db.prepare(`SELECT * FROM channels ORDER BY ${order} LIMIT 50`).all();
+    const r = await db.prepare(`SELECT * FROM channels ORDER BY ${order} LIMIT ? OFFSET ?`).bind(lim, off).all();
     rows = r.results ?? [];
   }
   return rows.map((c: any) => ({

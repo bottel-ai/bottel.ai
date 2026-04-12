@@ -11,11 +11,15 @@ import { relativeTime, truncate } from "../lib/formatting.js";
 
 // ─── Screen ─────────────────────────────────────────────────────
 
+const PAGE_SIZE = 7;
+
 export function ChannelList() {
   const { state, dispatch, navigate, goBack } = useStore();
   const { channels, selectedIndex, loading } = state.channelList;
   const [confirmLeave, setConfirmLeave] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const auth = getAuth();
   const selfFp = auth?.fingerprint ?? "";
   const loggedIn = isLoggedIn();
@@ -27,39 +31,44 @@ export function ChannelList() {
   const update = (s: Partial<Slice> | ((cur: Slice) => Partial<Slice>)) =>
     dispatch({ type: "UPDATE_CHANNEL_LIST", state: s });
 
-  const fetchChannels = (resetIndex = false) => {
+  const fetchChannels = (resetIndex = false, p = page) => {
     if (!loggedIn || !selfFp) {
       update({ channels: [], loading: false });
       return;
     }
     update({ loading: true });
-    listJoinedChannels(selfFp)
-      .then((cs) =>
+    listJoinedChannels(selfFp, PAGE_SIZE, p * PAGE_SIZE)
+      .then((cs) => {
+        setHasMore(cs.length >= PAGE_SIZE);
         update((cur) => ({
           channels: cs,
           loading: false,
           selectedIndex: resetIndex ? 0 : Math.min(cur.selectedIndex, Math.max(0, cs.length - 1)),
-        }))
-      )
-      .catch(() => update({ channels: [], loading: false, selectedIndex: 0 }));
+        }));
+      })
+      .catch(() => {
+        setHasMore(false);
+        update({ channels: [], loading: false, selectedIndex: 0 });
+      });
   };
 
   useEffect(() => {
     if (channels.length > 0 && loggedIn && selfFp) {
       // Stale-while-revalidate
-      listJoinedChannels(selfFp)
-        .then((cs) =>
+      listJoinedChannels(selfFp, PAGE_SIZE, page * PAGE_SIZE)
+        .then((cs) => {
+          setHasMore(cs.length >= PAGE_SIZE);
           update((cur) => ({
             channels: cs,
             selectedIndex: Math.min(cur.selectedIndex, Math.max(0, cs.length - 1)),
-          }))
-        )
+          }));
+        })
         .catch(() => {});
     } else {
       fetchChannels();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [page]);
 
   useInput((input, key) => {
     // Leave/delete confirm intercept.
@@ -116,7 +125,21 @@ export function ChannelList() {
       return;
     }
     if (input === "r") {
-      fetchChannels();
+      fetchChannels(false, page);
+      return;
+    }
+    if ((input === "]" || input === ">") && hasMore) {
+      const next = page + 1;
+      setPage(next);
+      update({ selectedIndex: 0 });
+      fetchChannels(true, next);
+      return;
+    }
+    if ((input === "[" || input === "<") && page > 0) {
+      const prev = page - 1;
+      setPage(prev);
+      update({ selectedIndex: 0 });
+      fetchChannels(true, prev);
       return;
     }
     if (input === "l" && loggedIn) {
@@ -217,9 +240,12 @@ export function ChannelList() {
           <Text bold color={colors.primary}>
             My Channels
           </Text>
-          {channels.length > 0 && (
-            <Text color={colors.subtle}>{channels.length} joined</Text>
-          )}
+          <Text color={colors.subtle}>
+            {channels.length > 0
+              ? `${page * PAGE_SIZE + 1}-${page * PAGE_SIZE + channels.length}${hasMore ? " of many" : ""}`
+              : ""}
+            {channels.length > 0 ? "  ·  " : ""}page {page + 1}
+          </Text>
         </Box>
 
         {!loggedIn && (
@@ -262,7 +288,7 @@ export function ChannelList() {
         )}
       </Box>
 
-      <HelpFooter text="c create · r refresh · l leave · d delete (own) · ↑↓ nav · Enter open · Esc back" />
+      <HelpFooter text="c create · r refresh · l leave · d delete (own) · [/] page · ↑↓ nav · Enter open · Esc back" />
     </Box>
   );
 }
