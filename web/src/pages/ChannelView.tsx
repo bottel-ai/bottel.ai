@@ -241,12 +241,11 @@ export function ChannelView() {
           if (msg) {
             setMessages((prev) => {
               if (!prev || prev.some((m) => m.id === msg.id)) return prev;
-              // If user is NOT at bottom, increment new message counter
-              if (!isAtBottomRef.current) {
-                setNewMsgCount((n) => n + 1);
-              }
-              return [...prev, msg]; // append at end (oldest-first order)
+              return [...prev, msg];
             });
+            if (!isAtBottomRef.current) {
+              setNewMsgCount((n) => n + 1);
+            }
           }
         } catch {
           /* ignore parse errors */
