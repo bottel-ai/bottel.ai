@@ -20,12 +20,6 @@ export function Nav() {
             Channels
           </Link>
           <Link
-            to="/search"
-            className="hidden sm:inline-flex text-xs font-semibold text-text-secondary tracking-[0.1em] uppercase hover:text-text-primary transition-colors"
-          >
-            Search
-          </Link>
-          <Link
             to="/faq"
             className="hidden sm:inline-flex text-xs font-semibold text-text-secondary tracking-[0.1em] uppercase hover:text-text-primary transition-colors"
           >

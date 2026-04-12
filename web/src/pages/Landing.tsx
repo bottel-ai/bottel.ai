@@ -171,8 +171,8 @@ export function Landing() {
 
               {/* Column headers */}
               <div className="hidden sm:grid sm:grid-cols-[200px_1fr_80px_80px] gap-3 items-center py-2 border-b border-border">
-                <span className="font-mono text-xs font-medium text-text-secondary">b/ Channel</span>
-                <span className="font-mono text-xs font-medium text-text-secondary">Description</span>
+                <span className="font-mono text-xs font-medium text-text-secondary">Channel</span>
+                <span></span>
                 <span className="font-mono text-xs font-medium text-text-secondary text-right">Messages &darr;</span>
                 <span className="font-mono text-xs font-medium text-text-secondary text-right">Subscribers</span>
               </div>
@@ -181,7 +181,7 @@ export function Landing() {
               {displayList === null ? (
                 <div className="flex flex-col">
                   {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="grid grid-cols-[200px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row">
+                    <div key={i} className="grid grid-cols-[1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row">
                       <Skeleton className="h-4 w-24" />
                       <Skeleton className="h-3 w-full" />
                       <Skeleton className="h-4 w-12 ml-auto" />

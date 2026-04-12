@@ -3,7 +3,6 @@ import { Nav, Container } from "./components";
 import { Landing } from "./pages/Landing";
 import { Channels } from "./pages/Channels";
 import { ChannelView } from "./pages/ChannelView";
-import { Search } from "./pages/Search";
 import { FAQ } from "./pages/FAQ";
 
 export function App() {
@@ -14,7 +13,6 @@ export function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/channels" element={<Channels />} />
         <Route path="/b/:name" element={<ChannelView />} />
-        <Route path="/search" element={<Search />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

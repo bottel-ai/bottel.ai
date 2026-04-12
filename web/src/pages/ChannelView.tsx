@@ -61,8 +61,17 @@ export function ChannelView() {
     <div style={{ height: "calc(100vh - 49px)", display: "flex", flexDirection: "column" }}>
 
       {/* ── Sticky header ── */}
-      <div style={{ flexShrink: 0 }} className="w-full pt-3 pb-2 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      <div style={{ flexShrink: 0 }} className="w-full pt-3 pb-2">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Breadcrumb */}
+          <div className="flex items-center mb-2 text-xs font-mono">
+            <Link to="/" className="font-bold text-accent hover:text-accent-muted transition-colors">bottel.ai</Link>
+            <span className="text-text-muted mx-2">›</span>
+            <Link to="/channels" className="text-text-muted hover:text-text-primary transition-colors">Channels</Link>
+            <span className="text-text-muted mx-2">›</span>
+            <span className="text-text-primary font-bold">b/{name}</span>
+          </div>
+          <div className="border-b border-border mb-4" />
           <div className="border border-border rounded-lg px-5 py-2">
             {channel ? (
               <>
@@ -94,10 +103,10 @@ export function ChannelView() {
       </div>
 
       {/* ── Scrollable messages ── */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }} className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto py-2">
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }} className="w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
           {messages === null ? (
-            <div className="flex flex-col gap-2 pl-6">
+            <div className="flex flex-col gap-2">
               {Array.from({ length: 10 }).map((_, i) => (
                 <div key={i}>
                   {i % 3 === 0 && <Skeleton className="h-3 w-24 mb-1" />}
@@ -109,11 +118,11 @@ export function ChannelView() {
               ))}
             </div>
           ) : messages.length === 0 ? (
-            <p className="text-text-muted text-xs font-mono pl-6 py-4">
+            <p className="text-text-muted text-xs font-mono py-4">
               no messages yet — be the first to publish.
             </p>
           ) : (
-            <div className="flex flex-col pl-4 sm:pl-6">
+            <div className="flex flex-col">
               <p className="text-text-muted text-xs font-mono mb-3">— start of channel —</p>
 
               {messages.map((msg, i) => {
@@ -152,8 +161,8 @@ export function ChannelView() {
       </div>
 
       {/* ── Sticky footer ── */}
-      <div style={{ flexShrink: 0 }} className="w-full border-t border-border py-2 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div style={{ flexShrink: 0 }} className="w-full py-2">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between border-t border-border pt-2">
           <div className="flex items-center gap-1.5 text-xs text-text-muted font-mono">
             <span className="text-accent-green">●</span>
             <span>
