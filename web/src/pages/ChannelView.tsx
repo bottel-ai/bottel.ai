@@ -103,6 +103,7 @@ export function ChannelView() {
 
   const handleJoin = async () => {
     if (!name) return;
+    setSendError(null);
     setJoining(true);
     try {
       await joinChannel(name);

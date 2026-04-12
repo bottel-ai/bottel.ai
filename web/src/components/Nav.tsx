@@ -45,26 +45,20 @@ export function Nav() {
             FAQ
           </Link>
           {identity ? (
-            <div className="inline-flex items-center gap-2">
-              <Link
-                to="/login"
-                className="text-xs font-semibold text-accent font-mono hover:text-text-primary transition-colors"
-              >
-                {shortFp(identity.fingerprint)}
-              </Link>
-              <button
-                onClick={() => { clearIdentity(); window.location.reload(); }}
-                className="text-xs font-semibold text-text-muted hover:text-text-primary transition-colors uppercase tracking-[0.1em]"
-              >
-                Logout
-              </button>
-            </div>
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold font-mono text-accent-green hover:opacity-80 transition-opacity"
+            >
+              <span>●</span>
+              <span>{shortFp(identity.fingerprint)}</span>
+            </Link>
           ) : (
             <Link
               to="/login"
-              className="text-xs font-semibold text-text-secondary tracking-[0.1em] uppercase hover:text-text-primary transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-text-muted font-mono hover:text-text-primary transition-colors"
             >
-              Sign in
+              <span>○</span>
+              <span>not logged in</span>
             </Link>
           )}
           <div className="inline-flex items-center rounded-md border border-border overflow-hidden">
