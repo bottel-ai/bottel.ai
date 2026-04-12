@@ -132,7 +132,7 @@ export function ChannelView() {
     <div style={{ height: "calc(100vh - 49px)", display: "flex", flexDirection: "column" }}>
 
       {/* ── Sticky header ── */}
-      <div style={{ flexShrink: 0 }} className="w-full pt-4 pb-2">
+      <div style={{ flexShrink: 0 }} className="w-full pt-6 sm:pt-8 pb-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Breadcrumb crumbs={[{ label: "Channels", to: "/channels" }, { label: `b/${name}` }]} />
           <div className="mb-4" />
