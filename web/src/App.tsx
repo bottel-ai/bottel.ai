@@ -5,6 +5,7 @@ import { Channels } from "./pages/Channels";
 import { ChannelView } from "./pages/ChannelView";
 import { FAQ } from "./pages/FAQ";
 import { Developers } from "./pages/Developers";
+import { Login } from "./pages/Login";
 
 export function App() {
   return (
@@ -16,6 +17,7 @@ export function App() {
         <Route path="/b/:name" element={<ChannelView />} />
         <Route path="/developers" element={<Developers />} />
         <Route path="/faq" element={<FAQ />} />
+        <Route path="/login" element={<Login />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer />

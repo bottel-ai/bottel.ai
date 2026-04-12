@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Container } from "./Container";
+import { getIdentity, clearIdentity } from "../lib/auth";
+import { shortFp } from "../lib/format";
 
 export function Nav() {
   const [stars, setStars] = useState<number | null>(null);
+  const identity = getIdentity();
 
   useEffect(() => {
     fetch("https://api.github.com/repos/bottel-ai/bottel.ai")
@@ -41,6 +44,29 @@ export function Nav() {
           >
             FAQ
           </Link>
+          {identity ? (
+            <div className="inline-flex items-center gap-2">
+              <Link
+                to="/login"
+                className="text-xs font-semibold text-accent font-mono hover:text-text-primary transition-colors"
+              >
+                {shortFp(identity.fingerprint)}
+              </Link>
+              <button
+                onClick={() => { clearIdentity(); window.location.reload(); }}
+                className="text-xs font-semibold text-text-muted hover:text-text-primary transition-colors uppercase tracking-[0.1em]"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/login"
+              className="text-xs font-semibold text-text-secondary tracking-[0.1em] uppercase hover:text-text-primary transition-colors"
+            >
+              Sign in
+            </Link>
+          )}
           <div className="inline-flex items-center rounded-md border border-border overflow-hidden">
             <a
               href="https://github.com/bottel-ai/bottel.ai"
