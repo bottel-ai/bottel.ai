@@ -205,7 +205,7 @@ export async function checkJoined(
 
 export async function getFollowers(
   name: string,
-  status?: "pending" | "active"
+  status?: "pending" | "active" | "banned"
 ): Promise<{ follower: string; status: string; follower_name: string | null }[]> {
   const qs = status ? `?status=${status}` : "";
   const { followers } = await request<{
@@ -223,6 +223,22 @@ export async function approveFollower(
     `/channels/${encodeURIComponent(channelName)}/follow/${encodeURIComponent(followerFp)}/approve`,
     { method: "POST", headers: authHeaders(fp, "POST", `/channels/${encodeURIComponent(channelName)}/follow/${encodeURIComponent(followerFp)}/approve`) }
   );
+}
+
+// ─── Channel bans ───────────────────────────────────────────
+
+export async function banUser(fp: string, channelName: string, targetFp: string): Promise<void> {
+  await request(`/channels/${encodeURIComponent(channelName)}/ban/${encodeURIComponent(targetFp)}`, {
+    method: "POST",
+    headers: authHeaders(fp, "POST", `/channels/${encodeURIComponent(channelName)}/ban/${encodeURIComponent(targetFp)}`),
+  });
+}
+
+export async function unbanUser(fp: string, channelName: string, targetFp: string): Promise<void> {
+  await request(`/channels/${encodeURIComponent(channelName)}/ban/${encodeURIComponent(targetFp)}`, {
+    method: "DELETE",
+    headers: authHeaders(fp, "DELETE", `/channels/${encodeURIComponent(channelName)}/ban/${encodeURIComponent(targetFp)}`),
+  });
 }
 
 // ─── Channel key (private channel encryption) ────────────────

@@ -474,6 +474,12 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
     return c.json({ error: "invalid parent_id" }, 400);
   }
 
+  // Check if user is banned
+  const banCheck = await c.env.DB.prepare(
+    "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'banned'"
+  ).bind(name, fp).first();
+  if (banCheck) return c.json({ error: "You are banned from this channel" }, 403);
+
   const cfg = getConfig(c.env as any);
 
   // ── Proof of Work verification ────────────────────────────────
@@ -692,6 +698,7 @@ app.post("/channels/:name/follow", authMiddleware, async (c) => {
     "SELECT status FROM channel_follows WHERE channel = ? AND follower = ?"
   ).bind(name, fp).first<{ status: string }>();
   if (existing) {
+    if (existing.status === 'banned') return c.json({ error: "You are banned from this channel" }, 403);
     return c.json({ status: existing.status, already: true });
   }
 
@@ -767,6 +774,51 @@ app.post("/channels/:name/follow/:fp/approve", authMiddleware, async (c) => {
     .bind(name).first<{ encryption_key: string | null }>();
 
   return c.json({ status: "active", key: chKey?.encryption_key ?? null });
+});
+
+// POST /channels/:name/ban/:fp — ban a user (creator only, auth)
+app.post("/channels/:name/ban/:fp", authMiddleware, async (c) => {
+  const name = c.req.param("name");
+  const targetFp = c.req.param("fp");
+  const creatorFp = c.get("fingerprint");
+
+  const ch = await c.env.DB.prepare("SELECT created_by FROM channels WHERE name = ?")
+    .bind(name).first<{ created_by: string }>();
+  if (!ch) return c.json({ error: "Channel not found" }, 404);
+  if (ch.created_by !== creatorFp) return c.json({ error: "Only the channel creator can ban users" }, 403);
+  if (targetFp === creatorFp) return c.json({ error: "Cannot ban yourself" }, 400);
+
+  // Upsert: if they have a follow record, change status to 'banned'. If not, create one.
+  await c.env.DB.prepare(
+    `INSERT INTO channel_follows (channel, follower, status) VALUES (?, ?, 'banned')
+     ON CONFLICT(channel, follower) DO UPDATE SET status = 'banned'`
+  ).bind(name, targetFp).run();
+
+  // Update subscriber count (banned users don't count)
+  await c.env.DB.prepare(
+    "UPDATE channels SET subscriber_count = (SELECT COUNT(*) FROM channel_follows WHERE channel = ? AND status = 'active') WHERE name = ?"
+  ).bind(name, name).run();
+
+  return c.json({ status: "banned" });
+});
+
+// DELETE /channels/:name/ban/:fp — unban a user (creator only, auth)
+app.delete("/channels/:name/ban/:fp", authMiddleware, async (c) => {
+  const name = c.req.param("name");
+  const targetFp = c.req.param("fp");
+  const creatorFp = c.get("fingerprint");
+
+  const ch = await c.env.DB.prepare("SELECT created_by FROM channels WHERE name = ?")
+    .bind(name).first<{ created_by: string }>();
+  if (!ch) return c.json({ error: "Channel not found" }, 404);
+  if (ch.created_by !== creatorFp) return c.json({ error: "Only the channel creator can unban users" }, 403);
+
+  // Remove the follow record entirely so they can re-join
+  await c.env.DB.prepare(
+    "DELETE FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'banned'"
+  ).bind(name, targetFp).run();
+
+  return c.body(null, 204);
 });
 
 // GET /channels/:name/key — re-fetch decryption key for approved members (auth)

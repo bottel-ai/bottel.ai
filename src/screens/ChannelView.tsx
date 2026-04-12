@@ -4,7 +4,7 @@ import Spinner from "ink-spinner";
 import { ScrollView, type ScrollViewRef } from "ink-scroll-view";
 import { useStore } from "../state.js";
 import type { Channel, ChannelMessage } from "../state.js";
-import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChannel, checkJoined, fetchChannelKey, getFollowers, approveFollower } from "../lib/api.js";
+import { getChannel, publishMessage, openChannelWs, loadOlderMessages, joinChannel, checkJoined, fetchChannelKey, getFollowers, approveFollower, banUser } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { getChannelKey, saveChannelKey, hasChannelKey } from "../lib/keys.js";
 import { minePow } from "../lib/pow.js";
@@ -65,6 +65,9 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   >([]);
   const [pendingIdx, setPendingIdx] = useState(0);
   const [showPending, setShowPending] = useState(false);
+  const [showBanPicker, setShowBanPicker] = useState(false);
+  const [banList, setBanList] = useState<{ follower: string; follower_name: string | null }[]>([]);
+  const [banIdx, setBanIdx] = useState(0);
   const unmountedRef = useRef(false);
 
   const auth = getAuth();
@@ -432,6 +435,29 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
     onSubmit: handleSubmit,
     onEscape: goBack,
     onKeyBefore: (char, key) => {
+      // Ban picker panel
+      if (showBanPicker) {
+        if (key.upArrow) { setBanIdx(i => Math.max(0, i - 1)); return true; }
+        if (key.downArrow) { setBanIdx(i => Math.min(banList.length - 1, i + 1)); return true; }
+        if (key.return && banList.length > 0) {
+          const target = banList[banIdx];
+          if (target && selfFp) {
+            banUser(selfFp, channelName, target.follower)
+              .then(() => {
+                setBanList(prev => prev.filter((_, idx) => idx !== banIdx));
+                setBanIdx(idx => Math.max(0, idx - 1));
+                if (banList.length <= 1) setShowBanPicker(false);
+                // Refresh channel to update subscriber count
+                getChannel(channelName).then((r) => r && setChannel(r.channel)).catch(() => {});
+              })
+              .catch(() => {});
+          }
+          return true;
+        }
+        if (key.escape) { setShowBanPicker(false); return true; }
+        return true;
+      }
+
       // Pending requests panel
       if (showPending && pendingRequests.length > 0) {
         if (key.upArrow) { setPendingIdx((i: number) => Math.max(0, i - 1)); return true; }
@@ -481,6 +507,19 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
       // g = jump to bottom
       if ((char === "g" || char === "G") && !inputBufRef.current && newMsgCount > 0) {
         jumpToBottom();
+        return true;
+      }
+
+      // b = ban picker (owner only)
+      if ((char === "b" || char === "B") && !inputBufRef.current && channel?.created_by === selfFp) {
+        getFollowers(channelName, "active")
+          .then((list) => {
+            const filtered = list.filter(f => f.follower !== selfFp);
+            setBanList(filtered);
+            setBanIdx(0);
+            setShowBanPicker(true);
+          })
+          .catch(() => {});
         return true;
       }
 
@@ -592,6 +631,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   if (showJoinPrompt) chromeLines += 3;
   if (joinState === "pending" && !showJoinPrompt) chromeLines += 1;
   if (showPending && pendingRequests.length > 0) chromeLines += pendingRequests.length + 3;
+  if (showBanPicker) chromeLines += banList.length + 3;
   if (channel && !channel.is_public) chromeLines += 1;
   if (newMsgCount > 0) chromeLines += 1;
   const scrollHeight = Math.max(5, termHeight - chromeLines);
@@ -676,6 +716,46 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
         </Box>
       )}
 
+      {/* Ban picker — visible only to the channel owner */}
+      {showBanPicker && (
+        <Box
+          flexDirection="column"
+          borderStyle="round"
+          borderColor={colors.error}
+          paddingX={2}
+          paddingY={0}
+          marginTop={1}
+          width={paneWidth}
+        >
+          <Box marginBottom={1}>
+            <Text bold color={colors.error}>
+              Ban a user from b/{channelName}
+            </Text>
+          </Box>
+          {banList.length === 0 ? (
+            <Text color={colors.muted}>No members to ban.</Text>
+          ) : (
+            banList.map((member, i) => {
+              const active = i === banIdx;
+              const fpClean = member.follower.replace("SHA256:", "").replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
+              const fId = `bot_${fpClean}`;
+              const label = member.follower_name ? `${member.follower_name} (${fId})` : fId;
+              return (
+                <Box key={member.follower}>
+                  <Text color={colors.error}>{active ? "\u276F " : "  "}</Text>
+                  <Text bold={active} color={active ? colors.error : undefined}>
+                    {label}
+                  </Text>
+                </Box>
+              );
+            })
+          )}
+          <Box marginTop={1}>
+            <Text color={colors.muted}>{"\u2191\u2193"} nav {"\u00B7"} Enter ban {"\u00B7"} Esc cancel</Text>
+          </Box>
+        </Box>
+      )}
+
       {/* Scrollable messages area — only this part scrolls */}
       <ScrollView ref={msgScrollRef} height={scrollHeight} onContentHeightChange={handleContentHeightChange}>
         {renderMessages()}
@@ -712,7 +792,10 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
           channel && !channel.is_public ? "encrypted" : "",
           joinLabel,
         ].filter(Boolean).join("  ·  ")}
-        hint="Enter to publish  ·  Esc to leave"
+        hint={channel?.created_by === selfFp
+          ? "Enter to publish  \u00B7  b ban  \u00B7  Esc to leave"
+          : "Enter to publish  \u00B7  Esc to leave"
+        }
       />
     </Box>
   );
