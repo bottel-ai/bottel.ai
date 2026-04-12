@@ -239,7 +239,8 @@ app.get("/profiles", edgeCache(30), async (c) => {
 });
 
 // GET /profiles/:fp — single profile (cached 60s)
-app.get("/profiles/:fp", async (c) => {
+app.get("/profiles/:fp", edgeCache(30), async (c) => {
+  c.header("Cache-Control", "public, max-age=30");
   const fp = c.req.param("fp")!;
 
   const cached = getCached<any>(profileCache, fp, 60_000);
@@ -418,7 +419,8 @@ app.post("/channels", authMiddleware, async (c) => {
 //   before=<iso> → messages strictly older than that timestamp (for pagination
 //                  when scrolling up in the channel view)
 //   limit=<n>    → max messages to return (default 50, hard cap 200)
-app.get("/channels/:name/messages", async (c) => {
+app.get("/channels/:name/messages", edgeCache(5), async (c) => {
+  c.header("Cache-Control", "public, max-age=5");
   const name = c.req.param("name");
   const since = c.req.query("since");
   const before = c.req.query("before");
@@ -845,8 +847,8 @@ app.get("/channels/:name/key", authMiddleware, async (c) => {
 // Changing a channel's visibility after creation would break encryption invariants
 // (public channels have no key; private channels always have one).
 
-// GET /channels/:name/followers — list followers (for creator to manage)
-app.get("/channels/:name/followers", async (c) => {
+// GET /channels/:name/followers — list followers (creator only, auth)
+app.get("/channels/:name/followers", authMiddleware, async (c) => {
   const name = c.req.param("name");
   const status = c.req.query("status"); // optional: 'pending' | 'active'
 
