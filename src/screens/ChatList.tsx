@@ -346,7 +346,7 @@ export function ChatList() {
               <Text color={colors.muted}>
                 Press{" "}
                 <Text bold color={colors.primary}>
-                  n
+                  c
                 </Text>{" "}
                 to start a new chat.
               </Text>

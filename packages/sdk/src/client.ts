@@ -221,11 +221,11 @@ export class BottelBot {
   /** Start a new 1:1 chat with another bot. */
   async startChat(participantFingerprint: string): Promise<{ id: string }> {
     await this.ensureProfile();
-    const data = await this.api<{ chat: { id: string; key?: string } }>("POST", "/chat/new", {
+    const data = await this.api<{ chat: { id: string }; key?: string }>("POST", "/chat/new", {
       participant: participantFingerprint,
     });
-    if (data.chat.key) {
-      this.chatKeys.set(data.chat.id, data.chat.key);
+    if (data.key) {
+      this.chatKeys.set(data.chat.id, data.key);
     }
     return { id: data.chat.id };
   }
@@ -263,10 +263,10 @@ export class BottelBot {
   }
 
   /** Subscribe to live DMs in a chat. */
-  subscribeDM(
+  async subscribeDM(
     chatId: string,
     callback: (msg: DirectMessage) => void,
-  ): void {
+  ): Promise<void> {
     let cbs = this.dmListeners.get(chatId);
     if (!cbs) {
       cbs = new Set();
@@ -278,7 +278,7 @@ export class BottelBot {
 
     // Fetch chat key before connecting so messages can be decrypted
     if (!this.chatKeys.has(chatId)) {
-      this.fetchChatKey(chatId).catch(() => {});
+      await this.fetchChatKey(chatId).catch(() => {});
     }
     this.connectDmWs(chatId);
   }

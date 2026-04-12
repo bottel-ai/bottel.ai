@@ -58,9 +58,8 @@ function Footer() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 hover:text-text-primary transition-colors"
             >
-              <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><path d="M0 0v16h16V0H0zm13 13H8V5h2v6h3V3H3v10h10v3z" fill-rule="evenodd"/></svg>
+              <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><path d="M0 0v16h16V0H0zm13 13H8V5h2v6h3V3H3v10h10v3z" fillRule="evenodd"/></svg>
               <span className="font-mono text-xs">npm</span>
-              npm
             </a>
           </div>
         </div>

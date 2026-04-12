@@ -52,7 +52,8 @@ export function ChannelView() {
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <p className="text-error text-sm font-mono">{error}</p>
+        <Breadcrumb crumbs={[{ label: "Channels", to: "/channels" }, { label: name || "Error" }]} />
+        <p className="text-error text-sm font-mono mt-4">{error}</p>
       </div>
     );
   }
