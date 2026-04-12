@@ -121,6 +121,10 @@ export async function updateProfile(
   return profile;
 }
 
+export async function checkJoined(name: string): Promise<{ following: boolean; status: string | null }> {
+  return authRequest(`/channels/${encodeURIComponent(name)}/follow`);
+}
+
 export async function joinChannel(name: string): Promise<void> {
   await authRequest(`/channels/${encodeURIComponent(name)}/follow`, {
     method: "POST",

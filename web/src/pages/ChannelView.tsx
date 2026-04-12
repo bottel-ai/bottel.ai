@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getChannel, joinChannel, publishMessage, type Channel } from "../lib/api";
+import { getChannel, joinChannel, checkJoined, publishMessage, type Channel } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { computePow } from "../lib/pow";
 import { displayName, formatTime } from "../lib/format";
@@ -67,6 +67,12 @@ export function ChannelView() {
 
   useEffect(() => {
     loadChannel();
+    // Check if already joined
+    if (loggedIn && name) {
+      checkJoined(name)
+        .then(({ following }) => { if (following) setJoined(true); })
+        .catch(() => {});
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name]);
 
