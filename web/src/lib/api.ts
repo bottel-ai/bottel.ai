@@ -122,13 +122,13 @@ export async function updateProfile(
 }
 
 export async function joinChannel(name: string): Promise<void> {
-  await authRequest(`/channels/${encodeURIComponent(name)}/subscribe`, {
+  await authRequest(`/channels/${encodeURIComponent(name)}/follow`, {
     method: "POST",
   });
 }
 
 export async function leaveChannel(name: string): Promise<void> {
-  await authRequest(`/channels/${encodeURIComponent(name)}/subscribe`, {
+  await authRequest(`/channels/${encodeURIComponent(name)}/follow`, {
     method: "DELETE",
   });
 }
