@@ -106,6 +106,14 @@ export async function listChannels(opts?: {
   return channels;
 }
 
+export async function listJoinedChannels(fp: string): Promise<Channel[]> {
+  const { channels } = await request<{ channels: Channel[] }>(
+    "/channels/joined",
+    { headers: authHeaders(fp, "GET", "/channels/joined") }
+  );
+  return channels;
+}
+
 export async function getChannel(
   name: string
 ): Promise<{ channel: Channel; messages: ChannelMessage[] }> {

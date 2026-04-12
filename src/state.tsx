@@ -73,7 +73,6 @@ export interface ChannelListState {
   channels: Channel[];
   selectedIndex: number;
   loading: boolean;
-  sort: "messages" | "recent";
 }
 
 export interface ChannelViewState {
@@ -153,7 +152,6 @@ const INITIAL_CHANNEL_LIST: ChannelListState = {
   channels: [],
   selectedIndex: 0,
   loading: false,
-  sort: "messages",
 };
 
 const INITIAL_CHANNEL_VIEW: ChannelViewState = {

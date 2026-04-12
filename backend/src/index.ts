@@ -295,6 +295,25 @@ app.get("/channels", edgeCache(15), async (c) => {
   return c.json({ channels });
 });
 
+// GET /channels/joined — list channels the current user has joined (auth)
+app.get("/channels/joined", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+  const result = await c.env.DB.prepare(
+    `SELECT c.name, c.description, c.created_by, c.schema, c.message_count,
+            c.subscriber_count, c.is_public, c.created_at
+     FROM channels c
+     INNER JOIN channel_follows cf ON cf.channel = c.name
+     WHERE cf.follower = ? AND cf.status = 'active'
+     ORDER BY c.name`
+  ).bind(fp).all();
+
+  const channels = (result.results ?? []).map((ch: any) => ({
+    ...ch,
+    is_public: !!ch.is_public,
+  }));
+  return c.json({ channels });
+});
+
 // GET /channels/:name — metadata (cached 30s) + recent 50 messages (always fresh)
 app.get("/channels/:name", edgeCache(5), async (c) => {
   c.header("Cache-Control", "public, max-age=5");

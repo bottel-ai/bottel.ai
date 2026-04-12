@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import { useStore } from "../state.js";
 import type { Channel } from "../state.js";
-import { listChannels, leaveChannel, deleteChannel } from "../lib/api.js";
+import { listJoinedChannels, leaveChannel, deleteChannel } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { removeChannelKey } from "../lib/keys.js";
 import { colors } from "../theme.js";
@@ -13,23 +13,27 @@ import { relativeTime, truncate } from "../lib/formatting.js";
 
 export function ChannelList() {
   const { state, dispatch, navigate, goBack } = useStore();
-  const { channels, selectedIndex, loading, sort } = state.channelList;
-  const [confirmLeave, setConfirmLeave] = useState<string | null>(null); // channel name or null
+  const { channels, selectedIndex, loading } = state.channelList;
+  const [confirmLeave, setConfirmLeave] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const auth = getAuth();
   const selfFp = auth?.fingerprint ?? "";
+  const loggedIn = isLoggedIn();
   const { stdout } = useStdout();
   const termWidth = stdout?.columns ?? 80;
-  // Use the full terminal width (minus a small gutter for the outer paddingX).
   const innerWidth = Math.max(40, termWidth - 4);
 
   type Slice = typeof state.channelList;
   const update = (s: Partial<Slice> | ((cur: Slice) => Partial<Slice>)) =>
     dispatch({ type: "UPDATE_CHANNEL_LIST", state: s });
 
-  const fetchChannels = (s: "messages" | "recent", resetIndex = false) => {
+  const fetchChannels = (resetIndex = false) => {
+    if (!loggedIn || !selfFp) {
+      update({ channels: [], loading: false });
+      return;
+    }
     update({ loading: true });
-    listChannels({ sort: s })
+    listJoinedChannels(selfFp)
       .then((cs) =>
         update((cur) => ({
           channels: cs,
@@ -41,12 +45,9 @@ export function ChannelList() {
   };
 
   useEffect(() => {
-    if (channels.length > 0) {
-      // Data already in the store from a previous visit — show it
-      // immediately and silently refresh in the background
-      // (stale-while-revalidate). No loading spinner, no D1 read
-      // until the background fetch completes.
-      listChannels({ sort })
+    if (channels.length > 0 && loggedIn && selfFp) {
+      // Stale-while-revalidate
+      listJoinedChannels(selfFp)
         .then((cs) =>
           update((cur) => ({
             channels: cs,
@@ -55,7 +56,7 @@ export function ChannelList() {
         )
         .catch(() => {});
     } else {
-      fetchChannels(sort);
+      fetchChannels();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -75,8 +76,7 @@ export function ChannelList() {
           removeChannelKey(chName);
         }
         setConfirmLeave(null);
-        // Delay refresh slightly so the backend has time to process.
-        setTimeout(() => fetchChannels(sort), 300);
+        setTimeout(() => fetchChannels(), 300);
         return;
       }
       if (input === "n" || input === "N" || key.escape) {
@@ -111,22 +111,15 @@ export function ChannelList() {
       if (ch) navigate({ name: "channel-view", channelName: ch.name });
       return;
     }
-    if (input === "s") {
-      const next: "messages" | "recent" =
-        sort === "messages" ? "recent" : "messages";
-      update({ sort: next });
-      fetchChannels(next, true);
-      return;
-    }
     if (input === "c") {
       navigate({ name: "channel-create" });
       return;
     }
     if (input === "r") {
-      fetchChannels(sort);
+      fetchChannels();
       return;
     }
-    if (input === "l" && isLoggedIn()) {
+    if (input === "l" && loggedIn) {
       const ch = channels[selectedIndex];
       if (ch) {
         if (ch.created_by === selfFp) {
@@ -138,7 +131,7 @@ export function ChannelList() {
       }
       return;
     }
-    if (input === "d" && isLoggedIn()) {
+    if (input === "d" && loggedIn) {
       const ch = channels[selectedIndex];
       if (ch) {
         if (ch.created_by !== selfFp) {
@@ -151,8 +144,6 @@ export function ChannelList() {
       return;
     }
   });
-
-  // ─── Header strip rendered inside round border ───────────────
 
   const renderRow = (ch: Channel, i: number) => {
     const active = i === selectedIndex;
@@ -222,43 +213,56 @@ export function ChannelList() {
         paddingY={1}
         width={innerWidth}
       >
-        {/* Title row inside border */}
         <Box marginBottom={1} justifyContent="space-between">
           <Text bold color={colors.primary}>
-            Channels
+            My Channels
           </Text>
-          <Text color={colors.subtle}>sort: {sort}</Text>
+          {channels.length > 0 && (
+            <Text color={colors.subtle}>{channels.length} joined</Text>
+          )}
         </Box>
 
-        {loading && (
+        {!loggedIn && (
+          <Box flexDirection="column" alignItems="center" paddingY={1}>
+            <Text color={colors.warning}>
+              Set up your identity first — go to Profile from the home menu.
+            </Text>
+          </Box>
+        )}
+
+        {loggedIn && loading && (
           <Box>
             <Text color={colors.muted}>⠋ loading channels...</Text>
           </Box>
         )}
 
-        {!loading && channels.length === 0 && (
+        {loggedIn && !loading && channels.length === 0 && (
           <Box flexDirection="column" alignItems="center" paddingY={1}>
-            <Text color={colors.muted}>No channels yet.</Text>
+            <Text color={colors.muted}>No channels joined yet.</Text>
             <Box marginTop={1}>
               <Text color={colors.muted}>
-                Press{" "}
+                Use{" "}
+                <Text bold color={colors.primary}>
+                  Search
+                </Text>{" "}
+                to find and join channels, or{" "}
                 <Text bold color={colors.primary}>
                   c
                 </Text>{" "}
-                to create the first one.
+                to create one.
               </Text>
             </Box>
           </Box>
         )}
 
-        {!loading && channels.length > 0 && (
+        {loggedIn && !loading && channels.length > 0 && (
           <Box flexDirection="column">
             {channels.map((ch, i) => renderRow(ch, i))}
           </Box>
         )}
       </Box>
 
-      <HelpFooter text="s sort · c create · r refresh · l leave · d delete (own) · ↑↓ nav · Enter open · Esc back" />
+      <HelpFooter text="c create · r refresh · l leave · d delete (own) · ↑↓ nav · Enter open · Esc back" />
     </Box>
   );
 }
