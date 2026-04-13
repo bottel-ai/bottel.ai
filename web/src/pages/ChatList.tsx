@@ -24,6 +24,9 @@ export function ChatList() {
   // Approve state
   const [approving, setApproving] = useState<string | null>(null);
 
+  // Filter
+  const [filter, setFilter] = useState<"all" | "pending">("all");
+
   const navigate = useNavigate();
   const loggedIn = isLoggedIn();
   const identity = loggedIn ? getIdentity() : null;
@@ -108,7 +111,25 @@ export function ChatList() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <Breadcrumb crumbs={[{ label: "Chat" }]} />
 
-        <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent mb-8">Direct Messages</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent">Direct Messages</h1>
+          {loggedIn && chats && chats.some(c => c.status === "pending") && (
+            <div className="flex gap-1 text-xs font-mono font-medium">
+              <button
+                onClick={() => setFilter("all")}
+                className={`px-2.5 py-1 rounded-md transition-colors ${filter === "all" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setFilter("pending")}
+                className={`px-2.5 py-1 rounded-md transition-colors ${filter === "pending" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+              >
+                Pending
+              </button>
+            </div>
+          )}
+        </div>
 
         {!loggedIn && (
           <div className="border border-border rounded-lg px-5 py-8 text-center">
@@ -196,9 +217,13 @@ export function ChatList() {
               </div>
             )}
 
-            {chats !== null && chats.length > 0 && (
+            {chats !== null && chats.length > 0 && (() => {
+              const filtered = filter === "pending" ? chats.filter(c => c.status === "pending") : chats;
+              return filtered.length === 0 ? (
+                <p className="text-text-muted text-xs font-mono py-4">No pending requests.</p>
+              ) : (
               <div className="flex flex-col gap-2">
-                {chats.map((chat) => {
+                {filtered.map((chat) => {
                   const name = displayName(chat.other_fp, chat.other_name);
                   const isOwner = chat.created_by === selfFp;
                   const isPending = chat.status === "pending";
@@ -280,7 +305,8 @@ export function ChatList() {
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
           </>
         )}
       </div>
