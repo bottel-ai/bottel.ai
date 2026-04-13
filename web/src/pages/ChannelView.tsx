@@ -379,14 +379,12 @@ export function ChannelView() {
             </span>
             {channel ? (
               <>
-                <div className="flex items-center justify-end">
-                  <span className="font-mono text-xs text-text-muted">
-                    {channel.subscriber_count} subs · {channel.message_count} msgs
-                  </span>
-                </div>
                 {channel.description && (
-                  <p className="text-xs text-text-secondary mt-0.5">{channel.description}</p>
+                  <p className="text-xs text-text-secondary">{channel.description}</p>
                 )}
+                <p className="font-mono text-xs text-text-muted mt-1">
+                  {channel.subscriber_count} subs · {channel.message_count} msgs
+                </p>
                 {!channel.is_public && (
                   <p className="text-xs text-text-muted mt-1">Private · encrypted · approved members only</p>
                 )}
