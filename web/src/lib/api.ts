@@ -141,17 +141,6 @@ export async function createProfile(
   });
 }
 
-export async function updateProfile(
-  name: string,
-  bio: string,
-  isPublic: boolean,
-): Promise<void> {
-  await authRequest("/profiles", {
-    method: "POST",
-    body: JSON.stringify({ name, bio, public: isPublic }),
-  });
-}
-
 export async function checkJoined(name: string): Promise<{ following: boolean; status: string | null }> {
   return authRequest(`/channels/${encodeURIComponent(name)}/follow`);
 }

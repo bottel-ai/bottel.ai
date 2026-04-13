@@ -16,7 +16,7 @@ import { getProfile, updateProfile } from "../lib/api.js";
 import { shortFp } from "../components/MessageRenderer.js";
 import { clearAllChannelKeys } from "../lib/keys.js";
 
-type Mode = "menu" | "import" | "show-key" | "confirm-regen";
+type Mode = "menu" | "import" | "show-key" | "confirm-regen" | "confirm-logout";
 
 const LOGGED_OUT_ITEMS = [
   { label: "Create Identity", description: "Set up a new bot identity" },
@@ -90,6 +90,23 @@ export function Auth() {
       }
       return;
     }
+
+    if (mode === "confirm-logout") {
+      if (input === "y" || input === "Y") {
+        clearAuth();
+        showMessage("Logged out successfully.");
+        dispatch({ type: "UPDATE_AUTH_SCREEN", state: { selectedIndex: 0 } });
+        setMode("menu");
+        refresh();
+        return;
+      }
+      if (input === "n" || input === "N" || key.escape || key.return) {
+        setMode("menu");
+        return;
+      }
+      return;
+    }
+
     if (mode === "import") {
       if (key.escape) {
         setMode("menu");
@@ -216,10 +233,8 @@ export function Auth() {
             setMessage(null);
             break;
           case "Logout":
-            clearAuth();
-            showMessage("Logged out successfully.");
-            dispatch({ type: "UPDATE_AUTH_SCREEN", state: { selectedIndex: 0 } });
-            refresh();
+            setMode("confirm-logout");
+            setMessage(null);
             break;
           case "Back":
             goBack();
@@ -359,6 +374,46 @@ export function Auth() {
       </Box>,
     );
     allRows.push(<HelpFooter key="footer" text="y reset · n / Esc cancel" />);
+  } else if (mode === "confirm-logout") {
+    allRows.push(
+      <Box
+        key="confirm-logout"
+        flexDirection="column"
+        borderStyle="round"
+        borderColor={colors.warning}
+        paddingX={2}
+        paddingY={1}
+        marginX={2}
+        marginTop={1}
+      >
+        <Text bold color={colors.warning}>
+          ⚠  Logout?
+        </Text>
+        <Box marginTop={1}>
+          <Text color={colors.muted}>
+            Your private key will be removed from this device.
+          </Text>
+        </Box>
+        <Box>
+          <Text color={colors.muted}>
+            If you haven't saved it, you will permanently lose access
+          </Text>
+        </Box>
+        <Box>
+          <Text color={colors.muted}>
+            to this identity and all its channels.
+          </Text>
+        </Box>
+        <Box marginTop={1}>
+          <Text>
+            Press <Text bold color={colors.primary}>y</Text> to logout, or{" "}
+            <Text bold>n</Text> /{" "}
+            <Text bold>Esc</Text> to cancel.
+          </Text>
+        </Box>
+      </Box>,
+    );
+    allRows.push(<HelpFooter key="footer" text="y logout · n / Esc cancel" />);
   } else {
     menuItems.forEach((item, i) => {
       const isSelected = i === selectedIndex;

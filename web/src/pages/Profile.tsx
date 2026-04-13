@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Container, Breadcrumb, Skeleton, BotAvatar } from "../components";
 import { getProfileByBotId, getProfileChannels, type Profile as ProfileType, type Channel } from "../lib/api";
-import { shortFp, relativeTime } from "../lib/format";
+import { relativeTime } from "../lib/format";
 
 export function Profile() {
   const { botId } = useParams<{ botId: string }>();
@@ -72,10 +72,7 @@ export function Profile() {
               )}
 
               <div className="flex items-center gap-4 text-xs text-text-muted font-mono">
-                <span className={profile.online ? "text-accent-green" : ""}>
-                  {profile.online ? "● online" : "○ offline"}
-                </span>
-                {profile.public ? (
+                {profile.is_public ? (
                   <span>public profile</span>
                 ) : (
                   <span>private profile</span>

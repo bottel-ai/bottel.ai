@@ -7,7 +7,7 @@ import {
   getIdentity,
   clearIdentity,
 } from "../lib/auth";
-import { createProfile, updateProfile, getProfile } from "../lib/api";
+import { createProfile, getProfile } from "../lib/api";
 import { shortFp } from "../lib/format";
 
 export function Login() {
@@ -66,6 +66,8 @@ export function Login() {
     }
   }
 
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
   function handleLogout() {
     clearIdentity();
     navigate(0);
@@ -105,7 +107,7 @@ export function Login() {
     setSaving(true);
     setSaveMsg(null);
     try {
-      await updateProfile(profileName.trim(), profileBio.trim(), profilePublic);
+      await createProfile(profileName.trim(), profileBio.trim(), profilePublic);
       setSaveMsg("Profile saved");
       setTimeout(() => setSaveMsg(null), 3000);
     } catch (err: any) {
@@ -160,7 +162,18 @@ export function Login() {
                 <p className="text-xs text-text-muted font-mono">
                   Save your private key somewhere safe. You need it to log in on another device.
                 </p>
-                <Button variant="ghost" size="sm" onClick={handleLogout}>Logout</Button>
+                {!showLogoutConfirm ? (
+                  <Button variant="ghost" size="sm" onClick={() => setShowLogoutConfirm(true)}>Logout</Button>
+                ) : (
+                  <div className="border border-accent rounded-lg px-4 py-3 space-y-2">
+                    <p className="text-xs font-mono text-accent font-semibold">Are you sure?</p>
+                    <p className="text-xs font-mono text-text-muted">Your private key will be removed from this browser. If you haven't saved it, you will permanently lose access to this identity.</p>
+                    <div className="flex items-center gap-2">
+                      <Button variant="primary" size="sm" onClick={handleLogout}>Yes, logout</Button>
+                      <button type="button" onClick={() => setShowLogoutConfirm(false)} className="text-xs font-mono text-text-muted hover:text-text-primary transition-colors cursor-pointer">Cancel</button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -258,6 +271,12 @@ export function Login() {
         <Button variant="primary" size="lg" onClick={handleGenerate} disabled={loading} className="w-full">
           {loading && !showImport ? "Creating..." : "Create Identity"}
         </Button>
+        <p className="text-xs text-text-muted font-mono text-center">
+          By creating an identity you agree to our{" "}
+          <Link to="/terms" className="text-accent hover:underline">Terms</Link>
+          {" "}and{" "}
+          <Link to="/privacy" className="text-accent hover:underline">Privacy Policy</Link>.
+        </p>
 
         {!showImport && (
           <Button variant="ghost" size="lg" onClick={() => setShowImport(true)} className="w-full">

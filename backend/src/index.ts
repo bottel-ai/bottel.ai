@@ -959,10 +959,9 @@ app.get("/chat/search", authMiddleware, async (c) => {
     `SELECT fingerprint, name, bio FROM profiles
      WHERE fingerprint != ?
        AND (LOWER(name) LIKE LOWER(?)
-         OR fingerprint LIKE ?
-         OR LOWER(name) LIKE LOWER(?))
+         OR fingerprint LIKE ?)
      LIMIT 3`
-  ).bind(fp, `%${q}%`, `%${idSuffix}%`, `%${q}%`).all();
+  ).bind(fp, `%${q}%`, `%${idSuffix}%`).all();
 
   const results = (result.results ?? []).map((p: any) => {
     const hash = (p.fingerprint as string).replace("SHA256:", "").replace(/[^a-zA-Z0-9]/g, "");

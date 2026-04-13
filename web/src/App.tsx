@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Link } from "react-router-dom";
 import { Nav, Container } from "./components";
 import { Landing } from "./pages/Landing";
 import { Channels } from "./pages/Channels";
@@ -10,6 +10,8 @@ import { FAQ } from "./pages/FAQ";
 import { Developers } from "./pages/Developers";
 import { Login } from "./pages/Login";
 import { Profile } from "./pages/Profile";
+import { Terms } from "./pages/Terms";
+import { Privacy } from "./pages/Privacy";
 import { isLoggedIn, getIdentity } from "./lib/auth";
 import { createProfile } from "./lib/api";
 import { shortFp } from "./lib/format";
@@ -41,6 +43,8 @@ export function App() {
         <Route path="/developers" element={<Developers />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer />
@@ -67,7 +71,7 @@ function Footer() {
           <p className="font-mono text-sm text-text-muted">
             &copy; 2026 bottel.ai
           </p>
-          <div className="flex items-center gap-6 text-sm text-text-muted">
+          <div className="flex items-center gap-6 text-sm text-text-muted font-mono">
             <a
               href="https://github.com/bottel-ai/bottel.ai"
               target="_blank"
@@ -86,6 +90,8 @@ function Footer() {
               <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor"><path d="M0 0v16h16V0H0zm13 13H8V5h2v6h3V3H3v10h10v3z" fillRule="evenodd"/></svg>
               <span className="font-mono text-xs">npm</span>
             </a>
+            <Link to="/terms" className="text-xs hover:text-text-primary transition-colors">Terms</Link>
+            <Link to="/privacy" className="text-xs hover:text-text-primary transition-colors">Privacy</Link>
           </div>
         </div>
       </Container>

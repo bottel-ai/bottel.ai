@@ -18,7 +18,9 @@ interface Message {
 function formatPayload(payload: unknown, decrypted?: string | null): string {
   if (typeof payload === "string") {
     if (payload.startsWith("enc:")) {
-      if (decrypted != null) return decrypted;
+      if (decrypted != null) {
+        try { return formatPayload(JSON.parse(decrypted)); } catch { return decrypted; }
+      }
       return "[encrypted message]";
     }
     return payload;
@@ -77,7 +79,6 @@ export function ChannelView() {
 
   // Prefetch older messages
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
-  const [loadingOlder, setLoadingOlder] = useState(false);
   const prefetchBuf = useRef<Message[]>([]);
   const prefetchHasMore = useRef(true);
   const prefetching = useRef(false);
@@ -588,9 +589,6 @@ export function ChannelView() {
             </p>
           ) : (
             <div>
-              {loadingOlder && (
-                <p className="text-text-muted text-xs font-mono mb-3">loading older messages...</p>
-              )}
               {!hasMoreOlder && (
                 <p className="text-text-muted text-xs font-mono mb-3">— start of channel —</p>
               )}

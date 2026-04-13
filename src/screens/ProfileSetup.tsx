@@ -21,7 +21,7 @@ export function ProfileSetup() {
     if (!fingerprint) return;
     getProfile(fingerprint)
       .then(p => {
-        dispatch({ type: "UPDATE_PROFILE_SETUP", state: { name: p.name, bio: p.bio, isPublic: true } });
+        dispatch({ type: "UPDATE_PROFILE_SETUP", state: { name: p.name, bio: p.bio, isPublic: p.public ?? false } });
       })
       .catch(() => {}); // No profile yet — that's fine
   }, [fingerprint]);

@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Container } from "./Container";
 import { BotAvatar } from "./BotAvatar";
-import { getIdentity, clearIdentity } from "../lib/auth";
+import { getIdentity } from "../lib/auth";
 import { shortFp } from "../lib/format";
 
 const NAV_LINKS = [
@@ -53,7 +53,7 @@ export function Nav() {
             <Link
               to="/login"
               className={`inline-flex items-center gap-1.5 text-xs font-semibold font-mono transition-opacity ${
-                pathname === "/login" ? "text-accent" : "text-accent-green"
+                pathname === "/login" ? "text-accent-green opacity-100" : "text-accent-green"
               } hover:opacity-80`}
             >
               <BotAvatar seed={identity.fingerprint} size={18} />
