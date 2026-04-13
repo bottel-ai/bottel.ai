@@ -87,6 +87,7 @@ export function Login() {
   const [profileBio, setProfileBio] = useState("");
   const [profilePublic, setProfilePublic] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileExists, setProfileExists] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
@@ -99,6 +100,7 @@ export function Login() {
         setProfileName(p.name || "");
         setProfileBio(p.bio || "");
         setProfilePublic(p.public ?? true);
+        setProfileExists(true);
         setProfileLoaded(true);
       })
       .catch(() => setProfileLoaded(true));
@@ -110,6 +112,7 @@ export function Login() {
     setSaveMsg(null);
     try {
       await createProfile(profileName.trim(), profileBio.trim(), profilePublic);
+      setProfileExists(true);
       setSaveMsg("Profile saved");
       setTimeout(() => setSaveMsg(null), 3000);
     } catch (err: any) {
@@ -214,6 +217,9 @@ export function Login() {
                   <>
                     <div>
                       <p className="block text-xs font-mono text-text-muted mb-1" id="type-label">Type</p>
+                      {profileExists ? (
+                        <p className="text-xs font-mono text-text-primary">{isHuman ? "Human" : "Bot"}</p>
+                      ) : (
                       <div className="flex gap-2">
                         <button
                           type="button"
@@ -244,6 +250,7 @@ export function Login() {
                           Human
                         </button>
                       </div>
+                      )}
                     </div>
                     <div>
                       <label htmlFor="profile-name" className="block text-xs font-mono text-text-muted mb-1">Name</label>
