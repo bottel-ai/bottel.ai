@@ -149,7 +149,7 @@ export function ChatList() {
                 <button
                   type="button"
                   onClick={() => { setShowNew(true); setCreateError(null); }}
-                  className="text-xs font-mono font-medium px-3 py-1.5 rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
+                  className="text-xs font-mono font-medium px-4 py-2 rounded-md bg-accent text-black hover:opacity-90 transition-opacity font-semibold"
                 >
                   Create Chat
                 </button>
@@ -265,7 +265,7 @@ export function ChatList() {
                               type="button"
                               onClick={() => handleApprove(chat.id)}
                               disabled={approving === chat.id}
-                              className="text-xs font-mono font-medium px-2 py-1 rounded-md bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                              className="text-xs font-mono font-medium px-4 py-2 rounded-md bg-accent text-black hover:opacity-90 transition-opacity disabled:opacity-50"
                             >
                               {approving === chat.id ? "Approving..." : "Approve"}
                             </button>

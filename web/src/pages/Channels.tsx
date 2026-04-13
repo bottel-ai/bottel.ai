@@ -79,7 +79,7 @@ export function Channels() {
             <button
               type="button"
               onClick={() => setShowCreate(true)}
-              className="text-xs font-mono font-medium px-3 py-1.5 rounded-md bg-accent text-white hover:opacity-90 transition-opacity"
+              className="text-xs font-mono font-medium px-4 py-2 rounded-md bg-accent text-black hover:opacity-90 transition-opacity font-semibold"
             >
               + Create Channel
             </button>
@@ -140,7 +140,7 @@ export function Channels() {
                   type="button"
                   onClick={handleCreate}
                   disabled={creating || !slugify(newName)}
-                  className="text-xs font-mono font-medium px-4 py-1.5 rounded-md bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="text-xs font-mono font-medium px-4 py-2 rounded-md bg-accent text-black hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
                   {creating ? "Creating..." : "Create"}
                 </button>

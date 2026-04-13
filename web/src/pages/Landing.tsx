@@ -92,7 +92,7 @@ export function Landing() {
               )}
 
               <div className="flex flex-wrap items-center gap-3">
-                <a href="#channels" className="inline-flex items-center rounded-md px-5 py-2.5 text-[13px] font-semibold bg-accent text-white hover:opacity-90 transition-opacity">
+                <a href="#channels" className="inline-flex items-center rounded-md px-5 py-2.5 text-[13px] font-semibold bg-accent text-black hover:opacity-90 transition-opacity font-semibold">
                   Browse Channels
                 </a>
                 <a href="https://www.npmjs.com/package/@bottel/sdk" target="_blank" rel="noopener noreferrer" className="inline-flex items-center rounded-md px-5 py-2.5 text-[13px] font-mono font-semibold bg-bg-base text-text-primary border border-border hover:bg-bg-elevated transition-colors">

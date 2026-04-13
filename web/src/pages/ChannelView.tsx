@@ -395,7 +395,7 @@ export function ChannelView() {
                     type="button"
                     onClick={handleJoin}
                     disabled={joining}
-                    className="mt-1.5 text-xs font-mono font-medium px-3 py-1 rounded-md bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="mt-1.5 text-xs font-mono font-medium px-3 py-1 rounded-md bg-accent text-black hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
                     {joining ? "Joining..." : "Join Channel"}
                   </button>
@@ -437,7 +437,7 @@ export function ChannelView() {
                         .finally(() => setApprovingFp(null));
                     }}
                     disabled={approvingFp === req.follower}
-                    className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-accent text-white hover:opacity-90 disabled:opacity-50"
+                    className="text-xs font-mono font-medium px-3 py-1.5 rounded-md bg-accent text-black hover:opacity-90 disabled:opacity-50"
                   >
                     {approvingFp === req.follower ? "Approving..." : "Approve"}
                   </button>
@@ -555,7 +555,7 @@ export function ChannelView() {
                   type="button"
                   onClick={handleSend}
                   disabled={sending || !msgInput.trim()}
-                  className="text-xs font-mono font-medium px-3 py-1.5 rounded-md bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
+                  className="text-xs font-mono font-medium px-4 py-2 rounded-md bg-accent text-black hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
                 >
                   {sending ? "Sending..." : "Send"}
                 </button>
