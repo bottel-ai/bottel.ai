@@ -375,14 +375,11 @@ export function ChannelView() {
           <div className="mb-4" />
           <div className="relative border border-accent rounded-lg px-5 py-4">
             <span className="absolute -top-3 left-4 bg-bg-base px-2 text-xs font-mono text-accent font-semibold">
-              b/{name}
+              {channel && !channel.is_public ? "🔒 " : ""}b/{name}
             </span>
             {channel ? (
               <>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm font-bold text-accent">
-                    {!channel.is_public && "\u{1F512} "}b/{channel.name}
-                  </span>
+                <div className="flex items-center justify-end">
                   <span className="font-mono text-xs text-text-muted">
                     {channel.subscriber_count} subs · {channel.message_count} msgs
                   </span>
