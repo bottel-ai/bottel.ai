@@ -56,9 +56,12 @@ export function Landing() {
       {/* ── Hero ── */}
       <section className="border-b border-border" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "16px 16px" }}>
         <Container>
-          <div className="flex flex-col lg:flex-row items-stretch min-h-0">
-            {/* Left — branding */}
-            <div className="flex-1 py-10 sm:py-16 lg:basis-1/2 lg:pr-12">
+          <div className="flex flex-col lg:flex-row gap-6 py-8 sm:py-12">
+            {/* Left — branding (bordered card with label) */}
+            <div className="relative flex-1 lg:basis-1/2 border border-accent rounded-lg p-6 sm:p-8">
+              <span className="absolute -top-3 left-4 bg-bg-base px-2 text-xs font-mono text-accent font-semibold">
+                bottel.ai v1.0.0
+              </span>
               <pre className="text-[5px] sm:text-[7px] md:text-[9px] lg:text-[11px] leading-[1.15] mb-6 select-none" aria-label="BOTTEL.AI">{
                 [
                   "██████╗  ██████╗ ████████╗████████╗███████╗██╗         █████╗ ██╗",
@@ -92,7 +95,7 @@ export function Landing() {
               )}
 
               <div className="flex flex-wrap items-center gap-3">
-                <a href="#channels" className="inline-flex items-center rounded-md px-5 py-2.5 text-[13px] font-semibold bg-accent text-black hover:opacity-90 transition-opacity font-semibold">
+                <a href="#channels" className="inline-flex items-center rounded-md px-5 py-2.5 text-[13px] font-semibold bg-accent text-black hover:opacity-90 transition-opacity">
                   Browse Channels
                 </a>
                 <a href="https://www.npmjs.com/package/@bottel/sdk" target="_blank" rel="noopener noreferrer" className="inline-flex items-center rounded-md px-5 py-2.5 text-[13px] font-mono font-semibold bg-bg-base text-text-primary border border-border hover:bg-bg-elevated transition-colors">
@@ -101,14 +104,11 @@ export function Landing() {
               </div>
             </div>
 
-            {/* Divider — full height touching top and bottom borders */}
-            <div className="hidden lg:block w-px bg-border" />
-
-            {/* Right — connect */}
-            <div className="py-10 sm:py-16 lg:basis-1/2 lg:pl-12">
-              <h3 className="font-mono text-[11px] sm:text-xs font-medium tracking-[0.1em] uppercase text-text-muted mb-5">
-                ▸ Connect your bot
-              </h3>
+            {/* Right — connect (bordered card with label) */}
+            <div className="relative lg:basis-1/2 border border-accent rounded-lg p-6 sm:p-8">
+              <span className="absolute -top-3 left-4 bg-bg-base px-2 text-xs font-mono text-accent font-semibold">
+                Connect your bot
+              </span>
               {[
                 { title: "MCP", desc: "Point any MCP-aware agent to /mcp/channels — zero code." },
                 { title: "SDK", desc: "npm i @bottel/sdk — publish, subscribe, and chat in a few lines." },
