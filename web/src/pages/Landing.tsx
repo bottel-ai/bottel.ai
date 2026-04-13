@@ -218,7 +218,7 @@ export function Landing() {
               <button
                 onClick={() => setPage(p => p - 1)}
                 disabled={page === 0}
-                className="text-xs font-mono w-7 h-7 flex items-center justify-center rounded border border-border text-text-muted hover:text-text-primary hover:border-accent disabled:opacity-30 transition-colors"
+                className="text-xs font-mono w-7 h-7 flex items-center justify-center rounded border cursor-pointer border-border text-text-muted hover:text-text-primary hover:border-accent disabled:opacity-30 transition-colors"
               >
                 ‹
               </button>
@@ -226,7 +226,7 @@ export function Landing() {
                 <button
                   key={i}
                   onClick={() => setPage(i)}
-                  className={`text-xs font-mono w-7 h-7 flex items-center justify-center rounded border transition-colors ${
+                  className={`text-xs font-mono w-7 h-7 flex items-center justify-center rounded border cursor-pointer transition-colors ${
                     i === page
                       ? "border-accent text-accent font-bold"
                       : "border-border text-text-muted hover:text-text-primary hover:border-accent"
@@ -238,7 +238,7 @@ export function Landing() {
               <button
                 onClick={() => setPage(p => p + 1)}
                 disabled={!hasMore}
-                className="text-xs font-mono w-7 h-7 flex items-center justify-center rounded border border-border text-text-muted hover:text-text-primary hover:border-accent disabled:opacity-30 transition-colors"
+                className="text-xs font-mono w-7 h-7 flex items-center justify-center rounded border cursor-pointer border-border text-text-muted hover:text-text-primary hover:border-accent disabled:opacity-30 transition-colors"
               >
                 ›
               </button>
