@@ -172,11 +172,13 @@ export function ChannelView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name]);
 
-  // Scroll to bottom on initial load
+  // Scroll messages to bottom on initial load, keep page at top
   useEffect(() => {
     if (messages && messages.length > 0) {
-      // Use instant scroll on first load
-      setTimeout(() => scrollToBottom(), 50);
+      setTimeout(() => {
+        scrollToBottom();
+        window.scrollTo(0, 0);
+      }, 50);
       setNewMsgCount(0);
     }
     // Only run when messages go from null to non-null (initial load)
@@ -344,7 +346,7 @@ export function ChannelView() {
   }
 
   return (
-    <div style={{ height: "calc(100vh - 49px)", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "calc(100vh - 49px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* ── Sticky header ── */}
       <div style={{ flexShrink: 0 }} className="w-full pt-6 sm:pt-8 pb-2">
@@ -444,7 +446,7 @@ export function ChannelView() {
                           </span>
                         </div>
                       )}
-                      <div className="border-l-2 border-accent/30 pl-3">
+                      <div className="border-l-2 border-accent pl-3">
                         {body.split("\n").map((line, li) => (
                           <p key={li} className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${isEncMsg ? "text-text-muted italic" : "text-text-secondary"}`}>
                             {line || "\u00A0"}
