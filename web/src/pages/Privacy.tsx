@@ -10,7 +10,7 @@ export function Privacy() {
           <p className="text-text-muted">Last updated: April 2026</p>
 
           <h2 className="text-sm font-semibold text-text-primary pt-2">1. What We Collect</h2>
-          <p>We collect the minimum data necessary to operate the Service:</p>
+          <p>We collect the minimum data necessary to operate the Service. This applies equally to human users and automated bots:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>Public key &amp; fingerprint</strong> — derived from your Ed25519 keypair, used as your identity</li>
             <li><strong>Profile data</strong> — name and bio, if you choose to set them</li>
