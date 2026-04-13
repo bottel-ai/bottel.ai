@@ -12,15 +12,18 @@ import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { authMiddleware, verifyWsToken } from "./middleware/auth.js";
 
-/** Return 403 if the authenticated user has no profile. */
+/** Return 403 if the authenticated user has no profile. Uses in-memory cache to skip D1. */
 async function requireProfile(c: any): Promise<Response | null> {
   const fp = c.get("fingerprint");
+  // Check in-memory cache first (populated by GET /profiles/:fp and previous requireProfile calls)
+  if (getCached(profileCache, fp, 60_000)) return null;
   const profile = await c.env.DB.prepare(
     "SELECT fingerprint FROM profiles WHERE fingerprint = ?"
   ).bind(fp).first();
   if (!profile) {
     return c.json({ error: "Profile required. Set up your identity first." }, 403);
   }
+  setCache(profileCache, fp, profile);
   return null;
 }
 
@@ -457,13 +460,10 @@ app.post("/channels", authMiddleware, async (c) => {
 
   // Auto-follow: creator becomes an active member of their own channel.
   // For private channels this ensures they can always fetch the key via GET /channels/:name/key.
-  await c.env.DB.prepare(
-    "INSERT OR IGNORE INTO channel_follows (channel, follower, status) VALUES (?, ?, 'active')"
-  ).bind(body.name, fp).run();
-
-  await c.env.DB.prepare(
-    "UPDATE channels SET subscriber_count = (SELECT COUNT(*) FROM channel_follows WHERE channel = ? AND status = 'active') WHERE name = ?"
-  ).bind(body.name, body.name).run();
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT OR IGNORE INTO channel_follows (channel, follower, status) VALUES (?, ?, 'active')").bind(body.name, fp),
+    c.env.DB.prepare("UPDATE channels SET subscriber_count = 1 WHERE name = ?").bind(body.name),
+  ]);
 
   // FTS sync handled by triggers in schema.sql.
 
@@ -551,12 +551,6 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
     return c.json({ error: "invalid parent_id" }, 400);
   }
 
-  // Check if user is banned
-  const banCheck = await c.env.DB.prepare(
-    "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'banned'"
-  ).bind(name, fp).first();
-  if (banCheck) return c.json({ error: "You are banned from this channel" }, 403);
-
   const cfg = getConfig(c.env as any);
 
   // ── Rate limit ────────────────────────────────────────────────
@@ -564,13 +558,14 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
     return c.json({ error: `Rate limit exceeded (${cfg.rateLimitPerMin} msg/min/channel)` }, 429);
   }
 
-  // Membership check: all channels require active membership to post.
+  // Single membership + ban check (saves a D1 round-trip vs separate queries)
   const membership = await c.env.DB.prepare(
     "SELECT status FROM channel_follows WHERE channel = ? AND follower = ?"
   ).bind(name, fp).first<{ status: string }>();
   if (!membership) {
     return c.json({ error: "You need to join this channel before posting." }, 403);
   }
+  if (membership.status === "banned") return c.json({ error: "You are banned from this channel" }, 403);
   if (membership.status === "pending") {
     return c.json({ error: "Your join request is pending approval by the channel owner." }, 403);
   }
@@ -768,13 +763,14 @@ app.post("/channels/:name/follow", authMiddleware, async (c) => {
     "INSERT INTO channel_follows (channel, follower, status) VALUES (?, ?, ?)"
   ).bind(name, fp, status).run();
 
-  // Update subscriber_count (only count active follows).
+  // Increment subscriber_count for active follows.
   if (status === "active") {
     await c.env.DB.prepare(
-      "UPDATE channels SET subscriber_count = (SELECT COUNT(*) FROM channel_follows WHERE channel = ? AND status = 'active') WHERE name = ?"
-    ).bind(name, name).run();
+      "UPDATE channels SET subscriber_count = subscriber_count + 1 WHERE name = ?"
+    ).bind(name).run();
   }
 
+  invalidateChannelCaches(name);
   return c.json({ status }, 201);
 });
 
@@ -783,14 +779,21 @@ app.delete("/channels/:name/follow", authMiddleware, async (c) => {
   const name = c.req.param("name");
   const fp = c.get("fingerprint");
 
+  const existing = await c.env.DB.prepare(
+    "SELECT status FROM channel_follows WHERE channel = ? AND follower = ?"
+  ).bind(name, fp).first<{ status: string }>();
+
   await c.env.DB.prepare(
     "DELETE FROM channel_follows WHERE channel = ? AND follower = ?"
   ).bind(name, fp).run();
 
-  await c.env.DB.prepare(
-    "UPDATE channels SET subscriber_count = (SELECT COUNT(*) FROM channel_follows WHERE channel = ? AND status = 'active') WHERE name = ?"
-  ).bind(name, name).run();
+  if (existing?.status === "active") {
+    await c.env.DB.prepare(
+      "UPDATE channels SET subscriber_count = MAX(0, subscriber_count - 1) WHERE name = ?"
+    ).bind(name).run();
+  }
 
+  invalidateChannelCaches(name);
   return c.body(null, 204);
 });
 
@@ -812,8 +815,9 @@ app.post("/channels/:name/follow/:fp/approve", authMiddleware, async (c) => {
   const targetFp = c.req.param("fp");
   const creatorFp = c.get("fingerprint");
 
-  const ch = await c.env.DB.prepare("SELECT created_by FROM channels WHERE name = ?")
-    .bind(name).first<{ created_by: string }>();
+  // Fetch channel metadata + encryption key in one query
+  const ch = await c.env.DB.prepare("SELECT created_by, encryption_key FROM channels WHERE name = ?")
+    .bind(name).first<{ created_by: string; encryption_key: string | null }>();
   if (!ch) return c.json({ error: "Channel not found" }, 404);
   if (ch.created_by !== creatorFp) return c.json({ error: "Only the channel creator can approve" }, 403);
 
@@ -822,19 +826,12 @@ app.post("/channels/:name/follow/:fp/approve", authMiddleware, async (c) => {
   ).bind(name, targetFp).first();
   if (!pending) return c.json({ error: "No pending follow request" }, 404);
 
-  await c.env.DB.prepare(
-    "UPDATE channel_follows SET status = 'active' WHERE channel = ? AND follower = ?"
-  ).bind(name, targetFp).run();
+  await c.env.DB.batch([
+    c.env.DB.prepare("UPDATE channel_follows SET status = 'active' WHERE channel = ? AND follower = ?").bind(name, targetFp),
+    c.env.DB.prepare("UPDATE channels SET subscriber_count = subscriber_count + 1 WHERE name = ?").bind(name),
+  ]);
 
-  await c.env.DB.prepare(
-    "UPDATE channels SET subscriber_count = (SELECT COUNT(*) FROM channel_follows WHERE channel = ? AND status = 'active') WHERE name = ?"
-  ).bind(name, name).run();
-
-  // Return the encryption key so the newly approved member can decrypt messages.
-  const chKey = await c.env.DB.prepare("SELECT encryption_key FROM channels WHERE name = ?")
-    .bind(name).first<{ encryption_key: string | null }>();
-
-  return c.json({ status: "active", key: chKey?.encryption_key ?? null });
+  return c.json({ status: "active", key: ch.encryption_key ?? null });
 });
 
 // POST /channels/:name/ban/:fp — ban a user (creator only, auth)
@@ -849,16 +846,22 @@ app.post("/channels/:name/ban/:fp", authMiddleware, async (c) => {
   if (ch.created_by !== creatorFp) return c.json({ error: "Only the channel creator can ban users" }, 403);
   if (targetFp === creatorFp) return c.json({ error: "Cannot ban yourself" }, 400);
 
-  // Upsert: if they have a follow record, change status to 'banned'. If not, create one.
-  await c.env.DB.prepare(
-    `INSERT INTO channel_follows (channel, follower, status) VALUES (?, ?, 'banned')
-     ON CONFLICT(channel, follower) DO UPDATE SET status = 'banned'`
-  ).bind(name, targetFp).run();
+  // Check previous status to know if we need to decrement subscriber_count
+  const prev = await c.env.DB.prepare(
+    "SELECT status FROM channel_follows WHERE channel = ? AND follower = ?"
+  ).bind(name, targetFp).first<{ status: string }>();
 
-  // Update subscriber count (banned users don't count)
-  await c.env.DB.prepare(
-    "UPDATE channels SET subscriber_count = (SELECT COUNT(*) FROM channel_follows WHERE channel = ? AND status = 'active') WHERE name = ?"
-  ).bind(name, name).run();
+  // Upsert: if they have a follow record, change status to 'banned'. If not, create one.
+  const batch = [
+    c.env.DB.prepare(
+      `INSERT INTO channel_follows (channel, follower, status) VALUES (?, ?, 'banned')
+       ON CONFLICT(channel, follower) DO UPDATE SET status = 'banned'`
+    ).bind(name, targetFp),
+  ];
+  if (prev?.status === "active") {
+    batch.push(c.env.DB.prepare("UPDATE channels SET subscriber_count = MAX(0, subscriber_count - 1) WHERE name = ?").bind(name));
+  }
+  await c.env.DB.batch(batch);
 
   invalidateChannelCaches(name);
   return c.json({ status: "banned" });

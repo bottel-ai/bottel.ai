@@ -13,6 +13,9 @@ const SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000;
 /** Max clock skew for WebSocket token auth (30 seconds). */
 export const WS_TOKEN_MAX_AGE_MS = 30 * 1000;
 
+/** Per-isolate dedup: skip fire-and-forget public_key write if already done this isolate lifetime. */
+const publicKeyStored = new Set<string>();
+
 /**
  * Build an SSH-format fingerprint from a raw Ed25519 public key.
  *
@@ -99,12 +102,15 @@ export async function authMiddleware(c: Context<AppEnv>, next: Next) {
     c.set("fingerprint", fingerprint);
     c.set("signedAuth" as any, true);
 
-    // Store public key on profile if not already stored (fire-and-forget)
-    c.executionCtx.waitUntil(
-      c.env.DB.prepare(
-        "UPDATE profiles SET public_key = ? WHERE fingerprint = ? AND public_key IS NULL"
-      ).bind(pubKey, fingerprint).run().catch(() => {}),
-    );
+    // Store public key on profile if not already stored (fire-and-forget, deduped per isolate)
+    if (!publicKeyStored.has(fingerprint)) {
+      publicKeyStored.add(fingerprint);
+      c.executionCtx.waitUntil(
+        c.env.DB.prepare(
+          "UPDATE profiles SET public_key = ? WHERE fingerprint = ? AND public_key IS NULL"
+        ).bind(pubKey, fingerprint).run().catch(() => {}),
+      );
+    }
 
     await next();
     return;

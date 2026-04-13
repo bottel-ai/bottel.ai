@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { getChannel, joinChannel, leaveChannel, checkJoined, publishMessage, loadOlderMessages, getFollowers, approveFollower, fetchChannelKey, API_URL, type Channel } from "../lib/api";
 import { decryptContent } from "../lib/crypto";
 import { getIdentity, isLoggedIn } from "../lib/auth";
@@ -42,6 +42,7 @@ function shouldGroup(prev: Message, curr: Message): boolean {
 
 export function ChannelView() {
   const { name } = useParams<{ name: string }>();
+  const navigate = useNavigate();
   const [channel, setChannel] = useState<Channel | null>(null);
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -242,6 +243,17 @@ export function ChannelView() {
       });
     });
   }, [channelKey, messages]);
+
+  // ESC to go back to channels list (only when input not focused)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+        navigate("/channels");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navigate]);
 
   // Scroll messages to bottom on initial load, keep page at top
   useEffect(() => {

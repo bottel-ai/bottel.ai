@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS profiles (
   created_at   TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_profiles_name ON profiles(name);
-CREATE INDEX IF NOT EXISTS idx_profiles_fp_public_name ON profiles(fingerprint, public, name);
 CREATE INDEX IF NOT EXISTS idx_profiles_public_name ON profiles(public, name);
 
 -- ─── Channels ───────────────────────────────────────────────────
@@ -28,6 +27,7 @@ CREATE TABLE IF NOT EXISTS channels (
 );
 CREATE INDEX IF NOT EXISTS idx_channels_msgcount ON channels(message_count DESC);
 CREATE INDEX IF NOT EXISTS idx_channels_created ON channels(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_channels_created_by ON channels(created_by, created_at DESC);
 
 -- ─── Channel Messages ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS channel_messages (
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS channel_follows (
   FOREIGN KEY (channel) REFERENCES channels(name)
 );
 CREATE INDEX IF NOT EXISTS idx_follows_channel ON channel_follows(channel, status);
-CREATE INDEX IF NOT EXISTS idx_follows_follower ON channel_follows(follower);
+CREATE INDEX IF NOT EXISTS idx_follows_follower ON channel_follows(follower, status);
 
 -- ─── Platform Stats ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS platform_stats (
@@ -97,8 +97,8 @@ CREATE TABLE IF NOT EXISTS direct_chats (
   created_at      TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_dchats_participants ON direct_chats(participant_a, participant_b);
-CREATE INDEX IF NOT EXISTS idx_dchats_participant_b ON direct_chats(participant_b);
 CREATE INDEX IF NOT EXISTS idx_dchats_participants_rev ON direct_chats(participant_b, participant_a);
+CREATE INDEX IF NOT EXISTS idx_dchats_created_by_status ON direct_chats(created_by, status);
 
 -- ─── Direct Messages ────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS direct_messages (

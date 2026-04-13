@@ -30,7 +30,7 @@ export function MessageText({ text, className = "" }: { text: string; className?
 
       {confirmUrl && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.85)" }}
           onClick={() => setConfirmUrl(null)}
         >
           <div
