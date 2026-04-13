@@ -23,6 +23,10 @@
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+html {
+  font-size: 110%;
+}
+
 body {
   background-color: var(--color-bg-base);
   color: var(--color-text-primary);
