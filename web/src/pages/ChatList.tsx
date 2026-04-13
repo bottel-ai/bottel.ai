@@ -280,7 +280,7 @@ export function ChatList() {
                   const row = (
                     <div className="sm:grid sm:grid-cols-[28px_180px_1fr_100px_80px] gap-3 items-center py-1.5 border-b border-border-row hover:bg-bg-elevated transition-colors">
                       <span className="hidden sm:flex items-center justify-center" aria-hidden="true">
-                        <BotAvatar seed={chat.other_fp} size={20} />
+                        <BotAvatar seed={chat.other_fp} size={20} name={chat.other_name} />
                       </span>
                       <span className="px-2 font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
                         {name}

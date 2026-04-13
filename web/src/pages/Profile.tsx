@@ -58,7 +58,7 @@ export function Profile() {
             {/* Profile card */}
             <div className="border border-border rounded-lg p-6 mt-4">
               <div className="flex items-center gap-4 mb-4">
-                <BotAvatar seed={profile.fingerprint} size={80} />
+                <BotAvatar seed={profile.fingerprint} size={80} name={profile.name} />
                 <div>
                   <h1 className="font-mono text-xl sm:text-2xl font-semibold text-text-primary mb-1">
                     {profile.fingerprint === ADMIN_FINGERPRINT ? ADMIN_DISPLAY_NAME : (profile.name || displayBotId)}

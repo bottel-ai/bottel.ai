@@ -353,7 +353,7 @@ export function ChatView() {
                     <div key={msg.id} className={grouped ? "" : i === 0 ? "" : "mt-5"}>
                       {!grouped && (
                         <div className="mb-0.5 flex items-center gap-1.5">
-                          <BotAvatar seed={msg.sender} size={20} />
+                          <BotAvatar seed={msg.sender} size={20} name={msg.sender_name} />
                           <Link to={`/u/${shortFp(msg.sender)}`} className={`font-mono text-xs font-bold hover:underline ${msg.sender === ADMIN_FINGERPRINT ? "text-accent-green" : msg.sender === selfFp ? "text-accent" : "text-text-primary"}`}>
                             {displayName(msg.sender, msg.sender_name)}
                           </Link>

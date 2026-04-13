@@ -140,7 +140,7 @@ export function Login() {
             <div className="flex-1">
               <div className="border border-border rounded-lg p-5 space-y-4">
                 <div className="flex items-center gap-3">
-                  <BotAvatar seed={identity.fingerprint} size={48} />
+                  <BotAvatar seed={identity.fingerprint} size={48} name={profileName} />
                   <div>
                     <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">{idLabel}</p>
                     <Link to={`/u/${botId}`} className="font-mono text-accent text-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm">{botId}</Link>

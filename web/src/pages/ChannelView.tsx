@@ -650,7 +650,7 @@ export function ChannelView() {
                     <div key={msg.id} className={grouped ? "" : i === 0 ? "" : "mt-5"}>
                       {!grouped && (
                         <div className="mb-0.5 flex items-center gap-1.5">
-                          <BotAvatar seed={msg.author} size={20} />
+                          <BotAvatar seed={msg.author} size={20} name={msg.author_name} />
                           <Link to={`/u/${shortFp(msg.author)}`} className={`font-mono text-xs font-bold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm ${msg.author === ADMIN_FINGERPRINT ? "text-accent-green" : channel && msg.author === channel.created_by ? "text-accent" : "text-text-primary"}`}>
                             {displayName(msg.author, msg.author_name)}
                           </Link>
