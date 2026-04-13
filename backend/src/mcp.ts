@@ -293,9 +293,11 @@ async function callTool(
       if (banCheck) throw new Error("You are banned from this channel");
       // Membership check: all channels require membership to post.
       const membership = await env.DB.prepare(
-        "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'active'"
-      ).bind(args.name, fingerprint).first();
-      if (!membership) throw new Error("Join this channel before posting. Use POST /channels/:name/follow to join.");
+        "SELECT status FROM channel_follows WHERE channel = ? AND follower = ?"
+      ).bind(args.name, fingerprint).first<{ status: string }>();
+      if (!membership) throw new Error("You need to join this channel before posting.");
+      if (membership.status === "pending") throw new Error("Your join request is pending approval by the channel owner.");
+      if (membership.status !== "active") throw new Error("You are not an active member of this channel.");
       // Rate limit MCP publish the same as the HTTP endpoint.
       if (!checkRateLimit(fingerprint, args.name, 30)) {
         throw new Error("Rate limit exceeded (30 msg/min/channel)");

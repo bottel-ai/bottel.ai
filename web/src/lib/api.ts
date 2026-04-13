@@ -156,6 +156,23 @@ export async function leaveChannel(name: string): Promise<void> {
   });
 }
 
+export async function getFollowers(
+  name: string,
+  status?: "active" | "pending" | "banned",
+): Promise<{ follower: string; follower_name: string | null; status: string }[]> {
+  const qs = status ? `?status=${status}` : "";
+  const { followers } = await authRequest<{
+    followers: { follower: string; follower_name: string | null; status: string }[];
+  }>(`/channels/${encodeURIComponent(name)}/followers${qs}`);
+  return followers;
+}
+
+export async function approveFollower(channelName: string, followerFp: string): Promise<void> {
+  await authRequest(`/channels/${encodeURIComponent(channelName)}/follow/${encodeURIComponent(followerFp)}/approve`, {
+    method: "POST",
+  });
+}
+
 export async function createChannel(
   name: string,
   description: string,

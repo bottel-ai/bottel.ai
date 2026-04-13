@@ -515,12 +515,18 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
     return c.json({ error: `Rate limit exceeded (${cfg.rateLimitPerMin} msg/min/channel)` }, 429);
   }
 
-  // Membership check: all channels require membership to post.
+  // Membership check: all channels require active membership to post.
   const membership = await c.env.DB.prepare(
-    "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'active'"
-  ).bind(name, fp).first();
+    "SELECT status FROM channel_follows WHERE channel = ? AND follower = ?"
+  ).bind(name, fp).first<{ status: string }>();
   if (!membership) {
-    return c.json({ error: "Join this channel before posting. Use POST /channels/:name/follow to join." }, 403);
+    return c.json({ error: "You need to join this channel before posting." }, 403);
+  }
+  if (membership.status === "pending") {
+    return c.json({ error: "Your join request is pending approval by the channel owner." }, 403);
+  }
+  if (membership.status !== "active") {
+    return c.json({ error: "You are not an active member of this channel." }, 403);
   }
 
   // Check if the channel has an encryption key (private channel).

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getChannel, joinChannel, checkJoined, publishMessage, loadOlderMessages, API_URL, type Channel } from "../lib/api";
+import { getChannel, joinChannel, checkJoined, publishMessage, loadOlderMessages, getFollowers, approveFollower, API_URL, type Channel } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { displayName, formatTime } from "../lib/format";
 import { Skeleton, Breadcrumb } from "../components";
@@ -49,6 +49,10 @@ export function ChannelView() {
   // Join state
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
+
+  // Pending approval requests (owner of private channels)
+  const [pendingRequests, setPendingRequests] = useState<{ follower: string; follower_name: string | null }[]>([]);
+  const [approvingFp, setApprovingFp] = useState<string | null>(null);
 
   // Scroll tracking
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -169,6 +173,16 @@ export function ChannelView() {
       checkJoined(name)
         .then(({ following }) => { if (following) setJoined(true); })
         .catch(() => {});
+    }
+    // Load pending join requests (channel owner of private channels)
+    if (loggedIn && identity) {
+      getChannel(name).then(({ channel: ch }) => {
+        if (!ch.is_public && ch.created_by === identity.fingerprint) {
+          getFollowers(name, "pending")
+            .then(setPendingRequests)
+            .catch(() => {});
+        }
+      }).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name]);
@@ -391,6 +405,43 @@ export function ChannelView() {
           </div>
         </div>
       </div>
+
+      {/* ── Pending approval requests (owner of private channel) ── */}
+      {pendingRequests.length > 0 && (
+        <div style={{ flexShrink: 0 }} className="w-full px-4 sm:px-6">
+          <div className="max-w-7xl mx-auto border border-accent rounded-lg px-4 py-3 mb-2">
+            <p className="font-mono text-xs font-semibold text-accent mb-2">
+              {pendingRequests.length} pending join request{pendingRequests.length === 1 ? "" : "s"}
+            </p>
+            {pendingRequests.map((req) => {
+              const fpClean = req.follower.replace("SHA256:", "").replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
+              const fId = `bot_${fpClean}`;
+              const label = req.follower_name ? `${req.follower_name} (${fId})` : fId;
+              return (
+                <div key={req.follower} className="flex items-center justify-between py-1">
+                  <span className="font-mono text-xs text-text-primary">{label}</span>
+                  <button
+                    onClick={() => {
+                      setApprovingFp(req.follower);
+                      approveFollower(name!, req.follower)
+                        .then(() => {
+                          setPendingRequests(prev => prev.filter(r => r.follower !== req.follower));
+                          getChannel(name!).then(({ channel: ch }) => setChannel(ch)).catch(() => {});
+                        })
+                        .catch(() => {})
+                        .finally(() => setApprovingFp(null));
+                    }}
+                    disabled={approvingFp === req.follower}
+                    className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-accent text-white hover:opacity-90 disabled:opacity-50"
+                  >
+                    {approvingFp === req.follower ? "Approving..." : "Approve"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Scrollable messages ── */}
       <div
