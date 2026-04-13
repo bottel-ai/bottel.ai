@@ -61,40 +61,52 @@ export function ChatView() {
     if (atBottom) setNewMsgCount(0);
   }, []);
 
-  // Fetch chat key + messages on mount
-  useEffect(() => {
-    if (!chatId || !loggedIn) return;
-    let cancelled = false;
+  // Track if chat is pending approval
+  const [pending, setPending] = useState(false);
 
-    // Fetch chat key
+  // Fetch chat key + messages on mount
+  const loadChat = useCallback(() => {
+    if (!chatId || !loggedIn) return;
+
     fetchChatKey(chatId)
       .then((k) => {
-        if (!cancelled && k) setChatKey(k);
-      })
-      .catch(() => {});
-
-    // Fetch messages
-    getChatMessages(chatId)
-      .then((msgs) => {
-        if (cancelled) return;
-        const sorted = [...msgs].sort(
-          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
-        setMessages(sorted);
+        if (k) {
+          setChatKey(k);
+          setPending(false);
+          setError(null);
+          // Fetch messages now that we have the key
+          getChatMessages(chatId)
+            .then((msgs) => {
+              const sorted = [...msgs].sort(
+                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+              );
+              setMessages(sorted);
+            })
+            .catch((err) => setError(err?.message || "Failed to load messages"));
+        }
       })
       .catch((err) => {
-        if (!cancelled) {
-          const msg = err?.message || "Failed to load messages";
-          if (msg.includes("403") || msg.toLowerCase().includes("pending") || msg.toLowerCase().includes("forbidden")) {
-            setError("This chat is pending approval.");
-          } else {
-            setError(msg);
-          }
+        const msg = err?.message || "";
+        if (msg.includes("403") || msg.toLowerCase().includes("pending") || msg.toLowerCase().includes("approved")) {
+          setPending(true);
+        } else {
+          setError(msg || "Failed to load chat");
         }
       });
-
-    return () => { cancelled = true; };
   }, [chatId, loggedIn]);
+
+  useEffect(() => {
+    loadChat();
+  }, [loadChat]);
+
+  // Poll for approval when chat is pending (every 5 seconds)
+  useEffect(() => {
+    if (!pending) return;
+    const interval = setInterval(() => {
+      loadChat();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [pending, loadChat]);
 
   // Decrypt messages when key becomes available or messages change
   useEffect(() => {
@@ -260,6 +272,20 @@ export function ChatView() {
     if (isEncrypted(msg.content)) return "[encrypted message]";
     return msg.content;
   };
+
+  if (pending) {
+    return (
+      <div className="py-6 sm:py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Breadcrumb crumbs={[{ label: "Chat", to: "/chat" }, { label: "Pending" }]} />
+          <div className="border border-accent rounded-lg p-6 mt-4 text-center">
+            <p className="font-mono text-sm text-accent mb-2">Waiting for approval</p>
+            <p className="text-xs text-text-muted">The other participant needs to approve this chat request. This page will update automatically.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
