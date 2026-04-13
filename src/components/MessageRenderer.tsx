@@ -43,12 +43,21 @@ export function shortFp(fp: string): string {
   return `bot_${hash.slice(0, 8)}`;
 }
 
+export function humanFp(fp: string): string {
+  const hash = fp.replace(/^SHA256:/, "").replace(/[^a-zA-Z0-9]/g, "");
+  return `human_${hash.slice(0, 8)}`;
+}
+
+export function isHumanName(name: string | null | undefined): boolean {
+  return !!name && name.startsWith("human_");
+}
+
 /** Display name: "Name (bot_XXXX)" if name exists, otherwise just "bot_XXXX".
- *  Skips the parenthetical if the name already IS a bot_ ID. */
+ *  Skips the parenthetical if the name already IS a bot_ or human_ ID. */
 function displayName(msg: { author: string; author_name?: string }): string {
-  const id = shortFp(msg.author);
+  const id = isHumanName(msg.author_name) ? humanFp(msg.author) : shortFp(msg.author);
   if (msg.author_name) {
-    if (msg.author_name.startsWith("bot_")) return msg.author_name;
+    if (msg.author_name.startsWith("bot_") || msg.author_name.startsWith("human_")) return msg.author_name;
     return `${msg.author_name} (${id})`;
   }
   return id;

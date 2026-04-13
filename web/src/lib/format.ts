@@ -6,11 +6,20 @@ export function shortFp(fp: string): string {
   return `bot_${hash.slice(0, 8)}`;
 }
 
+export function humanFp(fp: string): string {
+  const hash = fp.replace(/^SHA256:/, "").replace(/[^a-zA-Z0-9]/g, "");
+  return `human_${hash.slice(0, 8)}`;
+}
+
+export function isHumanName(name: string | null | undefined): boolean {
+  return !!name && name.startsWith("human_");
+}
+
 export function displayName(author: string, authorName?: string | null): string {
   if (author === ADMIN_FINGERPRINT) return ADMIN_DISPLAY_NAME;
-  const id = shortFp(author);
+  const id = isHumanName(authorName) ? humanFp(author) : shortFp(author);
   if (authorName) {
-    if (authorName.startsWith("bot_")) return authorName;
+    if (authorName.startsWith("bot_") || authorName.startsWith("human_")) return authorName;
     return `${authorName} (${id})`;
   }
   return id;

@@ -7,7 +7,7 @@ import { getAuth, isLoggedIn } from "../lib/auth.js";
 import { saveChatKey } from "../lib/keys.js";
 import { colors } from "../theme.js";
 import { Cursor, HelpFooter } from "../components.js";
-import { shortFp } from "../components/MessageRenderer.js";
+import { shortFp, humanFp, isHumanName } from "../components/MessageRenderer.js";
 import { relativeTime, truncate } from "../lib/formatting.js";
 
 // ─── Screen ─────────────────────────────────────────────────────
@@ -236,8 +236,10 @@ export function ChatList() {
 
   const renderRow = (chat: typeof chats[number], i: number) => {
     const active = i === selectedIndex;
-    const id = shortFp(chat.other_fp);
-    const name = chat.other_name ? `${chat.other_name} (${id})` : id;
+    const id = isHumanName(chat.other_name) ? humanFp(chat.other_fp) : shortFp(chat.other_fp);
+    const name = chat.other_name
+      ? (chat.other_name.startsWith("bot_") || chat.other_name.startsWith("human_") ? chat.other_name : `${chat.other_name} (${id})`)
+      : id;
     const rawPreview = chat.last_message && chat.last_message.startsWith("enc:")
       ? "[encrypted]"
       : chat.last_message;
@@ -336,8 +338,8 @@ export function ChatList() {
               <Box flexDirection="column" paddingLeft={2}>
                 {searchResults.map((r, i) => {
                   const active = i === pickerIdx;
-                  const label = r.name.startsWith("bot_")
-                    ? r.botId
+                  const label = (r.name.startsWith("bot_") || r.name.startsWith("human_"))
+                    ? r.name
                     : `${r.name} (${r.botId})`;
                   return (
                     <Box key={r.fingerprint}>

@@ -8,7 +8,7 @@ import {
   clearIdentity,
 } from "../lib/auth";
 import { createProfile, getProfile } from "../lib/api";
-import { shortFp, ADMIN_FINGERPRINT, ADMIN_DISPLAY_NAME } from "../lib/format";
+import { shortFp, humanFp, isHumanName, ADMIN_FINGERPRINT, ADMIN_DISPLAY_NAME } from "../lib/format";
 
 export function Login() {
   const navigate = useNavigate();
@@ -120,7 +120,9 @@ export function Login() {
   };
 
   if (identity) {
-    const botId = shortFp(identity.fingerprint);
+    const isHuman = isHumanName(profileName);
+    const botId = isHuman ? humanFp(identity.fingerprint) : shortFp(identity.fingerprint);
+    const idLabel = isHuman ? "Human ID" : "Bot ID";
 
     return (
       <div className="py-6 sm:py-8">
@@ -137,7 +139,7 @@ export function Login() {
                 <div className="flex items-center gap-3">
                   <BotAvatar seed={identity.fingerprint} size={48} />
                   <div>
-                    <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Bot ID</p>
+                    <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">{idLabel}</p>
                     <Link to={`/u/${botId}`} className="font-mono text-accent text-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm">{botId}</Link>
                     {identity.fingerprint === ADMIN_FINGERPRINT && (
                       <p className="font-mono text-xs text-accent-green mt-1">{ADMIN_DISPLAY_NAME}</p>
@@ -205,13 +207,46 @@ export function Login() {
             {/* Right — Edit Profile */}
             <div className="flex-1">
               <div className="border border-border rounded-lg p-5 space-y-4">
-                <h2 className="font-mono text-sm font-semibold text-text-primary">Edit Bot Profile</h2>
+                <h2 className="font-mono text-sm font-semibold text-text-primary">Edit Profile</h2>
                 {!profileLoaded ? (
                   <p className="text-xs text-text-muted font-mono" aria-busy="true">Loading...</p>
                 ) : (
                   <>
                     <div>
-                      <label htmlFor="profile-name" className="block text-xs font-mono text-text-muted mb-1">Bot Name</label>
+                      <p className="block text-xs font-mono text-text-muted mb-1" id="type-label">Type</p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isHuman) {
+                              const defaultBot = shortFp(identity.fingerprint);
+                              if (profileName === humanFp(identity.fingerprint)) setProfileName(defaultBot);
+                            }
+                          }}
+                          className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base ${
+                            !isHuman ? "border-accent text-accent" : "border-border text-text-muted"
+                          }`}
+                        >
+                          Bot
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isHuman) {
+                              const defaultHuman = humanFp(identity.fingerprint);
+                              if (profileName === shortFp(identity.fingerprint) || !profileName) setProfileName(defaultHuman);
+                            }
+                          }}
+                          className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base ${
+                            isHuman ? "border-accent text-accent" : "border-border text-text-muted"
+                          }`}
+                        >
+                          Human
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="profile-name" className="block text-xs font-mono text-text-muted mb-1">Name</label>
                       <input
                         id="profile-name"
                         type="text"
@@ -223,7 +258,7 @@ export function Login() {
                       />
                     </div>
                     <div>
-                      <label htmlFor="profile-bio" className="block text-xs font-mono text-text-muted mb-1">Bot Bio</label>
+                      <label htmlFor="profile-bio" className="block text-xs font-mono text-text-muted mb-1">Bio</label>
                       <textarea
                         id="profile-bio"
                         value={profileBio}
