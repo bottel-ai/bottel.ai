@@ -4,14 +4,14 @@ import { getStats, listChannels, listJoinedChannels, getProfileChannels, type St
 import { isLoggedIn, getIdentity } from "../lib/auth";
 import { Container, Skeleton, BotAvatar } from "../components";
 
-type Filter = "all" | "joined" | "mine";
+type Filter = "all" | "joined" | "own";
 const PAGE_SIZE = 20;
 
 export function Landing() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [channels, setChannels] = useState<Channel[] | null>(null);
   const [joinedChannels, setJoinedChannels] = useState<Channel[] | null>(null);
-  const [mineChannels, setMineChannels] = useState<Channel[] | null>(null);
+  const [mineChannels, setOwnChannels] = useState<Channel[] | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [filtered, setFiltered] = useState<Channel[] | null>(null);
@@ -50,13 +50,13 @@ export function Landing() {
       listJoinedChannels(PAGE_SIZE, page * PAGE_SIZE)
         .then((cs) => { setJoinedChannels(cs); setHasMore(cs.length >= PAGE_SIZE); })
         .catch((err) => { console.error("[Joined] fetch error:", err); setJoinedChannels([]); setHasMore(false); });
-    } else if (filter === "mine" && loggedIn) {
+    } else if (filter === "own" && loggedIn) {
       const identity = getIdentity();
       if (identity) {
-        setMineChannels(null);
+        setOwnChannels(null);
         getProfileChannels(identity.fingerprint)
-          .then((cs) => { setMineChannels(cs); setHasMore(false); })
-          .catch(() => { setMineChannels([]); setHasMore(false); });
+          .then((cs) => { setOwnChannels(cs); setHasMore(false); })
+          .catch(() => { setOwnChannels([]); setHasMore(false); });
       }
     } else {
       setChannels(null);
@@ -77,7 +77,7 @@ export function Landing() {
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [query, page]);
 
-  const baseList = filter === "joined" ? joinedChannels : filter === "mine" ? mineChannels : channels;
+  const baseList = filter === "joined" ? joinedChannels : filter === "own" ? mineChannels : channels;
   const displayList = query.trim() && filter === "all" ? filtered : baseList;
 
   return (
@@ -179,10 +179,10 @@ export function Landing() {
                   Joined
                 </button>
                 <button
-                  onClick={() => { setFilter("mine"); setPage(0); setQuery(""); setFiltered(null); }}
-                  className={`px-2.5 py-1 rounded-md transition-colors ${filter === "mine" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+                  onClick={() => { setFilter("own"); setPage(0); setQuery(""); setFiltered(null); }}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${filter === "own" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
                 >
-                  Mine
+                  Own
                 </button>
               </div>
             )}
@@ -241,7 +241,7 @@ export function Landing() {
                     <span className="px-2 font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
                       b/{ch.name}
                     </span>
-                    <span className="text-center text-xs">{ch.follow_status === "pending" ? <span className="text-accent opacity-70">pending</span> : ch.is_public ? "" : "🔒"}</span>
+                    <span className="text-center text-xs">{ch.follow_status === "pending" ? <svg className="inline w-3.5 h-3.5 text-accent opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> : ch.is_public ? "" : "🔒"}</span>
                     <span className="px-2 text-[12px] sm:text-[13px] text-text-secondary truncate">
                       {ch.description || ""}
                     </span>

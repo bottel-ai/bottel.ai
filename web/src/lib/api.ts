@@ -295,6 +295,13 @@ export async function approveChat(chatId: string): Promise<{ key: string }> {
   return { key: result.key };
 }
 
+export async function fetchChannelKey(name: string): Promise<string | null> {
+  const { key } = await authRequest<{ key: string | null }>(
+    `/channels/${encodeURIComponent(name)}/key`
+  );
+  return key;
+}
+
 export async function fetchChatKey(chatId: string): Promise<string | null> {
   const { key } = await authRequest<{ key: string | null }>(
     `/chat/${encodeURIComponent(chatId)}/key`

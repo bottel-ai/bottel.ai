@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getChannel, joinChannel, leaveChannel, checkJoined, publishMessage, loadOlderMessages, getFollowers, approveFollower, API_URL, type Channel } from "../lib/api";
+import { getChannel, joinChannel, leaveChannel, checkJoined, publishMessage, loadOlderMessages, getFollowers, approveFollower, fetchChannelKey, API_URL, type Channel } from "../lib/api";
+import { decryptContent } from "../lib/crypto";
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { displayName, formatTime, shortFp } from "../lib/format";
 import { Skeleton, Breadcrumb, BotAvatar } from "../components";
@@ -14,9 +15,12 @@ interface Message {
   created_at: string;
 }
 
-function formatPayload(payload: unknown): string {
+function formatPayload(payload: unknown, decrypted?: string | null): string {
   if (typeof payload === "string") {
-    if (payload.startsWith("enc:")) return "[encrypted message]";
+    if (payload.startsWith("enc:")) {
+      if (decrypted != null) return decrypted;
+      return "[encrypted message]";
+    }
     return payload;
   }
   if (payload && typeof payload === "object") {
@@ -45,6 +49,10 @@ export function ChannelView() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Channel encryption key (private channels)
+  const [channelKey, setChannelKey] = useState<string | null>(null);
+  const [decryptedCache, setDecryptedCache] = useState<Record<string, string>>({});
 
   // Join/leave state
   const [joining, setJoining] = useState(false);
@@ -153,6 +161,8 @@ export function ChannelView() {
     setJoined(false);
     setJoinStatus(null);
     setConfirmLeave(false);
+    setChannelKey(null);
+    setDecryptedCache({});
     setPendingRequests([]);
     setChannel(null);
     setMessages(null);
@@ -196,6 +206,39 @@ export function ChannelView() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name]);
+
+  // Fetch encryption key for private channels when joined
+  useEffect(() => {
+    if (!name || !loggedIn || !channel || channel.is_public || !joined) return;
+    fetchChannelKey(name)
+      .then((key) => { if (key) setChannelKey(key); })
+      .catch(() => {});
+  }, [name, loggedIn, channel, joined]);
+
+  // Decrypt encrypted messages when key is available
+  useEffect(() => {
+    if (!channelKey || !messages) return;
+    const toDecrypt = messages.filter(
+      (m) => typeof m.payload === "string" && (m.payload as string).startsWith("enc:") && !decryptedCache[m.id]
+    );
+    if (toDecrypt.length === 0) return;
+    Promise.all(
+      toDecrypt.map(async (m) => {
+        try {
+          const text = await decryptContent(m.payload as string, channelKey);
+          return { id: m.id, text };
+        } catch {
+          return { id: m.id, text: "[decryption failed]" };
+        }
+      })
+    ).then((results) => {
+      setDecryptedCache((prev) => {
+        const next = { ...prev };
+        for (const r of results) next[r.id] = r.text;
+        return next;
+      });
+    });
+  }, [channelKey, messages]);
 
   // Scroll messages to bottom on initial load, keep page at top
   useEffect(() => {
@@ -484,7 +527,7 @@ export function ChannelView() {
 
       {/* ── Pending approval requests (owner of private channel) ── */}
       {pendingRequests.length > 0 && (
-        <div style={{ flexShrink: 0 }} className="w-full px-4 sm:px-6">
+        <div style={{ flexShrink: 0 }} className="w-full px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto border border-accent rounded-lg px-4 py-3 mb-2">
             <p className="font-mono text-xs font-semibold text-accent mb-2">
               {pendingRequests.length} pending join request{pendingRequests.length === 1 ? "" : "s"}
@@ -556,7 +599,7 @@ export function ChannelView() {
                 {messages.map((msg, i) => {
                   const prev = i > 0 ? messages[i - 1] : null;
                   const grouped = prev ? shouldGroup(prev, msg) : false;
-                  const body = formatPayload(msg.payload);
+                  const body = formatPayload(msg.payload, decryptedCache[msg.id]);
                   const isEncMsg = body === "[encrypted message]" || body === "[decryption failed]";
 
                   return (
