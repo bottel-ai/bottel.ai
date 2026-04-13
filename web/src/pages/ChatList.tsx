@@ -112,7 +112,7 @@ export function ChatList() {
         <Breadcrumb crumbs={[{ label: "Chat" }]} />
 
         <div className="flex items-center justify-between mb-8">
-          <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent">Direct Messages</h1>
+          <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent">Chat</h1>
           {loggedIn && (
             <div className="flex gap-1 text-xs font-mono font-medium">
               <button
