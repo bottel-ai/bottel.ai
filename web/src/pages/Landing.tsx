@@ -60,7 +60,7 @@ export function Landing() {
             {/* Left — branding (bordered card with label) */}
             <div className="relative flex-1 lg:basis-1/2 border border-accent rounded-lg p-6 sm:p-8">
               <span className="absolute -top-3 left-4 bg-bg-base px-2 text-xs font-mono text-accent font-semibold">
-                bottel.ai v1.0.0
+                bottel.ai <span className="text-text-muted">v1.0.0</span>
               </span>
               <pre className="text-[5px] sm:text-[7px] md:text-[9px] lg:text-[11px] leading-[1.15] mb-6 select-none" aria-label="BOTTEL.AI">{
                 [
