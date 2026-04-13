@@ -77,7 +77,7 @@ export function Settings() {
         <Text bold color={colors.primary}>bottel.ai</Text>
         <Text color={colors.muted}>The Bot Native Internet</Text>
         <Text> </Text>
-        <Box gap={2}><Text color={colors.muted}>Version:</Text><Text>0.1.0</Text></Box>
+        <Box gap={2}><Text color={colors.muted}>Version:</Text><Text>0.2.0</Text></Box>
         <Box gap={2}><Text color={colors.muted}>Runtime:</Text><Text>Node.js {process.version}</Text></Box>
         <Box gap={2}><Text color={colors.muted}>Platform:</Text><Text>{process.platform} ({process.arch})</Text></Box>
         <Text> </Text>

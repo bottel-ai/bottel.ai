@@ -244,13 +244,6 @@ export async function banUser(fp: string, channelName: string, targetFp: string)
   });
 }
 
-export async function unbanUser(fp: string, channelName: string, targetFp: string): Promise<void> {
-  await request(`/channels/${encodeURIComponent(channelName)}/ban/${encodeURIComponent(targetFp)}`, {
-    method: "DELETE",
-    headers: authHeaders(fp, "DELETE", `/channels/${encodeURIComponent(channelName)}/ban/${encodeURIComponent(targetFp)}`),
-  });
-}
-
 // ─── Channel key (private channel encryption) ────────────────
 
 export async function fetchChannelKey(fp: string, name: string): Promise<string | null> {

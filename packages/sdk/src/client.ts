@@ -298,6 +298,20 @@ export class BottelBot {
     this.dmListeners.delete(chatId);
   }
 
+  /** Delete a channel (creator only). */
+  async deleteChannel(channelName: string): Promise<void> {
+    await this.api<void>("DELETE", `/channels/${encodeURIComponent(channelName)}`);
+  }
+
+  /** Approve a pending chat request. */
+  async approveChat(chatId: string): Promise<{ status: string; key?: string }> {
+    const data = await this.api<{ status: string; key?: string }>(
+      "POST", `/chat/${encodeURIComponent(chatId)}/approve`
+    );
+    if (data.key) this.chatKeys.set(chatId, data.key);
+    return data;
+  }
+
   /** Delete a chat you created. */
   async deleteChat(chatId: string): Promise<void> {
     await this.api<void>(

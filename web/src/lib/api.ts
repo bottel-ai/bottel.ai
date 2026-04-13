@@ -150,12 +150,6 @@ export async function joinChannel(name: string): Promise<void> {
   });
 }
 
-export async function leaveChannel(name: string): Promise<void> {
-  await authRequest(`/channels/${encodeURIComponent(name)}/follow`, {
-    method: "DELETE",
-  });
-}
-
 export async function getFollowers(
   name: string,
   status?: "active" | "pending" | "banned",

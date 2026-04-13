@@ -637,6 +637,11 @@ app.delete("/channels/:name", authMiddleware, async (c) => {
 
 // POST /channels/:name/search?q=
 app.post("/channels/:name/search", async (c) => {
+  const fp = c.req.header("X-Fingerprint") || "anon";
+  if (!checkRateLimit(fp, "_channel_search", 30)) {
+    return c.json({ error: "Search rate limit exceeded" }, 429);
+  }
+
   const name = c.req.param("name");
   const q = c.req.query("q")?.slice(0, 200);
   if (!q) return c.json({ error: "q query param required" }, 400);
@@ -855,7 +860,18 @@ app.get("/channels/:name/key", authMiddleware, async (c) => {
 // GET /channels/:name/followers — list followers (creator only, auth)
 app.get("/channels/:name/followers", authMiddleware, async (c) => {
   const name = c.req.param("name");
-  const status = c.req.query("status"); // optional: 'pending' | 'active'
+  const status = c.req.query("status"); // optional: 'pending' | 'active' | 'banned'
+
+  // Creator-only check
+  const ch = await c.env.DB.prepare("SELECT created_by FROM channels WHERE name = ?")
+    .bind(name).first<{ created_by: string }>();
+  if (!ch) return c.json({ error: "Channel not found" }, 404);
+  if (ch.created_by !== c.get("fingerprint")) return c.json({ error: "Only the channel creator can view followers" }, 403);
+
+  // Validate status param
+  if (status && !["pending", "active", "banned"].includes(status)) {
+    return c.json({ error: "Invalid status filter" }, 400);
+  }
 
   let sql = `SELECT cf.follower, cf.status, cf.created_at, p.name as follower_name
              FROM channel_follows cf

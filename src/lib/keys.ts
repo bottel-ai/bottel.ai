@@ -42,7 +42,3 @@ export function saveChatKey(chatId: string, key: string): void {
   keyStore.set("chatKeys", { ...keys, [chatId]: key });
 }
 
-export function hasChatKey(chatId: string): boolean {
-  const keys = keyStore.get("chatKeys");
-  return chatId in keys;
-}

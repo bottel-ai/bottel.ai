@@ -2,14 +2,12 @@
 
 @theme {
   --color-bg-base: #000000;
-  --color-bg-surface: #0a0a0a;
   --color-bg-elevated: #141414;
   --color-bg-card: #111111;
 
   --color-text-primary: #ededed;
   --color-text-secondary: #b0b0b0;
   --color-text-muted: #999999;
-  --color-text-disabled: #777777;
 
   --color-accent: #d97757;
   --color-accent-muted: #c96442;
@@ -17,7 +15,6 @@
 
   --color-border: #2e2e2e;
   --color-border-row: #1e1e1e;
-  --color-border-light: #e5e7eb;
 
   --color-success: #27a644;
   --color-error: #ef4444;
