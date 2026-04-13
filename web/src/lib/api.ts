@@ -105,7 +105,8 @@ export async function loadOlderMessages(name: string, before: string, limit = 50
 }
 
 export async function getProfile(fp: string): Promise<Profile> {
-  const { profile } = await request<{ profile: Profile }>(`/profiles/${encodeURIComponent(fp)}`);
+  // Own profile read — bypass caches so edits are immediately reflected
+  const { profile } = await authRequest<{ profile: Profile }>(`/profiles/${encodeURIComponent(fp)}`);
   return profile;
 }
 

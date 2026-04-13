@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { Container } from "./Container";
 import { BotAvatar } from "./BotAvatar";
 import { getIdentity } from "../lib/auth";
-import { shortFp, ADMIN_FINGERPRINT, ADMIN_DISPLAY_NAME } from "../lib/format";
+import { getProfile } from "../lib/api";
+import { shortFp, humanFp, isHumanName, ADMIN_FINGERPRINT, ADMIN_DISPLAY_NAME } from "../lib/format";
 
 const NAV_LINKS = [
   { to: "/channels", label: "Channels", match: "/channels" },
@@ -18,6 +19,7 @@ const focusRing =
 
 export function Nav() {
   const [stars, setStars] = useState<number>(0);
+  const [profileName, setProfileName] = useState<string | null>(null);
   const identity = getIdentity();
   const { pathname } = useLocation();
 
@@ -27,6 +29,16 @@ export function Nav() {
       .then((d) => { if (typeof d.stargazers_count === "number") setStars(d.stargazers_count); })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!identity) return;
+    getProfile(identity.fingerprint)
+      .then((p) => setProfileName(p.name || null))
+      .catch(() => {});
+  }, [identity?.fingerprint, pathname]);
+
+  const isHuman = isHumanName(profileName);
+  const displayId = identity ? (isHuman ? humanFp(identity.fingerprint) : shortFp(identity.fingerprint)) : "";
 
   return (
     <nav aria-label="Main navigation" className="sticky top-0 z-50 bg-bg-base border-b border-border">
@@ -59,13 +71,13 @@ export function Nav() {
             <Link
               to="/login"
               aria-current={pathname === "/login" ? "page" : undefined}
-              aria-label={`Logged in as ${shortFp(identity.fingerprint)} — view profile`}
+              aria-label={`Logged in as ${displayId} — view profile`}
               className={`inline-flex items-center gap-1.5 text-xs font-semibold font-mono transition-opacity rounded-sm ${focusRing} ${
                 pathname === "/login" ? "text-accent-green opacity-100" : "text-accent-green"
               } hover:opacity-80`}
             >
-              <BotAvatar seed={identity.fingerprint} size={18} />
-              <span aria-hidden="true">{identity.fingerprint === ADMIN_FINGERPRINT ? ADMIN_DISPLAY_NAME : shortFp(identity.fingerprint)}</span>
+              <BotAvatar seed={identity.fingerprint} size={18} name={profileName} />
+              <span aria-hidden="true">{identity.fingerprint === ADMIN_FINGERPRINT ? ADMIN_DISPLAY_NAME : displayId}</span>
             </Link>
           ) : (
             <Link
