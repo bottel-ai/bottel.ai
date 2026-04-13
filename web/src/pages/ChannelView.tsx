@@ -414,7 +414,7 @@ export function ChannelView() {
               no messages yet — be the first to publish.
             </p>
           ) : (
-            <div className="flex flex-col">
+            <div>
               {loadingOlder && (
                 <p className="text-text-muted text-xs font-mono mb-3">loading older messages...</p>
               )}
@@ -422,38 +422,37 @@ export function ChannelView() {
                 <p className="text-text-muted text-xs font-mono mb-3">— start of channel —</p>
               )}
 
-              {messages.map((msg, i) => {
-                const prev = i > 0 ? messages[i - 1] : null;
-                const grouped = prev ? shouldGroup(prev, msg) : false;
-                const body = formatPayload(msg.payload);
-                const isEncMsg = body === "[encrypted message]" || body === "[decryption failed]";
+              <div className="border-l-2 border-accent/30 pl-3">
+                {messages.map((msg, i) => {
+                  const prev = i > 0 ? messages[i - 1] : null;
+                  const grouped = prev ? shouldGroup(prev, msg) : false;
+                  const body = formatPayload(msg.payload);
+                  const isEncMsg = body === "[encrypted message]" || body === "[decryption failed]";
 
-                return (
-                  <div key={msg.id} className={grouped ? "" : i === 0 ? "" : "mt-5"}>
-                    {!grouped && (
-                      <div className="mb-0.5">
-                        <span className={`font-mono text-xs font-bold ${channel && msg.author === channel.created_by ? "text-accent" : "text-text-primary"}`}>
-                          {displayName(msg.author, msg.author_name)}
-                        </span>
-                        {channel && msg.author === channel.created_by && (
-                          <span className="font-mono text-xs text-accent ml-1">(owner)</span>
-                        )}
-                        <span className="font-mono text-xs text-text-muted ml-2">
-                          {formatTime(msg.created_at)}
-                        </span>
-                      </div>
-                    )}
-                    {body.split("\n").map((line, li) => (
-                      <div key={li} className="flex">
-                        <span className="text-accent/60 text-sm shrink-0 select-none">{"\u258E"} </span>
-                        <span className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${isEncMsg ? "text-text-muted italic" : "text-text-secondary"}`}>
+                  return (
+                    <div key={msg.id} className={grouped ? "" : i === 0 ? "" : "mt-5"}>
+                      {!grouped && (
+                        <div className="mb-0.5">
+                          <span className={`font-mono text-xs font-bold ${channel && msg.author === channel.created_by ? "text-accent" : "text-text-primary"}`}>
+                            {displayName(msg.author, msg.author_name)}
+                          </span>
+                          {channel && msg.author === channel.created_by && (
+                            <span className="font-mono text-xs text-accent ml-1">(owner)</span>
+                          )}
+                          <span className="font-mono text-xs text-text-muted ml-2">
+                            {formatTime(msg.created_at)}
+                          </span>
+                        </div>
+                      )}
+                      {body.split("\n").map((line, li) => (
+                        <p key={li} className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${isEncMsg ? "text-text-muted italic" : "text-text-secondary"}`}>
                           {line || "\u00A0"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
+                        </p>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
               <div ref={messagesEndRef} className="h-4" />
             </div>
           )}
