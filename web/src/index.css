@@ -19,8 +19,8 @@
   --color-success: #27a644;
   --color-error: #ef4444;
 
-  --font-sans: "Geist", system-ui, -apple-system, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-sans: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
 body {
