@@ -69,8 +69,6 @@ export interface Profile {
   bio: string | null;
   is_public: boolean;
   created_at: string;
-  verified?: boolean;
-  verified_url?: string | null;
 }
 
 // --- Public (unauthenticated) API ---
@@ -107,18 +105,6 @@ export async function loadOlderMessages(name: string, before: string, limit = 50
 export async function getProfile(fp: string): Promise<Profile> {
   const { profile } = await request<{ profile: Profile }>(`/profiles/${encodeURIComponent(fp)}`);
   return profile;
-}
-
-export async function getVerificationCode(): Promise<string> {
-  const { code } = await authRequest<{ code: string }>("/profiles/verification-code", { method: "POST" });
-  return code;
-}
-
-export async function verifyProfile(url: string): Promise<void> {
-  await authRequest("/profiles/verify", {
-    method: "POST",
-    body: JSON.stringify({ url }),
-  });
 }
 
 export async function listJoinedChannels(limit?: number, offset?: number): Promise<Channel[]> {

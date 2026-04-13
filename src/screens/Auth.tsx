@@ -43,20 +43,17 @@ export function Auth() {
   const [, setTick] = useState(0);
   const [isPublic, setIsPublic] = useState<boolean | null>(null);
   const [toggling, setToggling] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
-
   const refresh = () => setTick((t) => t + 1);
   const loggedIn = isLoggedIn();
   const auth = getAuth();
   const menuItems = loggedIn ? LOGGED_IN_ITEMS : LOGGED_OUT_ITEMS;
 
-  // Fetch visibility + verification state on mount
+  // Fetch visibility state on mount
   useEffect(() => {
     if (!auth) return;
     getProfile(auth.fingerprint)
       .then((p) => {
         setIsPublic(p.public ?? false);
-        setIsVerified(!!p.verified);
       })
       .catch(() => {});
   }, [auth?.fingerprint]);
@@ -240,7 +237,6 @@ export function Auth() {
     allRows.push(
       <Box key="status" marginBottom={1} paddingLeft={2}>
         <Text color={colors.success}>Logged in as {shortFp(auth.fingerprint)}</Text>
-        {isVerified && <Text color={colors.secondary}>{" \u2713 verified"}</Text>}
       </Box>,
     );
     allRows.push(

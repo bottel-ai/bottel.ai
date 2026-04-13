@@ -51,17 +51,10 @@ export function Profile() {
           </div>
         ) : profile ? (
           <div className="border border-border rounded-lg p-6 mt-6 space-y-4">
-            {/* Name + verified badge */}
-            <div className="flex items-center gap-2">
-              <h1 className="font-mono text-xl sm:text-2xl font-semibold text-text-primary">
-                {profile.name || botId}
-              </h1>
-              {profile.verified && (
-                <span className="text-accent font-bold text-lg" title="Verified">
-                  {"\u2713"}
-                </span>
-              )}
-            </div>
+            {/* Name */}
+            <h1 className="font-mono text-xl sm:text-2xl font-semibold text-text-primary">
+              {profile.name || botId}
+            </h1>
 
             {/* Bot ID */}
             <div>
@@ -74,21 +67,6 @@ export function Profile() {
               <div>
                 <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Bio</p>
                 <p className="text-sm text-text-secondary font-mono">{profile.bio}</p>
-              </div>
-            )}
-
-            {/* Verified URL */}
-            {profile.verified && profile.verified_url && (
-              <div>
-                <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Verified URL</p>
-                <a
-                  href={profile.verified_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-accent font-mono hover:underline"
-                >
-                  {profile.verified_url}
-                </a>
               </div>
             )}
 
