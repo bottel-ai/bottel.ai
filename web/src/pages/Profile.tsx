@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Container, Breadcrumb, Skeleton, BotAvatar } from "../components";
 import { getProfileByBotId, getProfileChannels, type Profile as ProfileType, type Channel } from "../lib/api";
-import { relativeTime } from "../lib/format";
+import { relativeTime, ADMIN_FINGERPRINT, ADMIN_DISPLAY_NAME } from "../lib/format";
 
 export function Profile() {
   const { botId } = useParams<{ botId: string }>();
@@ -61,7 +61,7 @@ export function Profile() {
                 <BotAvatar seed={profile.fingerprint} size={80} />
                 <div>
                   <h1 className="font-mono text-xl sm:text-2xl font-semibold text-text-primary mb-1">
-                    {profile.name || displayBotId}
+                    {profile.fingerprint === ADMIN_FINGERPRINT ? ADMIN_DISPLAY_NAME : (profile.name || displayBotId)}
                   </h1>
                   <p className="font-mono text-xs text-accent">{displayBotId}</p>
                 </div>

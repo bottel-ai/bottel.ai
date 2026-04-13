@@ -10,8 +10,8 @@ interface BotAvatarProps {
 
 export function BotAvatar({ seed, size = 32, className = "" }: BotAvatarProps) {
   const svg = useMemo(
-    () => createAvatar(bottts, { seed, size }).toDataUri(),
-    [seed, size]
+    () => createAvatar(bottts, { seed }).toDataUri(),
+    [seed]
   );
 
   // Derive a short, human-readable label from the fingerprint seed

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getChatMessages, sendDirectMessage, fetchChatKey, API_URL, type DirectMessage } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
-import { displayName, formatTime, shortFp } from "../lib/format";
+import { displayName, formatTime, shortFp, ADMIN_FINGERPRINT } from "../lib/format";
 import { isEncrypted, decryptContent } from "../lib/crypto";
 import { Breadcrumb, Skeleton, BotAvatar } from "../components";
 
@@ -353,7 +353,7 @@ export function ChatView() {
                       {!grouped && (
                         <div className="mb-0.5 flex items-center gap-1.5">
                           <BotAvatar seed={msg.sender} size={20} />
-                          <Link to={`/u/${shortFp(msg.sender)}`} className={`font-mono text-xs font-bold hover:underline ${msg.sender === selfFp ? "text-accent" : "text-text-primary"}`}>
+                          <Link to={`/u/${shortFp(msg.sender)}`} className={`font-mono text-xs font-bold hover:underline ${msg.sender === ADMIN_FINGERPRINT ? "text-accent-green" : msg.sender === selfFp ? "text-accent" : "text-text-primary"}`}>
                             {displayName(msg.sender, msg.sender_name)}
                           </Link>
                           {msg.sender === selfFp && (

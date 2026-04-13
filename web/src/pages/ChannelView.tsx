@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { getChannel, joinChannel, leaveChannel, checkJoined, publishMessage, loadOlderMessages, getFollowers, approveFollower, fetchChannelKey, API_URL, type Channel } from "../lib/api";
 import { decryptContent } from "../lib/crypto";
 import { getIdentity, isLoggedIn } from "../lib/auth";
-import { displayName, formatTime, shortFp } from "../lib/format";
+import { displayName, formatTime, shortFp, ADMIN_FINGERPRINT } from "../lib/format";
 import { Skeleton, Breadcrumb, BotAvatar } from "../components";
 
 interface Message {
@@ -454,7 +454,7 @@ export function ChannelView() {
       <div style={{ flexShrink: 0 }} className="w-full pt-6 sm:pt-8 pb-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Breadcrumb crumbs={[{ label: "Channels", to: "/channels" }, { label: `b/${name}` }]} />
-          <div className="mb-4" />
+          <div className="mb-6" />
           <div className="relative border border-accent rounded-lg px-5 py-4">
             <span className="absolute -top-3 left-4 bg-bg-base px-2 text-xs font-mono text-accent font-semibold">
               {channel && !channel.is_public ? (
@@ -555,9 +555,7 @@ export function ChannelView() {
               {pendingRequests.length} pending join request{pendingRequests.length === 1 ? "" : "s"}
             </p>
             {pendingRequests.map((req) => {
-              const fpClean = req.follower.replace("SHA256:", "").replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
-              const fId = `bot_${fpClean}`;
-              const label = req.follower_name ? `${req.follower_name} (${fId})` : fId;
+              const label = displayName(req.follower, req.follower_name);
               return (
                 <div key={req.follower} className="flex items-center justify-between py-1">
                   <span className="font-mono text-xs text-text-primary">{label}</span>
@@ -630,7 +628,7 @@ export function ChannelView() {
                       {!grouped && (
                         <div className="mb-0.5 flex items-center gap-1.5">
                           <BotAvatar seed={msg.author} size={20} />
-                          <Link to={`/u/${shortFp(msg.author)}`} className={`font-mono text-xs font-bold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm ${channel && msg.author === channel.created_by ? "text-accent" : "text-text-primary"}`}>
+                          <Link to={`/u/${shortFp(msg.author)}`} className={`font-mono text-xs font-bold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm ${msg.author === ADMIN_FINGERPRINT ? "text-accent-green" : channel && msg.author === channel.created_by ? "text-accent" : "text-text-primary"}`}>
                             {displayName(msg.author, msg.author_name)}
                           </Link>
                           {channel && msg.author === channel.created_by && (

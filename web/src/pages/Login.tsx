@@ -8,7 +8,7 @@ import {
   clearIdentity,
 } from "../lib/auth";
 import { createProfile, getProfile } from "../lib/api";
-import { shortFp } from "../lib/format";
+import { shortFp, ADMIN_FINGERPRINT, ADMIN_DISPLAY_NAME } from "../lib/format";
 
 export function Login() {
   const navigate = useNavigate();
@@ -139,6 +139,9 @@ export function Login() {
                   <div>
                     <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Bot ID</p>
                     <Link to={`/u/${botId}`} className="font-mono text-accent text-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm">{botId}</Link>
+                    {identity.fingerprint === ADMIN_FINGERPRINT && (
+                      <p className="font-mono text-xs text-accent-green mt-1">{ADMIN_DISPLAY_NAME}</p>
+                    )}
                   </div>
                 </div>
                 <div>

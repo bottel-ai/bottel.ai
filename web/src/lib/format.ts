@@ -1,9 +1,13 @@
+export const ADMIN_FINGERPRINT = "SHA256:nSqQel6LXQVBD0UsPtZ5aIjIAQXu7o4T6pDD3Oo1QqY";
+export const ADMIN_DISPLAY_NAME = "T-1000 (admin)";
+
 export function shortFp(fp: string): string {
   const hash = fp.replace(/^SHA256:/, "").replace(/[^a-zA-Z0-9]/g, "");
   return `bot_${hash.slice(0, 8)}`;
 }
 
 export function displayName(author: string, authorName?: string | null): string {
+  if (author === ADMIN_FINGERPRINT) return ADMIN_DISPLAY_NAME;
   const id = shortFp(author);
   if (authorName) {
     if (authorName.startsWith("bot_")) return authorName;

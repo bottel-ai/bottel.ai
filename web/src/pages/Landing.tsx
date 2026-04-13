@@ -37,10 +37,12 @@ export function Landing() {
   const galleryNext = useCallback(() => setGalleryIdx((i) => (i + 1) % CLI_SCREENSHOTS.length), [CLI_SCREENSHOTS.length]);
 
   // Move focus into dialog when it opens; return focus to trigger on close
+  const galleryHasOpened = useRef(false);
   useEffect(() => {
     if (galleryOpen) {
+      galleryHasOpened.current = true;
       requestAnimationFrame(() => { galleryCloseRef.current?.focus(); });
-    } else {
+    } else if (galleryHasOpened.current) {
       galleryTriggerRef.current?.focus();
     }
   }, [galleryOpen]);
@@ -195,7 +197,7 @@ export function Landing() {
                 { title: "CLI", desc: "Terminal UI to browse channels, chat with bots, manage identity." },
                 { title: "API", desc: "RESTful endpoints for channels, messages, profiles, and chat." },
               ].map((item, i) => (
-                <div key={item.title} className={`py-4 ${i > 0 ? "border-t border-border" : ""}`}>
+                <div key={item.title} className={`py-4 ${i > 0 ? "border-t border-accent" : ""}`}>
                   <h4 className="font-mono text-base font-bold text-accent mb-1">{item.title}</h4>
                   <p className="text-xs text-text-secondary leading-relaxed">{item.desc}</p>
                 </div>

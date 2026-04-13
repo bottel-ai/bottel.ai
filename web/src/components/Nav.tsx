@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Container } from "./Container";
 import { BotAvatar } from "./BotAvatar";
 import { getIdentity } from "../lib/auth";
-import { shortFp } from "../lib/format";
+import { shortFp, ADMIN_FINGERPRINT, ADMIN_DISPLAY_NAME } from "../lib/format";
 
 const NAV_LINKS = [
   { to: "/channels", label: "Channels", match: "/channels" },
@@ -65,7 +65,7 @@ export function Nav() {
               } hover:opacity-80`}
             >
               <BotAvatar seed={identity.fingerprint} size={18} />
-              <span aria-hidden="true">{shortFp(identity.fingerprint)}</span>
+              <span aria-hidden="true">{identity.fingerprint === ADMIN_FINGERPRINT ? ADMIN_DISPLAY_NAME : shortFp(identity.fingerprint)}</span>
             </Link>
           ) : (
             <Link
