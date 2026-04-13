@@ -3,12 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { listChats, createChat, deleteChat, searchBots, approveChat, type DirectChat, type BotSearchResult } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { shortFp, displayName, relativeTime } from "../lib/format";
-import { Breadcrumb, BotAvatar } from "../components";
+import { Container, Skeleton, Breadcrumb, BotAvatar } from "../components";
 
 export function ChatList() {
   const [chats, setChats] = useState<DirectChat[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // New chat state
   const [showNew, setShowNew] = useState(false);
@@ -24,7 +23,7 @@ export function ChatList() {
   // Approve state
   const [approving, setApproving] = useState<string | null>(null);
 
-  // Filter: "chats" shows active only, "requests" shows pending incoming
+  // Filter
   const [filter, setFilter] = useState<"chats" | "requests">("chats");
 
   const navigate = useNavigate();
@@ -103,39 +102,114 @@ export function ChatList() {
   const previewMessage = (msg: string | null): string => {
     if (!msg) return "no messages yet";
     if (msg.startsWith("enc:")) return "[encrypted]";
-    return msg.length > 80 ? msg.slice(0, 80) + "..." : msg;
+    return msg.length > 60 ? msg.slice(0, 60) + "..." : msg;
   };
+
+  const pendingCount = chats ? chats.filter(c => c.status === "pending").length : 0;
+  const filtered = chats
+    ? filter === "requests"
+      ? chats.filter(c => c.status === "pending")
+      : chats.filter(c => c.status === "active")
+    : null;
 
   return (
     <div className="py-6 sm:py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <Container>
         <Breadcrumb crumbs={[{ label: "Chat" }]} />
 
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-4">
           <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent">Chat</h1>
-          {loggedIn && (
-            <div className="flex gap-1 text-xs font-mono font-medium">
+          <div className="flex items-center gap-3">
+            {loggedIn && (
+              <div className="flex gap-1 text-xs font-mono font-medium">
+                <button
+                  onClick={() => setFilter("chats")}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${filter === "chats" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+                >
+                  Chats
+                </button>
+                <button
+                  onClick={() => setFilter("requests")}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${filter === "requests" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+                >
+                  Requests{pendingCount > 0 ? ` (${pendingCount})` : ""}
+                </button>
+              </div>
+            )}
+            {loggedIn && !showNew && (
               <button
-                onClick={() => setFilter("chats")}
-                className={`px-2.5 py-1 rounded-md transition-colors ${filter === "chats" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+                type="button"
+                onClick={() => { setShowNew(true); setCreateError(null); }}
+                className="text-xs font-mono font-medium px-4 py-2 rounded-md bg-accent text-black hover:opacity-90 transition-opacity font-semibold"
               >
-                Chats
+                + New Chat
               </button>
-              <button
-                onClick={() => setFilter("requests")}
-                className={`px-2.5 py-1 rounded-md transition-colors ${filter === "requests" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
-              >
-                Requests ({chats ? chats.filter(c => c.status === "pending").length : 0})
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
+        {/* Create chat form */}
+        {showNew && (
+          <div className="border border-border rounded-lg p-4 mb-4">
+            <div className="flex flex-col gap-3">
+              <div>
+                <label className="block text-xs font-mono text-text-muted mb-1">Find a bot</label>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by name or fingerprint..."
+                  autoFocus
+                  className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+                />
+              </div>
+              {creating && (
+                <p className="text-xs font-mono text-text-muted">Creating chat...</p>
+              )}
+              {createError && (
+                <p className="text-xs font-mono text-error">{createError}</p>
+              )}
+              {searchResults.length > 0 && (
+                <div className="flex flex-col">
+                  {searchResults.map((r) => {
+                    const label = r.name.startsWith("bot_")
+                      ? r.botId
+                      : `${r.name} (${r.botId})`;
+                    return (
+                      <button
+                        key={r.fingerprint}
+                        type="button"
+                        onClick={() => handleCreateChat(r.fingerprint)}
+                        disabled={creating}
+                        className="text-left px-2 py-1.5 text-xs font-mono text-text-primary hover:bg-bg-elevated rounded transition-colors disabled:opacity-50"
+                      >
+                        {label}
+                        {r.bio && <span className="text-text-muted ml-2">— {r.bio}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {searchQuery.trim().length >= 2 && searchResults.length === 0 && !creating && (
+                <p className="text-xs font-mono text-text-muted">No bots found</p>
+              )}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => { setShowNew(false); setSearchQuery(""); setSearchResults([]); setCreateError(null); }}
+                  className="text-xs font-mono text-text-muted hover:text-text-primary transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {!loggedIn && (
-          <div className="border border-border rounded-lg px-5 py-8 text-center">
+          <div className="py-10 text-center">
             <p className="text-text-muted text-sm font-mono">
-              You need to{" "}
-              <Link to="/login" className="text-accent hover:underline">log in</Link>
+              <Link to="/login" className="text-accent hover:underline">Log in</Link>
               {" "}to use direct messages.
             </p>
           </div>
@@ -143,176 +217,120 @@ export function ChatList() {
 
         {loggedIn && (
           <>
-            {/* Create Chat button + inline search */}
-            <div className="mb-6">
-              {!showNew ? (
-                <button
-                  type="button"
-                  onClick={() => { setShowNew(true); setCreateError(null); }}
-                  className="text-xs font-mono font-medium px-4 py-2 rounded-md bg-accent text-black hover:opacity-90 transition-opacity font-semibold"
-                >
-                  Create Chat
-                </button>
-              ) : (
-                <div className="border border-border rounded-lg px-4 py-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search by name or fingerprint..."
-                      autoFocus
-                      className="flex-1 bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => { setShowNew(false); setSearchQuery(""); setSearchResults([]); setCreateError(null); }}
-                      className="text-xs font-mono text-text-muted hover:text-text-primary transition-colors px-2 py-1.5"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                  {creating && (
-                    <p className="text-xs font-mono text-text-muted">Creating chat...</p>
-                  )}
-                  {createError && (
-                    <p className="text-xs font-mono text-error mb-2">{createError}</p>
-                  )}
-                  {searchResults.length > 0 && (
-                    <div className="flex flex-col">
-                      {searchResults.map((r) => {
-                        const label = r.name.startsWith("bot_")
-                          ? r.botId
-                          : `${r.name} (${r.botId})`;
-                        return (
-                          <button
-                            key={r.fingerprint}
-                            type="button"
-                            onClick={() => handleCreateChat(r.fingerprint)}
-                            disabled={creating}
-                            className="text-left px-2 py-1.5 text-xs font-mono text-text-primary hover:bg-bg-card rounded transition-colors disabled:opacity-50"
-                          >
-                            {label}
-                            {r.bio && <span className="text-text-muted ml-2">- {r.bio}</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {searchQuery.trim().length >= 2 && searchResults.length === 0 && !creating && (
-                    <p className="text-xs font-mono text-text-muted">No bots found</p>
-                  )}
-                </div>
-              )}
+            {/* Column headers */}
+            <div className="hidden sm:grid sm:grid-cols-[28px_180px_1fr_100px_80px] gap-3 items-center py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted">
+              <span></span>
+              <span className="px-2">Bot</span>
+              <span className="px-2">Last message</span>
+              <span className="px-2 text-right">Time</span>
+              <span className="px-2 text-right"></span>
             </div>
 
-            {/* Chat list */}
+            {/* Loading */}
             {loading && chats === null && (
-              <p className="text-text-muted text-xs font-mono">Loading chats...</p>
-            )}
-
-            {!loading && chats !== null && chats.length === 0 && (
-              <div className="border border-border rounded-lg px-5 py-8 text-center">
-                <p className="text-text-muted text-sm font-mono">No chats yet. Start a conversation.</p>
+              <div className="flex flex-col">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="grid grid-cols-[28px_180px_1fr_100px_80px] gap-3 items-center py-1.5 border-b border-border-row">
+                    <Skeleton className="h-5 w-5 rounded-full" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-4 w-12 ml-auto" />
+                    <span></span>
+                  </div>
+                ))}
               </div>
             )}
 
-            {chats !== null && chats.length > 0 && (() => {
-              const filtered = filter === "requests"
-                ? chats.filter(c => c.status === "pending")
-                : chats.filter(c => c.status === "active");
-              return filtered.length === 0 ? (
-                <p className="text-text-muted text-xs font-mono py-4">{filter === "requests" ? "No pending requests." : "No active chats yet."}</p>
-              ) : (
-              <div className="flex flex-col gap-2">
+            {/* Empty */}
+            {!loading && filtered !== null && filtered.length === 0 && (
+              <div className="py-10 text-center">
+                <p className="text-text-muted text-sm font-mono">
+                  {filter === "requests" ? "No pending requests." : "No active chats yet."}
+                </p>
+              </div>
+            )}
+
+            {/* Rows */}
+            {filtered !== null && filtered.length > 0 && (
+              <div className="flex flex-col">
                 {filtered.map((chat) => {
                   const name = displayName(chat.other_fp, chat.other_name);
                   const isOwner = chat.created_by === selfFp;
                   const isPending = chat.status === "pending";
                   const canApprove = isPending && !isOwner;
 
-                  const rowContent = (
-                    <>
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <BotAvatar seed={chat.other_fp} size={24} />
-                        <span className="font-mono text-xs font-bold text-text-primary">{name}</span>
-                        {isPending && !isOwner && (
-                          <span className="font-mono text-xs text-warning">pending</span>
+                  const row = (
+                    <div className="sm:grid sm:grid-cols-[28px_180px_1fr_100px_80px] gap-3 items-center py-1.5 border-b border-border-row hover:bg-bg-elevated transition-colors">
+                      <span className="hidden sm:flex items-center justify-center">
+                        <BotAvatar seed={chat.other_fp} size={20} />
+                      </span>
+                      <span className="px-2 font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
+                        {name}
+                      </span>
+                      <span className="px-2 text-[12px] sm:text-[13px] text-text-secondary truncate">
+                        {isPending
+                          ? <span className="text-accent">{isOwner ? "awaiting approval" : "pending"}</span>
+                          : previewMessage(chat.last_message)}
+                      </span>
+                      <span className="px-2 text-[13px] text-text-secondary tabular-nums font-mono text-right">
+                        {chat.last_message_at ? relativeTime(chat.last_message_at) : ""}
+                      </span>
+                      <span className="px-2 text-right flex items-center justify-end gap-2">
+                        {canApprove && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleApprove(chat.id); }}
+                            disabled={approving === chat.id}
+                            className="text-xs font-mono font-semibold text-accent hover:underline disabled:opacity-50"
+                          >
+                            {approving === chat.id ? "..." : "Approve"}
+                          </button>
                         )}
-                        {isPending && isOwner && (
-                          <span className="font-mono text-xs text-text-muted">awaiting approval</span>
-                        )}
-                        {chat.last_message_at && (
-                          <span className="font-mono text-xs text-text-muted">{relativeTime(chat.last_message_at)}</span>
-                        )}
-                      </div>
-                      <p className="font-mono text-xs text-text-muted truncate">
-                        {previewMessage(chat.last_message)}
-                      </p>
-                    </>
-                  );
-
-                  return (
-                    <div key={chat.id} className={`border border-border rounded-lg px-4 py-3 transition-colors ${isPending ? "opacity-75" : "hover:border-accent"}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        {isPending ? (
-                          <div className="flex-1 min-w-0">{rowContent}</div>
-                        ) : (
-                          <Link to={`/chat/${chat.id}`} className="flex-1 min-w-0">{rowContent}</Link>
-                        )}
-                        <div className="shrink-0 flex items-center gap-2">
-                          {canApprove && (
-                            <button
-                              type="button"
-                              onClick={() => handleApprove(chat.id)}
-                              disabled={approving === chat.id}
-                              className="text-xs font-mono font-medium px-4 py-2 rounded-md bg-accent text-black hover:opacity-90 transition-opacity disabled:opacity-50"
-                            >
-                              {approving === chat.id ? "Approving..." : "Approve"}
-                            </button>
-                          )}
-                          {isOwner && (
-                            <>
-                              {confirmDeleteId === chat.id ? (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-mono text-text-muted">Delete?</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDelete(chat.id)}
-                                    className="text-xs font-mono font-medium text-accent hover:underline"
-                                  >
-                                    Yes
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setConfirmDeleteId(null)}
-                                    className="text-xs font-mono text-text-muted hover:text-text-primary"
-                                  >
-                                    No
-                                  </button>
-                                </div>
-                              ) : (
+                        {isOwner && (
+                          <>
+                            {confirmDeleteId === chat.id ? (
+                              <span className="flex items-center gap-1">
                                 <button
                                   type="button"
-                                  onClick={() => setConfirmDeleteId(chat.id)}
-                                  className="text-xs font-mono text-text-muted hover:text-accent transition-colors"
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(chat.id); }}
+                                  className="text-xs font-mono font-medium text-accent hover:underline"
                                 >
-                                  Delete
+                                  yes
                                 </button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDeleteId(null); }}
+                                  className="text-xs font-mono text-text-muted hover:text-text-primary"
+                                >
+                                  no
+                                </button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDeleteId(chat.id); }}
+                                className="text-xs font-mono text-text-muted hover:text-accent transition-colors"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </span>
                     </div>
+                  );
+
+                  return isPending ? (
+                    <div key={chat.id}>{row}</div>
+                  ) : (
+                    <Link key={chat.id} to={`/chat/${chat.id}`} className="group">{row}</Link>
                   );
                 })}
               </div>
-              );
-            })()}
+            )}
           </>
         )}
-      </div>
+      </Container>
     </div>
   );
 }

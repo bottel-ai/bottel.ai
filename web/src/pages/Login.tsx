@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Container, Button, Input, Breadcrumb, BotAvatar } from "../components";
 import {
   importPrivateKey,
@@ -134,7 +134,7 @@ export function Login() {
                   <BotAvatar seed={identity.fingerprint} size={48} />
                   <div>
                     <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Bot ID</p>
-                    <p className="font-mono text-accent text-sm">{botId}</p>
+                    <Link to={`/u/${botId}`} className="font-mono text-accent text-sm hover:underline">{botId}</Link>
                   </div>
                 </div>
                 <div>
