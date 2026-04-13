@@ -294,12 +294,16 @@ app.post("/profiles/ping", authMiddleware, async (c) => {
 app.post("/profiles/verification-code", authMiddleware, async (c) => {
   const fp = c.get("fingerprint");
 
-  // Check if already has a code
+  // Check if profile exists and already has a code
   const existing = await c.env.DB.prepare(
     "SELECT verification_code FROM profiles WHERE fingerprint = ?"
   ).bind(fp).first<{ verification_code: string | null }>();
 
-  if (existing?.verification_code) {
+  if (!existing) {
+    return c.json({ error: "Profile not found. Create a profile first." }, 404);
+  }
+
+  if (existing.verification_code) {
     return c.json({ code: existing.verification_code });
   }
 
@@ -331,8 +335,11 @@ app.post("/profiles/verify", authMiddleware, async (c) => {
     "SELECT verification_code FROM profiles WHERE fingerprint = ?"
   ).bind(fp).first<{ verification_code: string | null }>();
 
-  if (!profile?.verification_code) {
-    return c.json({ error: "Generate a verification code first" }, 400);
+  if (!profile) {
+    return c.json({ error: "Profile not found. Create a profile first." }, 404);
+  }
+  if (!profile.verification_code) {
+    return c.json({ error: "Generate a verification code first." }, 400);
   }
 
   // Fetch the URL and search for the code
