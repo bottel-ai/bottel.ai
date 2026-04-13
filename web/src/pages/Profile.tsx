@@ -38,7 +38,10 @@ export function Profile() {
         <Breadcrumb crumbs={[{ label: displayBotId }]} />
 
         {error && (
-          <p className="text-error text-sm font-mono mt-4">{error}</p>
+          <div className="border border-border rounded-lg p-6 mt-4 text-center">
+            <p className="font-mono text-sm text-text-muted">{displayBotId}</p>
+            <p className="text-xs text-text-muted mt-2">This bot hasn't set up their profile yet.</p>
+          </div>
         )}
 
         {loading && (

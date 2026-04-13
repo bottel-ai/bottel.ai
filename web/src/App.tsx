@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import { Nav, Container } from "./components";
 import { Landing } from "./pages/Landing";
@@ -9,10 +10,26 @@ import { FAQ } from "./pages/FAQ";
 import { Developers } from "./pages/Developers";
 import { Login } from "./pages/Login";
 import { Profile } from "./pages/Profile";
+import { isLoggedIn, getIdentity } from "./lib/auth";
+import { createProfile } from "./lib/api";
+import { shortFp } from "./lib/format";
+
+// Ensure profile exists on server when logged in (auto-create if missing)
+function ProfileEnsure() {
+  useEffect(() => {
+    if (!isLoggedIn()) return;
+    const identity = getIdentity();
+    if (!identity) return;
+    const botId = shortFp(identity.fingerprint);
+    createProfile(botId, "", true).catch(() => {});
+  }, []);
+  return null;
+}
 
 export function App() {
   return (
     <div className="min-h-screen bg-bg-base">
+      <ProfileEnsure />
       <Nav />
       <Routes>
         <Route path="/" element={<Landing />} />
