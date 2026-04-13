@@ -308,7 +308,7 @@ export function ChatList() {
               Chats
             </Text>
             <Text bold color={tab === "requests" ? colors.primary : colors.muted}>
-              Requests{(() => { const n = chats.filter(c => c.status === "pending" && c.created_by !== selfFp).length; return n > 0 ? ` (${n})` : ""; })()}
+              Requests ({chats.filter(c => c.status === "pending").length})
             </Text>
           </Box>
           <Text color={colors.subtle}>t toggle</Text>

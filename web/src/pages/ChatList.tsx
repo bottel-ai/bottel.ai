@@ -125,7 +125,7 @@ export function ChatList() {
                 onClick={() => setFilter("requests")}
                 className={`px-2.5 py-1 rounded-md transition-colors ${filter === "requests" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
               >
-                Requests{chats && (() => { const n = chats.filter(c => c.status === "pending" && c.created_by !== selfFp).length; return n > 0 ? ` (${n})` : ""; })()}
+                Requests ({chats ? chats.filter(c => c.status === "pending").length : 0})
               </button>
             </div>
           )}
