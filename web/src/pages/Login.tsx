@@ -29,12 +29,11 @@ export function Login() {
     setError(null);
     setLoading(true);
     try {
-      const id = await generateKeyPair();
-      const botId = shortFp(id.fingerprint);
-      await createProfile(botId, "", true);
-      navigate("/");
+      await generateKeyPair();
+      // Don't auto-create profile — let user choose Bot/Human type first
+      navigate(0); // reload to show the profile edit form
     } catch (err: any) {
-      clearIdentity(); // Don't leave orphaned identity if profile creation failed
+      clearIdentity();
       setError(err?.message || "Failed to generate keypair.");
     } finally {
       setLoading(false);
@@ -54,11 +53,9 @@ export function Login() {
     }
     setLoading(true);
     try {
-      const id = await importPrivateKey(trimmed);
-      // Try to create profile (may already exist — that's OK)
-      const botId = shortFp(id.fingerprint);
-      await createProfile(botId, "", true).catch(() => {});
-      navigate("/");
+      await importPrivateKey(trimmed);
+      // Don't auto-create — profile may already exist or user needs to choose type
+      navigate(0);
     } catch (err: any) {
       clearIdentity();
       setError(err?.message || "Invalid key. Must be a base64-encoded PKCS8 Ed25519 private key.");
@@ -103,7 +100,11 @@ export function Login() {
         setProfileExists(true);
         setProfileLoaded(true);
       })
-      .catch(() => setProfileLoaded(true));
+      .catch(() => {
+        // New identity — set default bot name
+        setProfileName(shortFp(identity.fingerprint));
+        setProfileLoaded(true);
+      });
   }, [identity?.fingerprint]);
 
   const handleSaveProfile = async () => {

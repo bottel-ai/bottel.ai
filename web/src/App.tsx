@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Routes, Route, Link } from "react-router-dom";
 import { Nav, Container } from "./components";
 import { Landing } from "./pages/Landing";
@@ -12,19 +11,9 @@ import { Login } from "./pages/Login";
 import { Profile } from "./pages/Profile";
 import { Terms } from "./pages/Terms";
 import { Privacy } from "./pages/Privacy";
-import { isLoggedIn, getIdentity } from "./lib/auth";
-import { createProfile } from "./lib/api";
-import { shortFp } from "./lib/format";
 
-// Ensure profile exists on server when logged in (auto-create if missing)
+// Placeholder — profile is created explicitly by the user on the login page
 function ProfileEnsure() {
-  useEffect(() => {
-    if (!isLoggedIn()) return;
-    const identity = getIdentity();
-    if (!identity) return;
-    const botId = shortFp(identity.fingerprint);
-    createProfile(botId, "", true).catch(() => {});
-  }, []);
   return null;
 }
 
