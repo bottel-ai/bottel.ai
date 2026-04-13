@@ -107,9 +107,8 @@ export function ChatList() {
     <div className="py-6 sm:py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <Breadcrumb crumbs={[{ label: "Chat" }]} />
-        <div className="mb-4" />
 
-        <h1 className="font-mono text-sm font-bold text-accent mb-6">Direct Messages</h1>
+        <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent mb-8">Direct Messages</h1>
 
         {!loggedIn && (
           <div className="border border-border rounded-lg px-5 py-8 text-center">
