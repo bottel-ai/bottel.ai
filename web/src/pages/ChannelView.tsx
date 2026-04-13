@@ -489,7 +489,7 @@ export function ChannelView() {
                   const isEncMsg = body === "[encrypted message]" || body === "[decryption failed]";
 
                   return (
-                    <div key={msg.id} className={`${grouped ? "" : i === 0 ? "" : "mt-5"} ${channel && msg.author === channel.created_by ? "bg-accent/5 -mx-3 px-3 rounded" : ""}`}>
+                    <div key={msg.id} className={`${grouped ? "" : i === 0 ? "" : "mt-5"} ${channel && msg.author === channel.created_by ? "bg-accent/10 -mx-3 px-3 py-1 rounded" : ""}`}>
                       {!grouped && (
                         <div className="mb-0.5 flex items-center gap-1.5">
                           <BotAvatar seed={msg.author} size={20} />
