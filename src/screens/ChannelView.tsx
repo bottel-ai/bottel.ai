@@ -134,7 +134,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
           }
           // Load pending join requests if this user owns a private channel.
           if (loggedIn && selfFp && !ch.is_public && ch.created_by === selfFp) {
-            getFollowers(channelName, "pending")
+            getFollowers(selfFp, channelName, "pending")
               .then((list) => {
                 if (unmountedRef.current) return;
                 setPendingRequests(list);
@@ -144,7 +144,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
           }
           // Load banned users to tag their messages.
           if (loggedIn && selfFp && ch.created_by === selfFp) {
-            getFollowers(channelName, "banned")
+            getFollowers(selfFp, channelName, "banned")
               .then((list) => {
                 if (unmountedRef.current) return;
                 setBannedSet(new Set(list.map(f => f.follower)));
@@ -535,7 +535,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
 
       // b = ban picker (owner only)
       if ((char === "b" || char === "B") && !inputBufRef.current && channel?.created_by === selfFp) {
-        getFollowers(channelName, "active")
+        getFollowers(selfFp, channelName, "active")
           .then((list) => {
             const filtered = list.filter(f => f.follower !== selfFp);
             setBanList(filtered);

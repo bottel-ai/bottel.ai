@@ -49,7 +49,7 @@ export function Landing() {
   }, [query, page]);
 
   const baseList = filter === "joined" ? joinedChannels : channels;
-  const displayList = query.trim() ? filtered : baseList;
+  const displayList = query.trim() && filter === "all" ? filtered : baseList;
 
   return (
     <div>
@@ -134,13 +134,13 @@ export function Landing() {
             {loggedIn && (
               <div className="flex gap-1 text-xs font-mono font-medium">
                 <button
-                  onClick={() => { setFilter("all"); setPage(0); }}
+                  onClick={() => { setFilter("all"); setPage(0); setQuery(""); setFiltered(null); }}
                   className={`px-2.5 py-1 rounded-md transition-colors ${filter === "all" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
                 >
                   All
                 </button>
                 <button
-                  onClick={() => { setFilter("joined"); setPage(0); }}
+                  onClick={() => { setFilter("joined"); setPage(0); setQuery(""); setFiltered(null); }}
                   className={`px-2.5 py-1 rounded-md transition-colors ${filter === "joined" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
                 >
                   Joined

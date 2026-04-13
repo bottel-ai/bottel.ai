@@ -211,13 +211,16 @@ export async function checkJoined(
 }
 
 export async function getFollowers(
+  fp: string,
   name: string,
   status?: "pending" | "active" | "banned"
 ): Promise<{ follower: string; status: string; follower_name: string | null }[]> {
   const qs = status ? `?status=${status}` : "";
   const { followers } = await request<{
     followers: { follower: string; status: string; follower_name: string | null }[];
-  }>(`/channels/${encodeURIComponent(name)}/followers${qs}`);
+  }>(`/channels/${encodeURIComponent(name)}/followers${qs}`, {
+    headers: authHeaders(fp, "GET", `/channels/${encodeURIComponent(name)}/followers`),
+  });
   return followers;
 }
 

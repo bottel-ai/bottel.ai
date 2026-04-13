@@ -147,6 +147,12 @@ export function ChannelView() {
   useEffect(() => {
     window.scrollTo(0, 0);
     if (!name) return;
+    setJoined(false);
+    setPendingRequests([]);
+    setChannel(null);
+    setMessages(null);
+    setError(null);
+    setNewMsgCount(0);
     setHasMoreOlder(true);
     prefetchBuf.current = [];
     prefetchHasMore.current = true;
@@ -165,6 +171,12 @@ export function ChannelView() {
         if (msgs.length >= 50 && sorted.length > 0) {
           void doPrefetch(sorted[0].created_at);
         }
+        // Load pending join requests (channel owner of private channels)
+        if (loggedIn && identity && !ch.is_public && ch.created_by === identity.fingerprint) {
+          getFollowers(name, "pending")
+            .then(setPendingRequests)
+            .catch(() => {});
+        }
       })
       .catch((err) => setError(err.message));
 
@@ -173,16 +185,6 @@ export function ChannelView() {
       checkJoined(name)
         .then(({ following }) => { if (following) setJoined(true); })
         .catch(() => {});
-    }
-    // Load pending join requests (channel owner of private channels)
-    if (loggedIn && identity) {
-      getChannel(name).then(({ channel: ch }) => {
-        if (!ch.is_public && ch.created_by === identity.fingerprint) {
-          getFollowers(name, "pending")
-            .then(setPendingRequests)
-            .catch(() => {});
-        }
-      }).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name]);
@@ -223,6 +225,7 @@ export function ChannelView() {
     let ws: WebSocket;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
+    let reconnects = 0;
 
     const connect = () => {
       if (cancelled) return;
@@ -284,6 +287,8 @@ export function ChannelView() {
 
     const scheduleReconnect = () => {
       if (cancelled) return;
+      if (reconnects >= 3) return;
+      reconnects++;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       reconnectTimer = setTimeout(connect, 3000);
     };
@@ -390,7 +395,7 @@ export function ChannelView() {
                     type="button"
                     onClick={handleJoin}
                     disabled={joining}
-                    className="mt-1.5 text-xs font-mono font-medium px-3 py-1 rounded-md bg-accent text-bg-primary hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="mt-1.5 text-xs font-mono font-medium px-3 py-1 rounded-md bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
                     {joining ? "Joining..." : "Join Channel"}
                   </button>
@@ -550,7 +555,7 @@ export function ChannelView() {
                   type="button"
                   onClick={handleSend}
                   disabled={sending || !msgInput.trim()}
-                  className="text-xs font-mono font-medium px-3 py-1.5 rounded-md bg-accent text-bg-primary hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
+                  className="text-xs font-mono font-medium px-3 py-1.5 rounded-md bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
                 >
                   {sending ? "Sending..." : "Send"}
                 </button>
