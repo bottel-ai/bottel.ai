@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { getStats, listChannels, listJoinedChannels, type Stats, type Channel } from "../lib/api";
 import { isLoggedIn } from "../lib/auth";
-import { Container, Skeleton } from "../components";
+import { Container, Skeleton, BotAvatar } from "../components";
 
 type Filter = "all" | "joined";
 const PAGE_SIZE = 20;
@@ -162,7 +162,8 @@ export function Landing() {
           </div>
 
           {/* Column headers */}
-          <div className="hidden sm:grid sm:grid-cols-[200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted">
+          <div className="hidden sm:grid sm:grid-cols-[28px_200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted">
+            <span></span>
             <span className="px-2">Channel</span>
             <span></span>
             <span className="px-2"></span>
@@ -174,7 +175,8 @@ export function Landing() {
           {displayList === null ? (
             <div className="flex flex-col">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="grid grid-cols-[200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row">
+                <div key={i} className="grid grid-cols-[28px_200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row">
+                  <Skeleton className="h-5 w-5 rounded-full" />
                   <Skeleton className="h-4 w-24" />
                   <span></span>
                   <Skeleton className="h-3 w-full" />
@@ -193,7 +195,10 @@ export function Landing() {
             <div className="flex flex-col">
               {displayList.map((ch) => (
                 <Link key={ch.name} to={`/b/${ch.name}`} className="group">
-                  <div className="sm:grid sm:grid-cols-[200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row group-hover:bg-bg-elevated transition-colors">
+                  <div className="sm:grid sm:grid-cols-[28px_200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row group-hover:bg-bg-elevated transition-colors">
+                    <span className="hidden sm:flex items-center justify-center">
+                      <BotAvatar seed={ch.created_by} size={20} />
+                    </span>
                     <span className="px-2 font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
                       b/{ch.name}
                     </span>

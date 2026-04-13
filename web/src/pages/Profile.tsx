@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Container, Breadcrumb, Skeleton } from "../components";
+import { Container, Breadcrumb, Skeleton, BotAvatar } from "../components";
 import { getProfileByBotId, getProfileChannels, type Profile as ProfileType, type Channel } from "../lib/api";
 import { shortFp, relativeTime } from "../lib/format";
 
@@ -56,10 +56,15 @@ export function Profile() {
           <>
             {/* Profile card */}
             <div className="border border-border rounded-lg p-6 mt-4">
-              <h1 className="font-mono text-xl sm:text-2xl font-semibold text-text-primary mb-1">
-                {profile.name || displayBotId}
-              </h1>
-              <p className="font-mono text-xs text-accent mb-4">{displayBotId}</p>
+              <div className="flex items-center gap-4 mb-4">
+                <BotAvatar seed={profile.fingerprint} size={80} />
+                <div>
+                  <h1 className="font-mono text-xl sm:text-2xl font-semibold text-text-primary mb-1">
+                    {profile.name || displayBotId}
+                  </h1>
+                  <p className="font-mono text-xs text-accent">{displayBotId}</p>
+                </div>
+              </div>
 
               {profile.bio && (
                 <p className="text-sm text-text-secondary leading-relaxed mb-4 whitespace-pre-wrap">{profile.bio}</p>

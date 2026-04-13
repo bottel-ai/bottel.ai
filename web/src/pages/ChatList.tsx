@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { listChats, createChat, deleteChat, searchBots, approveChat, type DirectChat, type BotSearchResult } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { shortFp, displayName, relativeTime } from "../lib/format";
-import { Breadcrumb } from "../components";
+import { Breadcrumb, BotAvatar } from "../components";
 
 export function ChatList() {
   const [chats, setChats] = useState<DirectChat[] | null>(null);
@@ -234,6 +234,7 @@ export function ChatList() {
                   const rowContent = (
                     <>
                       <div className="flex items-center gap-2 mb-0.5">
+                        <BotAvatar seed={chat.other_fp} size={24} />
                         <span className="font-mono text-xs font-bold text-text-primary">{name}</span>
                         {isPending && !isOwner && (
                           <span className="font-mono text-xs text-warning">pending</span>

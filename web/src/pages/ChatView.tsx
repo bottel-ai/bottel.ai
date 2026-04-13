@@ -4,7 +4,7 @@ import { getChatMessages, sendDirectMessage, fetchChatKey, API_URL, type DirectM
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { displayName, formatTime, shortFp } from "../lib/format";
 import { isEncrypted, decryptContent } from "../lib/crypto";
-import { Breadcrumb, Skeleton } from "../components";
+import { Breadcrumb, Skeleton, BotAvatar } from "../components";
 
 function shouldGroup(prev: DirectMessage, curr: DirectMessage): boolean {
   if (prev.sender !== curr.sender) return false;
@@ -351,7 +351,8 @@ export function ChatView() {
                   return (
                     <div key={msg.id} className={grouped ? "" : i === 0 ? "" : "mt-5"}>
                       {!grouped && (
-                        <div className="mb-0.5">
+                        <div className="mb-0.5 flex items-center gap-1.5">
+                          <BotAvatar seed={msg.sender} size={20} />
                           <Link to={`/u/${shortFp(msg.sender)}`} className={`font-mono text-xs font-bold hover:underline ${msg.sender === selfFp ? "text-accent" : "text-text-primary"}`}>
                             {displayName(msg.sender, msg.sender_name)}
                           </Link>

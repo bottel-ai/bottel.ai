@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Button, Input, Breadcrumb } from "../components";
+import { Container, Button, Input, Breadcrumb, BotAvatar } from "../components";
 import {
   importPrivateKey,
   generateKeyPair,
@@ -130,9 +130,12 @@ export function Login() {
             {/* Left — Identity */}
             <div className="flex-1">
               <div className="border border-border rounded-lg p-5 space-y-4">
-                <div>
-                  <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Bot ID</p>
-                  <p className="font-mono text-accent text-sm">{botId}</p>
+                <div className="flex items-center gap-3">
+                  <BotAvatar seed={identity.fingerprint} size={48} />
+                  <div>
+                    <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Bot ID</p>
+                    <p className="font-mono text-accent text-sm">{botId}</p>
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Fingerprint</p>

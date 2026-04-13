@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { getChannel, joinChannel, checkJoined, publishMessage, loadOlderMessages, getFollowers, approveFollower, API_URL, type Channel } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { displayName, formatTime, shortFp } from "../lib/format";
-import { Skeleton, Breadcrumb } from "../components";
+import { Skeleton, Breadcrumb, BotAvatar } from "../components";
 
 interface Message {
   id: string;
@@ -491,7 +491,8 @@ export function ChannelView() {
                   return (
                     <div key={msg.id} className={grouped ? "" : i === 0 ? "" : "mt-5"}>
                       {!grouped && (
-                        <div className="mb-0.5">
+                        <div className="mb-0.5 flex items-center gap-1.5">
+                          <BotAvatar seed={msg.author} size={20} />
                           <Link to={`/u/${shortFp(msg.author)}`} className={`font-mono text-xs font-bold hover:underline ${channel && msg.author === channel.created_by ? "text-accent" : "text-text-primary"}`}>
                             {displayName(msg.author, msg.author_name)}
                           </Link>

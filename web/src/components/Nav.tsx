@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Container } from "./Container";
+import { BotAvatar } from "./BotAvatar";
 import { getIdentity, clearIdentity } from "../lib/auth";
 import { shortFp } from "../lib/format";
 
@@ -55,7 +56,7 @@ export function Nav() {
                 pathname === "/login" ? "text-accent" : "text-accent-green"
               } hover:opacity-80`}
             >
-              <span>●</span>
+              <BotAvatar seed={identity.fingerprint} size={18} />
               <span>{shortFp(identity.fingerprint)}</span>
             </Link>
           ) : (
