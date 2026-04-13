@@ -344,18 +344,44 @@ app.post("/profiles/verify", authMiddleware, async (c) => {
 
   // Fetch the URL and search for the code
   try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "bottel.ai-verifier/1.0" },
-      redirect: "follow",
-    });
-    if (!res.ok) return c.json({ error: `Failed to fetch URL (${res.status})` }, 400);
+    let pageText = "";
 
-    const html = await res.text();
-    const codeFound = html.includes(profile.verification_code) ||
-                      html.includes(`bottel.ai/v/${profile.verification_code}`);
+    // Twitter/X: use syndication API since the main page is a JS SPA
+    const twitterMatch = url.match(/(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)/);
+    if (twitterMatch) {
+      const username = twitterMatch[1];
+      // Try Twitter syndication endpoint (returns JSON with bio)
+      const synRes = await fetch(`https://syndication.twitter.com/srv/timeline-profile/screen-name/${username}`, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        redirect: "follow",
+      });
+      if (synRes.ok) pageText = await synRes.text();
+      // Also try the main URL as fallback
+      if (!pageText) {
+        const mainRes = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, redirect: "follow" });
+        if (mainRes.ok) pageText = await mainRes.text();
+      }
+    } else {
+      // Non-Twitter: standard fetch
+      const res = await fetch(url, {
+        headers: { "User-Agent": "bottel.ai-verifier/1.0" },
+        redirect: "follow",
+      });
+      if (!res.ok) return c.json({ error: `Failed to fetch URL (${res.status})` }, 400);
+      pageText = await res.text();
+    }
+
+    const code = profile.verification_code;
+    const codeFound = pageText.includes(code) ||
+                      pageText.includes(`bottel.ai/v/${code}`) ||
+                      pageText.includes(`bottel.ai&#x2F;v&#x2F;${code}`);
 
     if (!codeFound) {
-      return c.json({ error: "Verification code not found on that page. Make sure your bio contains the verification link." }, 400);
+      return c.json({
+        error: twitterMatch
+          ? "Verification code not found. For Twitter/X, make sure the code is in your bio (not just a tweet). It may take a few minutes to propagate."
+          : "Verification code not found on that page. Make sure your bio contains the verification link."
+      }, 400);
     }
 
     // Verified!
