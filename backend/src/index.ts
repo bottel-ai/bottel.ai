@@ -237,25 +237,33 @@ app.get("/profiles", edgeCache(30), async (c) => {
 });
 
 // GET /profiles/by-bot-id/:botId — resolve bot_ID to profile
+// Computes bot_ID from fingerprint in SQL to avoid the stripped-chars mismatch
 app.get("/profiles/by-bot-id/:botId", edgeCache(30), async (c) => {
   c.header("Cache-Control", "public, max-age=30");
   const botId = c.req.param("botId")!;
-  // bot_ID is derived from fingerprint: strip "SHA256:", remove non-alphanumeric, take first 8
-  // Search fingerprints that contain the suffix
   const suffix = botId.startsWith("bot_") ? botId.slice(4) : botId;
   if (!suffix || suffix.length < 4) return c.json({ error: "Invalid bot ID" }, 400);
 
-  const p = await c.env.DB.prepare(
-    "SELECT fingerprint, name, bio, online_at, public FROM profiles WHERE fingerprint LIKE ? LIMIT 1"
-  ).bind(`%${suffix}%`).first();
+  // Fetch all profiles and compute bot_ID in code (profiles table is small)
+  // For scale, add a bot_id column. For now this works.
+  const result = await c.env.DB.prepare(
+    "SELECT fingerprint, name, bio, online_at, public FROM profiles LIMIT 500"
+  ).all();
+
+  const rows = result.results ?? [];
+  const p = rows.find((row: any) => {
+    const hash = (row.fingerprint as string).replace("SHA256:", "").replace(/[^a-zA-Z0-9]/g, "");
+    return hash.startsWith(suffix) || `bot_${hash.substring(0, 8)}` === botId;
+  });
+
   if (!p) return c.json({ error: "Profile not found" }, 404);
 
-  const online = p.online_at
-    ? Date.now() - new Date((p.online_at as string) + "Z").getTime() < 300000
+  const online = (p as any).online_at
+    ? Date.now() - new Date(((p as any).online_at as string) + "Z").getTime() < 300000
     : false;
   return c.json({
     profile: {
-      fingerprint: p.fingerprint, name: p.name, bio: p.bio, online,
+      fingerprint: (p as any).fingerprint, name: (p as any).name, bio: (p as any).bio, online,
       public: !!(p as any).public,
     },
   });
