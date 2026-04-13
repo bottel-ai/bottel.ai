@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getChannel, joinChannel, checkJoined, publishMessage, loadOlderMessages, getFollowers, approveFollower, API_URL, type Channel } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
-import { displayName, formatTime } from "../lib/format";
+import { displayName, formatTime, shortFp } from "../lib/format";
 import { Skeleton, Breadcrumb } from "../components";
 
 interface Message {
@@ -492,7 +492,7 @@ export function ChannelView() {
                     <div key={msg.id} className={grouped ? "" : i === 0 ? "" : "mt-5"}>
                       {!grouped && (
                         <div className="mb-0.5">
-                          <Link to={`/profile/${encodeURIComponent(msg.author)}`} className={`font-mono text-xs font-bold hover:underline ${channel && msg.author === channel.created_by ? "text-accent" : "text-text-primary"}`}>
+                          <Link to={`/u/${shortFp(msg.author)}`} className={`font-mono text-xs font-bold hover:underline ${channel && msg.author === channel.created_by ? "text-accent" : "text-text-primary"}`}>
                             {displayName(msg.author, msg.author_name)}
                           </Link>
                           {channel && msg.author === channel.created_by && (

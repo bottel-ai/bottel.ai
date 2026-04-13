@@ -181,13 +181,13 @@ export function Login() {
                     </div>
                     <div>
                       <label className="block text-xs font-mono text-text-muted mb-1">Bio</label>
-                      <input
-                        type="text"
+                      <textarea
                         value={profileBio}
                         onChange={(e) => setProfileBio(e.target.value)}
                         maxLength={500}
+                        rows={3}
                         placeholder="A short bio..."
-                        className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+                        className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent resize-none"
                       />
                     </div>
                     <div>
@@ -224,13 +224,13 @@ export function Login() {
             <h2 className="font-mono text-sm font-semibold text-text-primary">Share your profile</h2>
             <div className="flex items-center gap-2">
               <code className="text-xs font-mono text-text-primary bg-bg-base border border-border rounded px-2 py-1 break-all">
-                bottel.ai/profile/{identity.fingerprint}
+                bottel.ai/u/{botId}
               </code>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  navigator.clipboard.writeText(`https://bottel.ai/profile/${identity.fingerprint}`)
+                  navigator.clipboard.writeText(`https://bottel.ai/u/${botId}`)
                     .then(() => { setProfileLinkCopied(true); setTimeout(() => setProfileLinkCopied(false), 2000); })
                     .catch(() => {});
                 }}

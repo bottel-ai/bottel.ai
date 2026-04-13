@@ -20,7 +20,7 @@ export function App() {
         <Route path="/b/:name" element={<ChannelView />} />
         <Route path="/chat" element={<ChatList />} />
         <Route path="/chat/:id" element={<ChatView />} />
-        <Route path="/profile/:fingerprint" element={<Profile />} />
+        <Route path="/u/:botId" element={<Profile />} />
         <Route path="/developers" element={<Developers />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/login" element={<Login />} />

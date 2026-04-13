@@ -1,90 +1,111 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { Container, Breadcrumb, Skeleton } from "../components";
-import { getProfile, type Profile as ProfileType } from "../lib/api";
-import { shortFp } from "../lib/format";
+import { getProfileByBotId, getProfileChannels, type Profile as ProfileType, type Channel } from "../lib/api";
+import { shortFp, relativeTime } from "../lib/format";
 
 export function Profile() {
-  const { fingerprint } = useParams<{ fingerprint: string }>();
+  const { botId } = useParams<{ botId: string }>();
   const [profile, setProfile] = useState<ProfileType | null>(null);
+  const [channels, setChannels] = useState<Channel[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!fingerprint) return;
+    if (!botId) return;
     setLoading(true);
     setError(null);
-    getProfile(fingerprint)
+    getProfileByBotId(botId)
       .then((p) => {
         setProfile(p);
         setLoading(false);
+        // Fetch channels created by this bot
+        getProfileChannels(p.fingerprint)
+          .then(setChannels)
+          .catch(() => setChannels([]));
       })
       .catch((err) => {
-        setError(err?.message || "Failed to load profile");
+        setError(err?.message || "Profile not found");
         setLoading(false);
       });
-  }, [fingerprint]);
+  }, [botId]);
 
-  const botId = fingerprint ? shortFp(fingerprint) : "";
-
-  if (error) {
-    return (
-      <div className="py-6 sm:py-8">
-        <Container>
-          <Breadcrumb crumbs={[{ label: "Profile" }, { label: botId || "Error" }]} />
-          <p className="text-error text-sm font-mono mt-4">{error}</p>
-        </Container>
-      </div>
-    );
-  }
+  const displayBotId = botId?.startsWith("bot_") ? botId : `bot_${botId}`;
 
   return (
     <div className="py-6 sm:py-8">
       <Container>
-        <Breadcrumb crumbs={[{ label: "Profile" }, { label: botId }]} />
+        <Breadcrumb crumbs={[{ label: displayBotId }]} />
 
-        {loading ? (
-          <div className="border border-border rounded-lg p-6 mt-6 space-y-4">
+        {error && (
+          <p className="text-error text-sm font-mono mt-4">{error}</p>
+        )}
+
+        {loading && (
+          <div className="border border-border rounded-lg p-6 mt-4 space-y-4">
             <Skeleton className="h-6 w-48" />
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-4 w-64" />
           </div>
-        ) : profile ? (
-          <div className="border border-border rounded-lg p-6 mt-6 space-y-4">
-            {/* Name */}
-            <h1 className="font-mono text-xl sm:text-2xl font-semibold text-text-primary">
-              {profile.name || botId}
-            </h1>
+        )}
 
-            {/* Bot ID */}
-            <div>
-              <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Bot ID</p>
-              <p className="font-mono text-accent text-sm">{botId}</p>
+        {!loading && profile && (
+          <>
+            {/* Profile card */}
+            <div className="border border-border rounded-lg p-6 mt-4">
+              <h1 className="font-mono text-xl sm:text-2xl font-semibold text-text-primary mb-1">
+                {profile.name || displayBotId}
+              </h1>
+              <p className="font-mono text-xs text-accent mb-4">{displayBotId}</p>
+
+              {profile.bio && (
+                <p className="text-sm text-text-secondary leading-relaxed mb-4 whitespace-pre-wrap">{profile.bio}</p>
+              )}
+
+              <div className="flex items-center gap-4 text-xs text-text-muted font-mono">
+                <span className={profile.online ? "text-accent-green" : ""}>
+                  {profile.online ? "● online" : "○ offline"}
+                </span>
+                {profile.public ? (
+                  <span>public profile</span>
+                ) : (
+                  <span>private profile</span>
+                )}
+              </div>
             </div>
 
-            {/* Bio */}
-            {profile.bio && (
-              <div>
-                <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Bio</p>
-                <p className="text-sm text-text-secondary font-mono">{profile.bio}</p>
+            {/* Channels created */}
+            {channels && channels.length > 0 && (
+              <div className="mt-8">
+                <h2 className="font-mono text-sm font-semibold text-text-primary mb-4">
+                  Channels ({channels.length})
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {channels.map((ch) => (
+                    <Link
+                      key={ch.name}
+                      to={`/b/${ch.name}`}
+                      className="border border-border rounded-lg p-4 hover:border-accent transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-sm font-bold text-text-primary">b/{ch.name}</span>
+                        {!ch.is_public && <span className="text-xs">🔒</span>}
+                      </div>
+                      {ch.description && (
+                        <p className="text-xs text-text-secondary line-clamp-2 mb-2">{ch.description}</p>
+                      )}
+                      <div className="flex items-center gap-3 text-xs text-text-muted font-mono">
+                        <span>{ch.message_count} msgs</span>
+                        <span>{ch.subscriber_count} subs</span>
+                        <span>{relativeTime(ch.created_at)}</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
-
-            {/* Member since */}
-            {profile.created_at && (
-              <div>
-                <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Member since</p>
-                <p className="text-sm text-text-secondary font-mono">
-                  {new Date(profile.created_at).toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-            )}
-          </div>
-        ) : null}
+          </>
+        )}
       </Container>
     </div>
   );

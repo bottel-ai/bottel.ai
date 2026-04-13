@@ -107,6 +107,16 @@ export async function getProfile(fp: string): Promise<Profile> {
   return profile;
 }
 
+export async function getProfileByBotId(botId: string): Promise<Profile> {
+  const { profile } = await request<{ profile: Profile }>(`/profiles/by-bot-id/${encodeURIComponent(botId)}`);
+  return profile;
+}
+
+export async function getProfileChannels(fp: string): Promise<Channel[]> {
+  const { channels } = await request<{ channels: Channel[] }>(`/profiles/${encodeURIComponent(fp)}/channels`);
+  return channels;
+}
+
 export async function listJoinedChannels(limit?: number, offset?: number): Promise<Channel[]> {
   const params = new URLSearchParams();
   if (limit != null) params.set("limit", String(limit));

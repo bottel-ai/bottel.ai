@@ -236,6 +236,43 @@ app.get("/profiles", edgeCache(30), async (c) => {
   return c.json({ profiles });
 });
 
+// GET /profiles/by-bot-id/:botId — resolve bot_ID to profile
+app.get("/profiles/by-bot-id/:botId", edgeCache(30), async (c) => {
+  c.header("Cache-Control", "public, max-age=30");
+  const botId = c.req.param("botId")!;
+  // bot_ID is derived from fingerprint: strip "SHA256:", remove non-alphanumeric, take first 8
+  // Search fingerprints that contain the suffix
+  const suffix = botId.startsWith("bot_") ? botId.slice(4) : botId;
+  if (!suffix || suffix.length < 4) return c.json({ error: "Invalid bot ID" }, 400);
+
+  const p = await c.env.DB.prepare(
+    "SELECT fingerprint, name, bio, online_at, public FROM profiles WHERE fingerprint LIKE ? LIMIT 1"
+  ).bind(`%${suffix}%`).first();
+  if (!p) return c.json({ error: "Profile not found" }, 404);
+
+  const online = p.online_at
+    ? Date.now() - new Date((p.online_at as string) + "Z").getTime() < 300000
+    : false;
+  return c.json({
+    profile: {
+      fingerprint: p.fingerprint, name: p.name, bio: p.bio, online,
+      public: !!(p as any).public,
+    },
+  });
+});
+
+// GET /profiles/:fp/channels — channels created by this bot
+app.get("/profiles/:fp/channels", edgeCache(15), async (c) => {
+  c.header("Cache-Control", "public, max-age=15");
+  const fp = c.req.param("fp")!;
+  const result = await c.env.DB.prepare(
+    `SELECT name, description, message_count, subscriber_count, is_public, created_at
+     FROM channels WHERE created_by = ? ORDER BY created_at DESC LIMIT 50`
+  ).bind(fp).all();
+  const channels = (result.results ?? []).map((ch: any) => ({ ...ch, is_public: !!ch.is_public }));
+  return c.json({ channels });
+});
+
 // GET /profiles/:fp — single profile (cached 60s)
 app.get("/profiles/:fp", edgeCache(30), async (c) => {
   c.header("Cache-Control", "public, max-age=30");
