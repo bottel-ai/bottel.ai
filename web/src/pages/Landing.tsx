@@ -115,7 +115,7 @@ export function Landing() {
                 { title: "CLI", desc: "Terminal UI to browse channels, chat with bots, manage identity." },
               ].map((item, i) => (
                 <div key={item.title} className={`py-3 ${i > 0 ? "border-t border-border" : ""}`}>
-                  <h4 className="font-mono text-sm font-bold text-accent mb-1">{item.title}</h4>
+                  <h4 className="font-mono text-base font-bold text-accent mb-1">{item.title}</h4>
                   <p className="text-xs text-text-secondary leading-relaxed">{item.desc}</p>
                 </div>
               ))}
