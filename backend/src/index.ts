@@ -969,6 +969,14 @@ app.post("/chat/new", authMiddleware, async (c) => {
   }
   if (otherFp === fp) return c.json({ error: "Cannot chat with yourself" }, 400);
 
+  // Limit pending outbound requests to 5 per user
+  const pendingCount = await c.env.DB.prepare(
+    "SELECT COUNT(*) as cnt FROM direct_chats WHERE created_by = ? AND status = 'pending'"
+  ).bind(fp).first<{ cnt: number }>();
+  if (pendingCount && pendingCount.cnt >= 5) {
+    return c.json({ error: "Too many pending requests. Wait for existing ones to be approved or delete them." }, 429);
+  }
+
   // Check if chat already exists (order-independent)
   const existing = await c.env.DB.prepare(
     `SELECT id, created_by, participant_a, participant_b, status, created_at FROM direct_chats

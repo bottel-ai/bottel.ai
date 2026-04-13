@@ -17,6 +17,7 @@ export function ChatList() {
   const { chats, selectedIndex, loading } = state.chatList;
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [tab, setTab] = useState<"chats" | "requests">("chats");
   const [newMode, setNewMode] = useState(false);
   const [newInput, setNewInput] = useState("");
   const [newError, setNewError] = useState<string | null>(null);
@@ -197,6 +198,11 @@ export function ChatList() {
       fetchChats();
       return;
     }
+    if (input === "t") {
+      setTab(t => t === "chats" ? "requests" : "chats");
+      update({ selectedIndex: 0 });
+      return;
+    }
     if (input === "a" && loggedIn) {
       const chat = chats[selectedIndex];
       if (chat && chat.status === "pending" && chat.created_by !== selfFp) {
@@ -297,12 +303,15 @@ export function ChatList() {
         width={innerWidth}
       >
         <Box marginBottom={1} justifyContent="space-between">
-          <Text bold color={colors.primary}>
-            Direct Messages
-          </Text>
-          {loggedIn && !loading && chats.length > 0 && (
-            <Text color={colors.subtle}>{chats.length} chat{chats.length === 1 ? "" : "s"}</Text>
-          )}
+          <Box gap={2}>
+            <Text bold color={tab === "chats" ? colors.primary : colors.muted}>
+              Chats
+            </Text>
+            <Text bold color={tab === "requests" ? colors.primary : colors.muted}>
+              Requests{(() => { const n = chats.filter(c => c.status === "pending" && c.created_by !== selfFp).length; return n > 0 ? ` (${n})` : ""; })()}
+            </Text>
+          </Box>
+          <Text color={colors.subtle}>t toggle</Text>
         </Box>
 
         {newMode && (
@@ -370,29 +379,34 @@ export function ChatList() {
           </Box>
         )}
 
-        {loggedIn && !loading && chats.length === 0 && !newMode && (
-          <Box flexDirection="column" alignItems="center" paddingY={1}>
-            <Text color={colors.muted}>No chats yet.</Text>
-            <Box marginTop={1}>
+        {loggedIn && !loading && (() => {
+          const displayed = tab === "requests"
+            ? chats.filter(c => c.status === "pending")
+            : chats.filter(c => c.status === "active");
+          return displayed.length === 0 && !newMode ? (
+            <Box flexDirection="column" alignItems="center" paddingY={1}>
               <Text color={colors.muted}>
-                Press{" "}
-                <Text bold color={colors.primary}>
-                  c
-                </Text>{" "}
-                to start a new chat.
+                {tab === "requests" ? "No pending requests." : "No active chats yet."}
               </Text>
+              {tab === "chats" && (
+                <Box marginTop={1}>
+                  <Text color={colors.muted}>
+                    Press{" "}
+                    <Text bold color={colors.primary}>c</Text>{" "}
+                    to start a new chat.
+                  </Text>
+                </Box>
+              )}
             </Box>
-          </Box>
-        )}
-
-        {loggedIn && !loading && chats.length > 0 && (
-          <Box flexDirection="column">
-            {chats.map((chat, i) => renderRow(chat, i))}
-          </Box>
-        )}
+          ) : (
+            <Box flexDirection="column">
+              {displayed.map((chat, i) => renderRow(chat, i))}
+            </Box>
+          );
+        })()}
       </Box>
 
-      <HelpFooter text="c create · r refresh · a approve · d delete (own) · ↑↓ nav · Enter open · Esc back" />
+      <HelpFooter text="t tab · c create · r refresh · a approve · d delete (own) · ↑↓ nav · Enter open · Esc back" />
     </Box>
   );
 }
