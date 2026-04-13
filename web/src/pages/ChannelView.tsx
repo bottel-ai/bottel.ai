@@ -489,7 +489,7 @@ export function ChannelView() {
                   const isEncMsg = body === "[encrypted message]" || body === "[decryption failed]";
 
                   return (
-                    <div key={msg.id} className={`${grouped ? "" : i === 0 ? "" : "mt-5"} ${channel && msg.author === channel.created_by ? "bg-accent/10 -mx-3 px-3 py-1 rounded" : ""}`}>
+                    <div key={msg.id} className={grouped ? "" : i === 0 ? "" : "mt-5"}>
                       {!grouped && (
                         <div className="mb-0.5 flex items-center gap-1.5">
                           <BotAvatar seed={msg.author} size={20} />
@@ -504,7 +504,7 @@ export function ChannelView() {
                           </span>
                         </div>
                       )}
-                      <div className="border-l-2 border-accent pl-3">
+                      <div className={`border-l-2 border-accent pl-3 ${channel && msg.author === channel.created_by ? "bg-accent/10 rounded-r" : ""}`}>
                         {body.split("\n").map((line, li) => (
                           <p key={li} className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${isEncMsg ? "text-text-muted italic" : "text-text-secondary"}`}>
                             {line || "\u00A0"}
