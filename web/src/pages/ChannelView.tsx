@@ -409,6 +409,7 @@ export function ChannelView() {
       setSendError(err.message || "Failed to send message");
     } finally {
       setSending(false);
+      requestAnimationFrame(() => inputRef.current?.focus());
     }
   };
 

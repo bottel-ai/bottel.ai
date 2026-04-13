@@ -255,6 +255,7 @@ export function ChatView() {
       setSendError(err?.message || "Failed to send message");
     } finally {
       setSending(false);
+      requestAnimationFrame(() => inputRef.current?.focus());
     }
   };
 
