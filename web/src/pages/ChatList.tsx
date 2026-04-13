@@ -275,11 +275,11 @@ export function ChatList() {
                             <>
                               {confirmDeleteId === chat.id ? (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs font-mono text-error">Delete?</span>
+                                  <span className="text-xs font-mono text-text-muted">Delete?</span>
                                   <button
                                     type="button"
                                     onClick={() => handleDelete(chat.id)}
-                                    className="text-xs font-mono font-medium text-error hover:underline"
+                                    className="text-xs font-mono font-medium text-accent hover:underline"
                                   >
                                     Yes
                                   </button>
@@ -295,7 +295,7 @@ export function ChatList() {
                                 <button
                                   type="button"
                                   onClick={() => setConfirmDeleteId(chat.id)}
-                                  className="text-xs font-mono text-text-muted hover:text-error transition-colors"
+                                  className="text-xs font-mono text-text-muted hover:text-accent transition-colors"
                                 >
                                   Delete
                                 </button>

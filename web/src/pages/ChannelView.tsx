@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getChannel, joinChannel, checkJoined, publishMessage, loadOlderMessages, getFollowers, approveFollower, API_URL, type Channel } from "../lib/api";
+import { getChannel, joinChannel, leaveChannel, checkJoined, publishMessage, loadOlderMessages, getFollowers, approveFollower, API_URL, type Channel } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { displayName, formatTime, shortFp } from "../lib/format";
 import { Skeleton, Breadcrumb, BotAvatar } from "../components";
@@ -46,9 +46,12 @@ export function ChannelView() {
   const [sendError, setSendError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Join state
+  // Join/leave state
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
+  const [joinStatus, setJoinStatus] = useState<string | null>(null); // "active" | "pending" | null
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   // Pending approval requests (owner of private channels)
   const [pendingRequests, setPendingRequests] = useState<{ follower: string; follower_name: string | null }[]>([]);
@@ -148,6 +151,8 @@ export function ChannelView() {
     window.scrollTo(0, 0);
     if (!name) return;
     setJoined(false);
+    setJoinStatus(null);
+    setConfirmLeave(false);
     setPendingRequests([]);
     setChannel(null);
     setMessages(null);
@@ -183,7 +188,10 @@ export function ChannelView() {
     // Check if already joined
     if (loggedIn) {
       checkJoined(name)
-        .then(({ following }) => { if (following) setJoined(true); })
+        .then(({ following, status }) => {
+          if (following) setJoined(true);
+          setJoinStatus(status);
+        })
         .catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -341,9 +349,9 @@ export function ChannelView() {
     setSendError(null);
     setJoining(true);
     try {
-      await joinChannel(name);
-      setJoined(true);
-      // Reload channel info
+      const { status } = await joinChannel(name);
+      setJoinStatus(status);
+      if (status === "active") setJoined(true);
       getChannel(name)
         .then(({ channel: ch }) => setChannel(ch))
         .catch(() => {});
@@ -351,6 +359,24 @@ export function ChannelView() {
       setSendError(err.message || "Failed to join channel");
     } finally {
       setJoining(false);
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!name) return;
+    setLeaving(true);
+    try {
+      await leaveChannel(name);
+      setJoined(false);
+      setJoinStatus(null);
+      setConfirmLeave(false);
+      getChannel(name)
+        .then(({ channel: ch }) => setChannel(ch))
+        .catch(() => {});
+    } catch (err: any) {
+      setSendError(err.message || "Failed to leave channel");
+    } finally {
+      setLeaving(false);
     }
   };
 
@@ -389,19 +415,62 @@ export function ChannelView() {
                     {channel.subscriber_count} subs · {channel.message_count} msgs
                   </span>
                 </div>
-                {!channel.is_public && (
-                  <p className="text-xs text-text-muted mt-1">Private · encrypted · approved members only</p>
-                )}
-                {loggedIn && !joined && (
-                  <button
-                    type="button"
-                    onClick={handleJoin}
-                    disabled={joining}
-                    className="mt-1.5 text-xs font-mono font-medium px-3 py-1 rounded-md bg-accent text-black hover:opacity-90 transition-opacity disabled:opacity-50"
-                  >
-                    {joining ? "Joining..." : "Join Channel"}
-                  </button>
-                )}
+                {loggedIn && (() => {
+                  const isOwner = identity && channel.created_by === identity.fingerprint;
+                  const isPending = joinStatus === "pending";
+                  const canLeave = (joined || isPending) && !isOwner;
+
+                  // Not joined and not pending → Join button
+                  if (!joined && !isPending) return (
+                    <button
+                      type="button"
+                      onClick={handleJoin}
+                      disabled={joining}
+                      className="mt-1.5 text-xs font-mono font-medium px-3 py-1 rounded-md bg-accent text-black hover:opacity-90 transition-opacity disabled:opacity-50"
+                    >
+                      {joining ? "Joining..." : "Join Channel"}
+                    </button>
+                  );
+
+                  // Pending or joined (non-owner) → single button that toggles confirm
+                  if (!canLeave) return null;
+
+                  if (!confirmLeave) return (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmLeave(true)}
+                      className={`mt-1.5 text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors cursor-pointer ${
+                        isPending
+                          ? "border-accent/40 text-accent hover:opacity-70"
+                          : "border-border text-text-muted hover:text-accent hover:border-accent"
+                      }`}
+                    >
+                      {isPending ? "Pending approval..." : "Leave Channel"}
+                    </button>
+                  );
+
+                  const confirmLabel = isPending ? "Cancel request?" : `Leave${!channel.is_public ? " (key will be lost)" : ""}?`;
+                  return (
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <span className="text-xs font-mono text-text-muted">{confirmLabel}</span>
+                      <button
+                        type="button"
+                        onClick={handleLeave}
+                        disabled={leaving}
+                        className="text-xs font-mono font-semibold px-2 py-0.5 rounded border border-accent text-accent hover:bg-accent hover:text-black transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {leaving ? "..." : "yes"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmLeave(false)}
+                        className="text-xs font-mono font-semibold px-2 py-0.5 rounded border border-border text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                      >
+                        no
+                      </button>
+                    </div>
+                  );
+                })()}
               </>
             ) : (
               <div className="flex items-center justify-between">

@@ -37,13 +37,15 @@ export function ChannelList() {
       return;
     }
     update({ loading: true });
-    listJoinedChannels(selfFp, PAGE_SIZE, p * PAGE_SIZE)
+    listJoinedChannels(selfFp, PAGE_SIZE + 1, p * PAGE_SIZE)
       .then((cs) => {
-        setHasMore(cs.length >= PAGE_SIZE);
+        const more = cs.length > PAGE_SIZE;
+        const page_cs = more ? cs.slice(0, PAGE_SIZE) : cs;
+        setHasMore(more);
         update((cur) => ({
-          channels: cs,
+          channels: page_cs,
           loading: false,
-          selectedIndex: resetIndex ? 0 : Math.min(cur.selectedIndex, Math.max(0, cs.length - 1)),
+          selectedIndex: resetIndex ? 0 : Math.min(cur.selectedIndex, Math.max(0, page_cs.length - 1)),
         }));
       })
       .catch(() => {
@@ -55,15 +57,17 @@ export function ChannelList() {
   useEffect(() => {
     if (channels.length > 0 && loggedIn && selfFp) {
       // Stale-while-revalidate
-      listJoinedChannels(selfFp, PAGE_SIZE, page * PAGE_SIZE)
+      listJoinedChannels(selfFp, PAGE_SIZE + 1, page * PAGE_SIZE)
         .then((cs) => {
-          setHasMore(cs.length >= PAGE_SIZE);
+          const more = cs.length > PAGE_SIZE;
+          const page_cs = more ? cs.slice(0, PAGE_SIZE) : cs;
+          setHasMore(more);
           update((cur) => ({
-            channels: cs,
-            selectedIndex: Math.min(cur.selectedIndex, Math.max(0, cs.length - 1)),
+            channels: page_cs,
+            selectedIndex: Math.min(cur.selectedIndex, Math.max(0, page_cs.length - 1)),
           }));
         })
-        .catch(() => {});
+        .catch((err) => { /* eslint-disable-next-line no-console */ console.error("[ChannelList] refresh error:", err); });
     } else {
       fetchChannels();
     }
@@ -128,14 +132,14 @@ export function ChannelList() {
       fetchChannels(false, page);
       return;
     }
-    if ((input === "]" || input === ">") && hasMore) {
+    if ((input === "]" || input === ">" || key.rightArrow) && hasMore) {
       const next = page + 1;
       setPage(next);
       update({ selectedIndex: 0 });
       fetchChannels(true, next);
       return;
     }
-    if ((input === "[" || input === "<") && page > 0) {
+    if ((input === "[" || input === "<" || key.leftArrow) && page > 0) {
       const prev = page - 1;
       setPage(prev);
       update({ selectedIndex: 0 });
@@ -288,7 +292,7 @@ export function ChannelList() {
         )}
       </Box>
 
-      <HelpFooter text="c create · r refresh · l leave · d delete (own) · [/] page · ↑↓ nav · Enter open · Esc back" />
+      <HelpFooter text="c create · r refresh · l leave · d delete (own) · ←→ page · ↑↓ nav · Enter open · Esc back" />
     </Box>
   );
 }

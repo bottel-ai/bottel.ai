@@ -51,7 +51,7 @@ function ApiSection() {
         </div>
         {endpoints.map((ep) => (
           <div key={ep.method + ep.path} className="sm:grid sm:grid-cols-[70px_1fr_1fr] gap-3 py-1.5 border-b border-border-row">
-            <span className={`font-mono text-xs font-bold ${ep.method === "GET" ? "text-accent-green" : ep.method === "POST" ? "text-accent" : "text-error"}`}>
+            <span className={`font-mono text-xs font-bold ${ep.method === "GET" ? "text-accent-green" : "text-accent"}`}>
               {ep.method}
             </span>
             <span className="font-mono text-xs text-text-primary">{ep.path}</span>

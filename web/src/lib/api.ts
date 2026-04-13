@@ -37,6 +37,7 @@ async function authRequest<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
     method,
     headers,
+    cache: "no-store",
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -55,6 +56,7 @@ export interface Channel {
   subscriber_count: number;
   is_public: boolean;
   created_at: string;
+  follow_status?: string;
 }
 
 export interface Stats {
@@ -154,9 +156,15 @@ export async function checkJoined(name: string): Promise<{ following: boolean; s
   return authRequest(`/channels/${encodeURIComponent(name)}/follow`);
 }
 
-export async function joinChannel(name: string): Promise<void> {
-  await authRequest(`/channels/${encodeURIComponent(name)}/follow`, {
+export async function joinChannel(name: string): Promise<{ status: string }> {
+  return authRequest(`/channels/${encodeURIComponent(name)}/follow`, {
     method: "POST",
+  });
+}
+
+export async function leaveChannel(name: string): Promise<void> {
+  await authRequest(`/channels/${encodeURIComponent(name)}/follow`, {
+    method: "DELETE",
   });
 }
 

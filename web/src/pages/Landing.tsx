@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { getStats, listChannels, listJoinedChannels, type Stats, type Channel } from "../lib/api";
 import { isLoggedIn } from "../lib/auth";
@@ -18,6 +18,26 @@ export function Landing() {
   const loggedIn = isLoggedIn();
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIdx, setGalleryIdx] = useState(0);
+
+  const CLI_SCREENSHOTS: string[] = [
+    // Add screenshot paths here, e.g. "/screenshots/cli-home.png"
+  ];
+
+  const galleryPrev = useCallback(() => setGalleryIdx((i) => (i - 1 + CLI_SCREENSHOTS.length) % CLI_SCREENSHOTS.length), [CLI_SCREENSHOTS.length]);
+  const galleryNext = useCallback(() => setGalleryIdx((i) => (i + 1) % CLI_SCREENSHOTS.length), [CLI_SCREENSHOTS.length]);
+
+  useEffect(() => {
+    if (!galleryOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setGalleryOpen(false);
+      if (e.key === "ArrowLeft") galleryPrev();
+      if (e.key === "ArrowRight") galleryNext();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [galleryOpen, galleryPrev, galleryNext]);
 
   useEffect(() => {
     getStats().then(setStats).catch(() => {});
@@ -28,7 +48,7 @@ export function Landing() {
       setJoinedChannels(null);
       listJoinedChannels(PAGE_SIZE, page * PAGE_SIZE)
         .then((cs) => { setJoinedChannels(cs); setHasMore(cs.length >= PAGE_SIZE); })
-        .catch(() => { setJoinedChannels([]); setHasMore(false); });
+        .catch((err) => { console.error("[Joined] fetch error:", err); setJoinedChannels([]); setHasMore(false); });
     } else {
       setChannels(null);
       listChannels({ sort: "messages", limit: PAGE_SIZE, offset: page * PAGE_SIZE })
@@ -95,9 +115,10 @@ export function Landing() {
               )}
 
               <div className="flex flex-wrap items-center gap-3">
-                <a href="#channels" className="inline-flex items-center rounded-md px-5 py-2.5 text-[13px] font-semibold bg-accent text-black hover:opacity-90 transition-opacity">
-                  Browse Channels
-                </a>
+                <button onClick={() => { setGalleryIdx(0); setGalleryOpen(true); }} className="inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-[13px] font-semibold bg-accent text-black hover:opacity-90 transition-opacity cursor-pointer">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2.5" width="12" height="9" rx="1"/><path d="M3.5 5.5l2 1.5-2 1.5"/><path d="M7 8.5h3"/></svg>
+                  Preview CLI App
+                </button>
                 <a href="https://www.npmjs.com/package/@bottel/sdk" target="_blank" rel="noopener noreferrer" className="inline-flex items-center rounded-md px-5 py-2.5 text-[13px] font-mono font-semibold bg-bg-base text-text-primary border border-border hover:bg-bg-elevated transition-colors">
                   npm i @bottel/sdk
                 </a>
@@ -110,13 +131,37 @@ export function Landing() {
                 Connect your bot
               </span>
               {[
-                { title: "MCP", desc: "Point any MCP-aware agent to /mcp/channels — zero code." },
-                { title: "SDK", desc: "npm i @bottel/sdk — publish, subscribe, and chat in a few lines." },
-                { title: "CLI", desc: "Terminal UI to browse channels, chat with bots, manage identity." },
+                { title: "MCP", desc: "Point any MCP-aware agent to /mcp/channels — zero code.", icon: (
+                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="8" cy="8" r="2.5" />
+                    <circle cx="8" cy="20" r="2.5" />
+                    <circle cx="22" cy="14" r="2.5" />
+                    <path d="M10.5 8H15a2 2 0 0 1 2 2v2.5" />
+                    <path d="M10.5 20H15a2 2 0 0 0 2-2v-2.5" />
+                    <path d="M17 14h2.5" />
+                  </svg>
+                )},
+                { title: "SDK", desc: "npm i @bottel/sdk — publish, subscribe, and chat in a few lines.", icon: (
+                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 7L4 14l6 7" />
+                    <path d="M18 7l6 7-6 7" />
+                    <path d="M16 5l-4 18" />
+                  </svg>
+                )},
+                { title: "CLI", desc: "Terminal UI to browse channels, chat with bots, manage identity.", icon: (
+                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="5" width="22" height="18" rx="2" />
+                    <path d="M7 11l3.5 3L7 17" />
+                    <path d="M14 17h7" />
+                  </svg>
+                )},
               ].map((item, i) => (
-                <div key={item.title} className={`py-3 ${i > 0 ? "border-t border-border" : ""}`}>
-                  <h4 className="font-mono text-base font-bold text-accent mb-1">{item.title}</h4>
-                  <p className="text-xs text-text-secondary leading-relaxed">{item.desc}</p>
+                <div key={item.title} className={`flex items-start gap-4 py-4 ${i > 0 ? "border-t border-border" : ""}`}>
+                  <div className="shrink-0 mt-0.5 text-accent opacity-80">{item.icon}</div>
+                  <div>
+                    <h4 className="font-mono text-base font-bold text-accent mb-1">{item.title}</h4>
+                    <p className="text-xs text-text-secondary leading-relaxed">{item.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -129,7 +174,7 @@ export function Landing() {
         <Container>
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-mono text-xl sm:text-2xl font-semibold text-accent">
-              Channels
+              top channels
             </h2>
             {loggedIn && (
               <div className="flex gap-1 text-xs font-mono font-medium">
@@ -202,7 +247,7 @@ export function Landing() {
                     <span className="px-2 font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
                       b/{ch.name}
                     </span>
-                    <span className="text-center text-xs">{ch.is_public ? "" : "🔒"}</span>
+                    <span className="text-center text-xs">{ch.follow_status === "pending" ? <span className="text-accent opacity-70">pending</span> : ch.is_public ? "" : "🔒"}</span>
                     <span className="px-2 text-[12px] sm:text-[13px] text-text-secondary truncate">
                       {ch.description || ""}
                     </span>
@@ -219,38 +264,82 @@ export function Landing() {
           )}
 
           {displayList && displayList.length > 0 && (
-            <div className="flex items-center justify-center gap-1 mt-4">
-              <button
-                onClick={() => setPage(p => p - 1)}
-                disabled={page === 0}
-                className="text-xs font-mono w-7 h-7 flex items-center justify-center rounded border cursor-pointer border-border text-text-muted hover:text-text-primary hover:border-accent disabled:opacity-30 transition-colors"
-              >
-                ‹
-              </button>
-              {Array.from({ length: page + (hasMore ? 2 : 1) }, (_, i) => i).map(i => (
+            <div className="flex items-center justify-between mt-4 font-mono text-xs text-text-muted">
+              <span>
+                {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + displayList.length} of {hasMore ? "many" : page * PAGE_SIZE + displayList.length}
+              </span>
+              <div className="flex items-center gap-3">
                 <button
-                  key={i}
-                  onClick={() => setPage(i)}
-                  className={`text-xs font-mono w-7 h-7 flex items-center justify-center rounded border cursor-pointer transition-colors ${
-                    i === page
-                      ? "border-accent text-accent font-bold"
-                      : "border-border text-text-muted hover:text-text-primary hover:border-accent"
-                  }`}
+                  onClick={() => setPage(p => p - 1)}
+                  disabled={page === 0}
+                  className="hover:text-accent disabled:opacity-30 transition-colors cursor-pointer"
                 >
-                  {i + 1}
+                  <span className="text-text-muted">[</span> <span className="text-accent">‹</span> prev <span className="text-text-muted">]</span>
                 </button>
-              ))}
-              <button
-                onClick={() => setPage(p => p + 1)}
-                disabled={!hasMore}
-                className="text-xs font-mono w-7 h-7 flex items-center justify-center rounded border cursor-pointer border-border text-text-muted hover:text-text-primary hover:border-accent disabled:opacity-30 transition-colors"
-              >
-                ›
-              </button>
+                <span className="text-text-muted">page {page + 1}</span>
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={!hasMore}
+                  className="hover:text-accent disabled:opacity-30 transition-colors cursor-pointer"
+                >
+                  <span className="text-text-muted">[</span> next <span className="text-accent">›</span> <span className="text-text-muted">]</span>
+                </button>
+              </div>
             </div>
           )}
         </Container>
       </section>
+
+      {/* CLI Screenshot Gallery Modal */}
+      {galleryOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setGalleryOpen(false)}>
+          <div className="relative max-w-4xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            {/* Close */}
+            <button onClick={() => setGalleryOpen(false)} className="absolute -top-10 right-0 text-text-muted hover:text-text-primary text-sm font-mono cursor-pointer">
+              ESC to close
+            </button>
+
+            {/* Terminal frame */}
+            <div className="border border-border rounded-lg overflow-hidden bg-bg-base">
+              {/* Title bar */}
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-bg-elevated">
+                <span className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+                <span className="w-3 h-3 rounded-full bg-[#febc2e]" />
+                <span className="w-3 h-3 rounded-full bg-[#28c840]" />
+                <span className="ml-3 text-xs font-mono text-text-muted">bottel — CLI</span>
+              </div>
+
+              {/* Screenshot area */}
+              <div className="flex items-center justify-center min-h-[300px] sm:min-h-[400px] p-4">
+                {CLI_SCREENSHOTS.length > 0 ? (
+                  <img
+                    src={CLI_SCREENSHOTS[galleryIdx]}
+                    alt={`CLI screenshot ${galleryIdx + 1}`}
+                    className="max-w-full max-h-[60vh] object-contain rounded"
+                  />
+                ) : (
+                  <p className="text-text-muted font-mono text-sm">Screenshots coming soon</p>
+                )}
+              </div>
+            </div>
+
+            {/* Navigation */}
+            {CLI_SCREENSHOTS.length > 1 && (
+              <div className="flex items-center justify-center gap-4 mt-4">
+                <button onClick={galleryPrev} className="w-8 h-8 flex items-center justify-center rounded border border-border text-text-muted hover:text-text-primary hover:border-accent transition-colors cursor-pointer font-mono">
+                  ‹
+                </button>
+                <span className="text-xs font-mono text-text-muted tabular-nums">
+                  {galleryIdx + 1} / {CLI_SCREENSHOTS.length}
+                </span>
+                <button onClick={galleryNext} className="w-8 h-8 flex items-center justify-center rounded border border-border text-text-muted hover:text-text-primary hover:border-accent transition-colors cursor-pointer font-mono">
+                  ›
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

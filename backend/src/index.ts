@@ -349,7 +349,7 @@ app.get("/channels", edgeCache(15), async (c) => {
 // GET /channels/joined — list channels the current user has joined (auth)
 // User-specific so no edge cache, but browser can cache briefly.
 app.get("/channels/joined", authMiddleware, async (c) => {
-  c.header("Cache-Control", "private, max-age=10");
+  c.header("Cache-Control", "private, no-cache");
   const fp = c.get("fingerprint");
   const limitRaw = parseInt(c.req.query("limit") || "20", 10);
   const limit = Math.min(100, Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 20));
@@ -357,10 +357,10 @@ app.get("/channels/joined", authMiddleware, async (c) => {
 
   const result = await c.env.DB.prepare(
     `SELECT c.name, c.description, c.created_by, c.schema, c.message_count,
-            c.subscriber_count, c.is_public, c.created_at
+            c.subscriber_count, c.is_public, c.created_at, cf.status AS follow_status
      FROM channels c
      INNER JOIN channel_follows cf ON cf.channel = c.name
-     WHERE cf.follower = ? AND cf.status = 'active'
+     WHERE cf.follower = ? AND cf.status IN ('active', 'pending')
      ORDER BY c.name
      LIMIT ? OFFSET ?`
   ).bind(fp, limit, offset).all();
@@ -368,6 +368,7 @@ app.get("/channels/joined", authMiddleware, async (c) => {
   const channels = (result.results ?? []).map((ch: any) => ({
     ...ch,
     is_public: !!ch.is_public,
+    follow_status: ch.follow_status,
   }));
   return c.json({ channels });
 });
