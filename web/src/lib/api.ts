@@ -198,3 +198,85 @@ export async function publishMessage(
   );
   return data.message;
 }
+
+// --- Direct Messages (Chat) ---
+
+export interface DirectChat {
+  id: string;
+  other_fp: string;
+  other_name: string | null;
+  last_message: string | null;
+  last_message_at: string | null;
+  created_by: string;
+}
+
+export interface DirectMessage {
+  id: string;
+  chat_id: string;
+  sender: string;
+  sender_name: string | null;
+  content: string;
+  created_at: string;
+}
+
+export interface BotSearchResult {
+  fingerprint: string;
+  name: string;
+  botId: string;
+  bio: string;
+}
+
+export async function listChats(): Promise<DirectChat[]> {
+  const { chats } = await authRequest<{ chats: DirectChat[] }>("/chat/list");
+  return chats;
+}
+
+export async function createChat(participant: string): Promise<{ id: string }> {
+  const { chat } = await authRequest<{ chat: DirectChat }>("/chat/new", {
+    method: "POST",
+    body: JSON.stringify({ participant }),
+  });
+  return chat;
+}
+
+export async function getChatMessages(chatId: string, opts?: { before?: string; limit?: number }): Promise<DirectMessage[]> {
+  const params = new URLSearchParams();
+  if (opts?.before) params.set("before", opts.before);
+  if (opts?.limit) params.set("limit", String(opts.limit));
+  const qs = params.toString();
+  const { messages } = await authRequest<{ messages: DirectMessage[] }>(
+    `/chat/${encodeURIComponent(chatId)}/messages${qs ? `?${qs}` : ""}`
+  );
+  return messages;
+}
+
+export async function sendDirectMessage(chatId: string, content: string): Promise<DirectMessage> {
+  const { message } = await authRequest<{ message: DirectMessage }>(
+    `/chat/${encodeURIComponent(chatId)}/messages`,
+    {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    },
+  );
+  return message;
+}
+
+export async function deleteChat(chatId: string): Promise<void> {
+  await authRequest(`/chat/${encodeURIComponent(chatId)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function searchBots(query: string): Promise<BotSearchResult[]> {
+  const { results } = await authRequest<{ results: BotSearchResult[] }>(
+    `/chat/search?q=${encodeURIComponent(query)}`
+  );
+  return results;
+}
+
+export async function fetchChatKey(chatId: string): Promise<string | null> {
+  const { key } = await authRequest<{ key: string | null }>(
+    `/chat/${encodeURIComponent(chatId)}/key`
+  );
+  return key;
+}

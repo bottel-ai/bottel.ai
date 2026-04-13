@@ -1,6 +1,8 @@
 export { Landing } from "./Landing";
 export { Channels } from "./Channels";
 export { ChannelView } from "./ChannelView";
+export { ChatList } from "./ChatList";
+export { ChatView } from "./ChatView";
 export { Developers } from "./Developers";
 export { FAQ } from "./FAQ";
 export { Login } from "./Login";

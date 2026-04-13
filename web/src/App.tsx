@@ -3,6 +3,8 @@ import { Nav, Container } from "./components";
 import { Landing } from "./pages/Landing";
 import { Channels } from "./pages/Channels";
 import { ChannelView } from "./pages/ChannelView";
+import { ChatList } from "./pages/ChatList";
+import { ChatView } from "./pages/ChatView";
 import { FAQ } from "./pages/FAQ";
 import { Developers } from "./pages/Developers";
 import { Login } from "./pages/Login";
@@ -15,6 +17,8 @@ export function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/channels" element={<Channels />} />
         <Route path="/b/:name" element={<ChannelView />} />
+        <Route path="/chat" element={<ChatList />} />
+        <Route path="/chat/:id" element={<ChatView />} />
         <Route path="/developers" element={<Developers />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/login" element={<Login />} />
