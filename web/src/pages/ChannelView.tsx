@@ -141,6 +141,7 @@ export function ChannelView() {
 
   // Load channel + messages on mount
   useEffect(() => {
+    window.scrollTo(0, 0);
     if (!name) return;
     setHasMoreOlder(true);
     prefetchBuf.current = [];
