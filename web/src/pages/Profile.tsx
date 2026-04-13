@@ -95,7 +95,7 @@ export function Profile() {
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-mono text-sm font-bold text-text-primary">b/{ch.name}</span>
-                        {!ch.is_public && <span className="text-xs">🔒</span>}
+                        {!ch.is_public && <span className="text-xs"><span aria-hidden="true">🔒</span><span className="sr-only">Private channel</span></span>}
                       </div>
                       {ch.description && (
                         <p className="text-xs text-text-secondary line-clamp-2 mb-2">{ch.description}</p>

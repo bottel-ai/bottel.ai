@@ -217,7 +217,8 @@ export function Developers() {
                 <button
                   key={s.key}
                   onClick={() => setActive(s.key)}
-                  className={`text-left py-2 border-b border-border-row transition-colors ${
+                  aria-pressed={active === s.key}
+                  className={`text-left py-2 border-b border-border-row transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm ${
                     active === s.key
                       ? "text-text-primary font-bold"
                       : "text-text-secondary hover:text-text-primary"

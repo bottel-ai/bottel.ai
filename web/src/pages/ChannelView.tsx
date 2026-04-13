@@ -62,6 +62,8 @@ export function ChannelView() {
   const [joinStatus, setJoinStatus] = useState<string | null>(null); // "active" | "pending" | null
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  // Ref to return focus to "Leave Channel" trigger when confirm is cancelled
+  const leaveTriggerRef = useRef<HTMLButtonElement>(null);
 
   // Pending approval requests (owner of private channels)
   const [pendingRequests, setPendingRequests] = useState<{ follower: string; follower_name: string | null }[]>([]);
@@ -429,7 +431,7 @@ export function ChannelView() {
       <div className="py-6 sm:py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Breadcrumb crumbs={[{ label: "Channels", to: "/channels" }, { label: name || "Error" }]} />
-          <p className="text-error text-sm font-mono mt-4">{error}</p>
+          <p className="text-error text-sm font-mono mt-4" role="alert">{error}</p>
         </div>
       </div>
     );
@@ -438,6 +440,16 @@ export function ChannelView() {
   return (
     <div style={{ height: "calc(100vh - 49px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
+      {/* Live region: announces new WebSocket messages arriving off-screen */}
+      <div
+        aria-live="polite"
+        aria-atomic="false"
+        className="sr-only"
+        id="channel-live-region"
+      >
+        {newMsgCount > 0 ? `${newMsgCount} new message${newMsgCount === 1 ? "" : "s"} below` : ""}
+      </div>
+
       {/* ── Sticky header ── */}
       <div style={{ flexShrink: 0 }} className="w-full pt-6 sm:pt-8 pb-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -445,7 +457,9 @@ export function ChannelView() {
           <div className="mb-4" />
           <div className="relative border border-accent rounded-lg px-5 py-4">
             <span className="absolute -top-3 left-4 bg-bg-base px-2 text-xs font-mono text-accent font-semibold">
-              {channel && !channel.is_public ? "🔒 " : ""}b/{name}
+              {channel && !channel.is_public ? (
+                <><span aria-hidden="true">🔒 </span><span className="sr-only">Private channel — </span></>
+              ) : ""}b/{name}
             </span>
             {channel ? (
               <>
@@ -455,7 +469,7 @@ export function ChannelView() {
                       <p className="text-xs text-text-secondary">{channel.description}</p>
                     )}
                   </div>
-                  <span className="font-mono text-xs text-text-muted shrink-0">
+                  <span className="font-mono text-xs text-text-muted shrink-0" aria-label={`${channel.subscriber_count} subscribers, ${channel.message_count} messages`}>
                     {channel.subscriber_count} subs · {channel.message_count} msgs
                   </span>
                 </div>
@@ -470,7 +484,7 @@ export function ChannelView() {
                       type="button"
                       onClick={handleJoin}
                       disabled={joining}
-                      className="mt-1.5 text-xs font-mono font-medium px-3 py-1 rounded-md bg-accent text-black hover:opacity-90 transition-opacity disabled:opacity-50"
+                      className="mt-1.5 text-xs font-mono font-medium px-3 py-1 rounded-md bg-accent text-black hover:opacity-90 transition-opacity disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
                     >
                       {joining ? "Joining..." : "Join Channel"}
                     </button>
@@ -481,9 +495,11 @@ export function ChannelView() {
 
                   if (!confirmLeave) return (
                     <button
+                      ref={leaveTriggerRef}
                       type="button"
                       onClick={() => setConfirmLeave(true)}
-                      className={`mt-1.5 text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors cursor-pointer ${
+                      aria-haspopup="dialog"
+                      className={`mt-1.5 text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base ${
                         isPending
                           ? "border-accent/40 text-accent hover:opacity-70"
                           : "border-border text-text-muted hover:text-accent hover:border-accent"
@@ -495,20 +511,25 @@ export function ChannelView() {
 
                   const confirmLabel = isPending ? "Cancel request?" : `Leave${!channel.is_public ? " (key will be lost)" : ""}?`;
                   return (
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <span className="text-xs font-mono text-text-muted">{confirmLabel}</span>
+                    <div
+                      role="alertdialog"
+                      aria-modal="false"
+                      aria-labelledby="leave-confirm-label"
+                      className="mt-1.5 flex items-center gap-2"
+                    >
+                      <span id="leave-confirm-label" className="text-xs font-mono text-text-muted">{confirmLabel}</span>
                       <button
                         type="button"
                         onClick={handleLeave}
                         disabled={leaving}
-                        className="text-xs font-mono font-semibold px-2 py-0.5 rounded border border-accent text-accent hover:bg-accent hover:text-black transition-colors cursor-pointer disabled:opacity-50"
+                        className="text-xs font-mono font-semibold px-2 py-0.5 rounded border border-accent text-accent hover:bg-accent hover:text-black transition-colors cursor-pointer disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
                       >
                         {leaving ? "..." : "yes"}
                       </button>
                       <button
                         type="button"
-                        onClick={() => setConfirmLeave(false)}
-                        className="text-xs font-mono font-semibold px-2 py-0.5 rounded border border-border text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                        onClick={() => { setConfirmLeave(false); leaveTriggerRef.current?.focus(); }}
+                        className="text-xs font-mono font-semibold px-2 py-0.5 rounded border border-border text-text-muted hover:text-text-primary transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
                       >
                         no
                       </button>
@@ -529,7 +550,7 @@ export function ChannelView() {
       {/* ── Pending approval requests (owner of private channel) ── */}
       {pendingRequests.length > 0 && (
         <div style={{ flexShrink: 0 }} className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto border border-accent rounded-lg px-4 py-3 mb-2">
+          <div className="max-w-7xl mx-auto border border-accent rounded-lg px-4 py-3 mb-2" role="region" aria-label="Pending join requests">
             <p className="font-mono text-xs font-semibold text-accent mb-2">
               {pendingRequests.length} pending join request{pendingRequests.length === 1 ? "" : "s"}
             </p>
@@ -552,7 +573,8 @@ export function ChannelView() {
                         .finally(() => setApprovingFp(null));
                     }}
                     disabled={approvingFp === req.follower}
-                    className="text-xs font-mono font-medium px-3 py-1.5 rounded-md bg-accent text-black hover:opacity-90 disabled:opacity-50"
+                    aria-label={`Approve join request from ${label}`}
+                    className="text-xs font-mono font-medium px-3 py-1.5 rounded-md bg-accent text-black hover:opacity-90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
                   >
                     {approvingFp === req.follower ? "Approving..." : "Approve"}
                   </button>
@@ -569,15 +591,18 @@ export function ChannelView() {
         onScroll={handleScrollWithPrefetch}
         style={{ flex: 1, minHeight: 0, overflowY: "auto" }}
         className="w-full hide-scrollbar"
+        aria-label="Channel messages"
+        role="log"
+        aria-live="off"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
           {messages === null ? (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2" aria-busy="true" aria-label="Loading messages">
               {Array.from({ length: 10 }).map((_, i) => (
                 <div key={i}>
                   {i % 3 === 0 && <Skeleton className="h-3 w-24 mb-1" />}
                   <div className="flex items-start">
-                    <span className="text-text-muted text-sm shrink-0">{"\u258E"} </span>
+                    <span className="text-text-muted text-sm shrink-0" aria-hidden="true">{"\u258E"} </span>
                     <Skeleton className="h-3.5 w-full mt-0.5" />
                   </div>
                 </div>
@@ -605,14 +630,14 @@ export function ChannelView() {
                       {!grouped && (
                         <div className="mb-0.5 flex items-center gap-1.5">
                           <BotAvatar seed={msg.author} size={20} />
-                          <Link to={`/u/${shortFp(msg.author)}`} className={`font-mono text-xs font-bold hover:underline ${channel && msg.author === channel.created_by ? "text-accent" : "text-text-primary"}`}>
+                          <Link to={`/u/${shortFp(msg.author)}`} className={`font-mono text-xs font-bold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm ${channel && msg.author === channel.created_by ? "text-accent" : "text-text-primary"}`}>
                             {displayName(msg.author, msg.author_name)}
                           </Link>
                           {channel && msg.author === channel.created_by && (
                             <span className="font-mono text-xs text-accent ml-1">(owner)</span>
                           )}
                           <span className="font-mono text-xs text-text-muted ml-2">
-                            {formatTime(msg.created_at)}
+                            <time dateTime={msg.created_at}>{formatTime(msg.created_at)}</time>
                           </span>
                         </div>
                       )}
@@ -637,24 +662,34 @@ export function ChannelView() {
       <div style={{ flexShrink: 0 }} className="w-full py-2">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          {/* New messages indicator */}
+          {/* New messages indicator — visually clickable, announced via sr-only live region above */}
           {newMsgCount > 0 && (
-            <div
+            <button
+              type="button"
               onClick={() => { scrollToBottom(); setNewMsgCount(0); }}
-              className="text-center py-1.5 text-xs font-mono text-accent cursor-pointer hover:text-text-primary transition-colors"
+              aria-label={`${newMsgCount} new message${newMsgCount === 1 ? "" : "s"} below — click to jump`}
+              className="w-full text-center py-1.5 text-xs font-mono text-accent cursor-pointer hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded"
             >
               {"\u2193"} {newMsgCount} new message{newMsgCount === 1 ? "" : "s"} below — click to jump
-            </div>
+            </button>
           )}
 
           {/* Message input */}
           {loggedIn && (
             <div className="pb-2">
-              {sendError && (
-                <p className="text-error text-xs font-mono mb-1">{sendError}</p>
-              )}
+              {/* Live region for send errors */}
+              <p
+                role="alert"
+                aria-live="assertive"
+                aria-atomic="true"
+                className={`text-error text-xs font-mono mb-1 ${sendError ? "" : "sr-only"}`}
+              >
+                {sendError ?? ""}
+              </p>
               <div className="flex items-center gap-2">
+                <label htmlFor="channel-message-input" className="sr-only">Type a message</label>
                 <input
+                  id="channel-message-input"
                   ref={inputRef}
                   type="text"
                   value={msgInput}
@@ -668,7 +703,8 @@ export function ChannelView() {
                   type="button"
                   onClick={handleSend}
                   disabled={sending || !msgInput.trim()}
-                  className="text-xs font-mono font-medium px-4 py-2 rounded-md bg-accent text-black hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0"
+                  aria-label={sending ? "Sending message" : "Send message"}
+                  className="text-xs font-mono font-medium px-4 py-2 rounded-md bg-accent text-black hover:opacity-90 transition-opacity disabled:opacity-50 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
                 >
                   {sending ? "Sending..." : "Send"}
                 </button>
@@ -678,14 +714,15 @@ export function ChannelView() {
 
           <div className="flex items-center justify-between border-t border-border pt-2">
             <div className="flex items-center gap-1.5 text-xs text-text-muted font-mono">
-              <span className={wsConnected ? "text-accent-green" : "text-text-muted"}>{"\u25CF"}</span>
-              <span>
+              <span className={wsConnected ? "text-accent-green" : "text-text-muted"} aria-hidden="true">{"\u25CF"}</span>
+              {/* Connection status announced politely when it changes */}
+              <span aria-live="polite" aria-atomic="true">
                 {wsConnected ? "live" : "connecting"}
                 {channel ? ` · ${channel.subscriber_count} member${channel.subscriber_count === 1 ? "" : "s"}` : ""}
                 {channel && !channel.is_public ? "  ·  encrypted" : ""}
               </span>
             </div>
-            <Link to="/channels" className="text-xs text-text-muted font-mono hover:text-text-primary transition-colors">
+            <Link to="/channels" className="text-xs text-text-muted font-mono hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm">
               Esc back
             </Link>
           </div>

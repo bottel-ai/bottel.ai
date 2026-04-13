@@ -19,12 +19,16 @@ export function ChatList() {
 
   // Delete state
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // Map of chatId → ref to the Delete trigger button (to return focus on cancel)
+  const deleteTriggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   // Approve state
   const [approving, setApproving] = useState<string | null>(null);
 
   // Filter
   const [filter, setFilter] = useState<"chats" | "requests">("chats");
+  // Live region for filter tab announcements
+  const [filterAnnounce, setFilterAnnounce] = useState("");
 
   const navigate = useNavigate();
   const loggedIn = isLoggedIn();
@@ -115,22 +119,29 @@ export function ChatList() {
   return (
     <div className="py-6 sm:py-8">
       <Container>
+        {/* Screen-reader-only live region for filter tab announcements */}
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+          {filterAnnounce}
+        </div>
+
         <Breadcrumb crumbs={[{ label: "Chat" }]} />
 
         <div className="flex items-center justify-between mb-4">
           <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent">Chat</h1>
           <div className="flex items-center gap-3">
             {loggedIn && (
-              <div className="flex gap-1 text-xs font-mono font-medium">
+              <div role="group" aria-label="Filter direct messages" className="flex gap-1 text-xs font-mono font-medium">
                 <button
-                  onClick={() => setFilter("chats")}
-                  className={`px-2.5 py-1 rounded-md transition-colors ${filter === "chats" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+                  onClick={() => { setFilter("chats"); setFilterAnnounce("Showing active chats"); }}
+                  aria-pressed={filter === "chats"}
+                  className={`px-2.5 py-1 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base ${filter === "chats" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
                 >
                   Chats
                 </button>
                 <button
-                  onClick={() => setFilter("requests")}
-                  className={`px-2.5 py-1 rounded-md transition-colors ${filter === "requests" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+                  onClick={() => { setFilter("requests"); setFilterAnnounce("Showing chat requests"); }}
+                  aria-pressed={filter === "requests"}
+                  className={`px-2.5 py-1 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base ${filter === "requests" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
                 >
                   Requests{pendingCount > 0 ? ` (${pendingCount})` : ""}
                 </button>
@@ -140,7 +151,7 @@ export function ChatList() {
               <button
                 type="button"
                 onClick={() => { setShowNew(true); setCreateError(null); }}
-                className="text-xs font-mono font-medium px-4 py-2 rounded-md bg-accent text-black hover:opacity-90 transition-opacity font-semibold"
+                className="text-xs font-mono font-medium px-4 py-2 rounded-md bg-accent text-black hover:opacity-90 transition-opacity font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
               >
                 + New Chat
               </button>
@@ -153,24 +164,28 @@ export function ChatList() {
           <div className="border border-border rounded-lg p-4 mb-4">
             <div className="flex flex-col gap-3">
               <div>
-                <label className="block text-xs font-mono text-text-muted mb-1">Find a bot</label>
+                <label htmlFor="chat-bot-search" className="block text-xs font-mono text-text-muted mb-1">Find a bot</label>
                 <input
-                  type="text"
+                  id="chat-bot-search"
+                  type="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by name or fingerprint..."
                   autoFocus
+                  aria-describedby={createError ? "chat-create-error" : undefined}
                   className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
                 />
               </div>
-              {creating && (
-                <p className="text-xs font-mono text-text-muted">Creating chat...</p>
-              )}
+              {/* Live status for async create */}
+              <p className="text-xs font-mono text-text-muted" role="status" aria-live="polite" aria-atomic="true">
+                {creating ? "Creating chat..." : ""}
+              </p>
+              {/* Alert for create errors */}
               {createError && (
-                <p className="text-xs font-mono text-error">{createError}</p>
+                <p id="chat-create-error" className="text-xs font-mono text-error" role="alert">{createError}</p>
               )}
               {searchResults.length > 0 && (
-                <div className="flex flex-col">
+                <div className="flex flex-col" role="listbox" aria-label="Bot search results">
                   {searchResults.map((r) => {
                     const label = r.name.startsWith("bot_")
                       ? r.botId
@@ -179,9 +194,11 @@ export function ChatList() {
                       <button
                         key={r.fingerprint}
                         type="button"
+                        role="option"
+                        aria-selected={false}
                         onClick={() => handleCreateChat(r.fingerprint)}
                         disabled={creating}
-                        className="text-left px-2 py-1.5 text-xs font-mono text-text-primary hover:bg-bg-elevated rounded transition-colors disabled:opacity-50"
+                        className="text-left px-2 py-1.5 text-xs font-mono text-text-primary hover:bg-bg-elevated rounded transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base"
                       >
                         {label}
                         {r.bio && <span className="text-text-muted ml-2">— {r.bio}</span>}
@@ -197,7 +214,7 @@ export function ChatList() {
                 <button
                   type="button"
                   onClick={() => { setShowNew(false); setSearchQuery(""); setSearchResults([]); setCreateError(null); }}
-                  className="text-xs font-mono text-text-muted hover:text-text-primary transition-colors"
+                  className="text-xs font-mono text-text-muted hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded"
                 >
                   Cancel
                 </button>
@@ -209,7 +226,7 @@ export function ChatList() {
         {!loggedIn && (
           <div className="py-10 text-center">
             <p className="text-text-muted text-sm font-mono">
-              <Link to="/login" className="text-accent hover:underline">Log in</Link>
+              <Link to="/login" className="text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm">Log in</Link>
               {" "}to use direct messages.
             </p>
           </div>
@@ -218,7 +235,7 @@ export function ChatList() {
         {loggedIn && (
           <>
             {/* Column headers */}
-            <div className="hidden sm:grid sm:grid-cols-[28px_180px_1fr_100px_80px] gap-3 items-center py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted">
+            <div className="hidden sm:grid sm:grid-cols-[28px_180px_1fr_100px_80px] gap-3 items-center py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted" aria-hidden="true">
               <span></span>
               <span className="px-2">Bot</span>
               <span className="px-2">Last message</span>
@@ -228,7 +245,7 @@ export function ChatList() {
 
             {/* Loading */}
             {loading && chats === null && (
-              <div className="flex flex-col">
+              <div className="flex flex-col" aria-busy="true" aria-label="Loading chats">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="grid grid-cols-[28px_180px_1fr_100px_80px] gap-3 items-center py-1.5 border-b border-border-row">
                     <Skeleton className="h-5 w-5 rounded-full" />
@@ -258,10 +275,11 @@ export function ChatList() {
                   const isOwner = chat.created_by === selfFp;
                   const isPending = chat.status === "pending";
                   const canApprove = isPending && !isOwner;
+                  const isConfirmingDelete = confirmDeleteId === chat.id;
 
                   const row = (
                     <div className="sm:grid sm:grid-cols-[28px_180px_1fr_100px_80px] gap-3 items-center py-1.5 border-b border-border-row hover:bg-bg-elevated transition-colors">
-                      <span className="hidden sm:flex items-center justify-center">
+                      <span className="hidden sm:flex items-center justify-center" aria-hidden="true">
                         <BotAvatar seed={chat.other_fp} size={20} />
                       </span>
                       <span className="px-2 font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
@@ -281,26 +299,46 @@ export function ChatList() {
                             type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleApprove(chat.id); }}
                             disabled={approving === chat.id}
-                            className="text-xs font-mono font-semibold text-accent hover:underline disabled:opacity-50"
+                            aria-label={`Approve chat request from ${name}`}
+                            className="text-xs font-mono font-semibold text-accent hover:underline disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm"
                           >
                             {approving === chat.id ? "..." : "Approve"}
                           </button>
                         )}
                         {isOwner && (
                           <>
-                            {confirmDeleteId === chat.id ? (
-                              <span className="flex items-center gap-1">
+                            {isConfirmingDelete ? (
+                              /* alertdialog: inline confirmation, assertive */
+                              <span
+                                role="alertdialog"
+                                aria-modal="false"
+                                aria-labelledby={`delete-confirm-label-${chat.id}`}
+                                className="flex items-center gap-1"
+                              >
+                                <span id={`delete-confirm-label-${chat.id}`} className="sr-only">
+                                  Delete chat with {name}?
+                                </span>
                                 <button
                                   type="button"
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(chat.id); }}
-                                  className="text-xs font-mono font-medium text-accent hover:underline"
+                                  aria-label={`Yes, delete chat with ${name}`}
+                                  className="text-xs font-mono font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm"
                                 >
                                   yes
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDeleteId(null); }}
-                                  className="text-xs font-mono text-text-muted hover:text-text-primary"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setConfirmDeleteId(null);
+                                    // Return focus to Delete trigger
+                                    requestAnimationFrame(() => {
+                                      deleteTriggerRefs.current[chat.id]?.focus();
+                                    });
+                                  }}
+                                  aria-label="Cancel deletion"
+                                  className="text-xs font-mono text-text-muted hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm"
                                 >
                                   no
                                 </button>
@@ -308,8 +346,11 @@ export function ChatList() {
                             ) : (
                               <button
                                 type="button"
+                                ref={(el) => { deleteTriggerRefs.current[chat.id] = el; }}
                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDeleteId(chat.id); }}
-                                className="text-xs font-mono text-text-muted hover:text-accent transition-colors"
+                                aria-label={`Delete chat with ${name}`}
+                                aria-haspopup="dialog"
+                                className="text-xs font-mono text-text-muted hover:text-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm"
                               >
                                 Delete
                               </button>
@@ -323,7 +364,7 @@ export function ChatList() {
                   return isPending ? (
                     <div key={chat.id}>{row}</div>
                   ) : (
-                    <Link key={chat.id} to={`/chat/${chat.id}`} className="group">{row}</Link>
+                    <Link key={chat.id} to={`/chat/${chat.id}`} className="group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset">{row}</Link>
                   );
                 })}
               </div>

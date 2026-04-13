@@ -20,6 +20,8 @@ export function Login() {
   const [copied, setCopied] = useState(false);
   const busy = useRef(false);
   const identity = getIdentity();
+  // Ref for returning focus to the logout trigger when confirm is dismissed
+  const logoutTriggerRef = useRef<HTMLButtonElement>(null);
 
   async function handleGenerate() {
     if (busy.current) return;
@@ -136,7 +138,7 @@ export function Login() {
                   <BotAvatar seed={identity.fingerprint} size={48} />
                   <div>
                     <p className="text-xs text-text-muted font-mono uppercase tracking-wider mb-1">Bot ID</p>
-                    <Link to={`/u/${botId}`} className="font-mono text-accent text-sm hover:underline">{botId}</Link>
+                    <Link to={`/u/${botId}`} className="font-mono text-accent text-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm">{botId}</Link>
                   </div>
                 </div>
                 <div>
@@ -148,13 +150,13 @@ export function Login() {
                   {showKey ? (
                     <p className="font-mono text-text-primary text-xs break-all">{identity.privateKeyBase64}</p>
                   ) : (
-                    <p className="font-mono text-text-muted text-sm">••••••••</p>
+                    <p className="font-mono text-text-muted text-sm" aria-label="Private key hidden">••••••••</p>
                   )}
                   <div className="flex gap-2 mt-2">
-                    <Button variant="ghost" size="sm" onClick={() => setShowKey(!showKey)}>
+                    <Button variant="ghost" size="sm" onClick={() => setShowKey(!showKey)} aria-pressed={showKey}>
                       {showKey ? "Hide" : "Reveal"}
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={handleCopyKey}>
+                    <Button variant="ghost" size="sm" onClick={handleCopyKey} aria-live="polite">
                       {copied ? "Copied!" : "Copy"}
                     </Button>
                   </div>
@@ -163,14 +165,34 @@ export function Login() {
                   Save your private key somewhere safe. You need it to log in on another device.
                 </p>
                 {!showLogoutConfirm ? (
-                  <Button variant="ghost" size="sm" onClick={() => setShowLogoutConfirm(true)}>Logout</Button>
+                  <Button
+                    ref={logoutTriggerRef}
+                    variant="ghost"
+                    size="sm"
+                    aria-haspopup="dialog"
+                    onClick={() => setShowLogoutConfirm(true)}
+                  >
+                    Logout
+                  </Button>
                 ) : (
-                  <div className="border border-accent rounded-lg px-4 py-3 space-y-2">
-                    <p className="text-xs font-mono text-accent font-semibold">Are you sure?</p>
-                    <p className="text-xs font-mono text-text-muted">Your private key will be removed from this browser. If you haven't saved it, you will permanently lose access to this identity.</p>
+                  <div
+                    role="alertdialog"
+                    aria-modal="false"
+                    aria-labelledby="logout-confirm-title"
+                    aria-describedby="logout-confirm-desc"
+                    className="border border-accent rounded-lg px-4 py-3 space-y-2"
+                  >
+                    <p id="logout-confirm-title" className="text-xs font-mono text-accent font-semibold">Are you sure?</p>
+                    <p id="logout-confirm-desc" className="text-xs font-mono text-text-muted">Your private key will be removed from this browser. If you haven't saved it, you will permanently lose access to this identity.</p>
                     <div className="flex items-center gap-2">
                       <Button variant="primary" size="sm" onClick={handleLogout}>Yes, logout</Button>
-                      <button type="button" onClick={() => setShowLogoutConfirm(false)} className="text-xs font-mono text-text-muted hover:text-text-primary transition-colors cursor-pointer">Cancel</button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowLogoutConfirm(false); logoutTriggerRef.current?.focus(); }}
+                        className="text-xs font-mono text-text-muted hover:text-text-primary transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base rounded"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
                 )}
@@ -182,22 +204,25 @@ export function Login() {
               <div className="border border-border rounded-lg p-5 space-y-4">
                 <h2 className="font-mono text-sm font-semibold text-text-primary">Edit Profile</h2>
                 {!profileLoaded ? (
-                  <p className="text-xs text-text-muted font-mono">Loading...</p>
+                  <p className="text-xs text-text-muted font-mono" aria-busy="true">Loading...</p>
                 ) : (
                   <>
                     <div>
-                      <label className="block text-xs font-mono text-text-muted mb-1">Name</label>
+                      <label htmlFor="profile-name" className="block text-xs font-mono text-text-muted mb-1">Name</label>
                       <input
+                        id="profile-name"
                         type="text"
                         value={profileName}
                         onChange={(e) => setProfileName(e.target.value)}
                         maxLength={100}
+                        aria-required="true"
                         className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-mono text-text-muted mb-1">Bio</label>
+                      <label htmlFor="profile-bio" className="block text-xs font-mono text-text-muted mb-1">Bio</label>
                       <textarea
+                        id="profile-bio"
                         value={profileBio}
                         onChange={(e) => setProfileBio(e.target.value)}
                         maxLength={500}
@@ -207,11 +232,13 @@ export function Login() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-mono text-text-muted mb-1">Visibility</label>
+                      <p className="block text-xs font-mono text-text-muted mb-1" id="visibility-label">Visibility</p>
                       <button
                         type="button"
+                        aria-labelledby="visibility-label"
+                        aria-pressed={profilePublic}
                         onClick={() => setProfilePublic(!profilePublic)}
-                        className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors ${
+                        className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base ${
                           profilePublic
                             ? "border-accent text-accent"
                             : "border-border text-text-muted"
@@ -219,14 +246,19 @@ export function Login() {
                       >
                         {profilePublic ? "Public" : "Private"}
                       </button>
-                      <p className="text-xs text-text-muted mt-1">
+                      <p className="text-xs text-text-muted mt-1" aria-live="polite">
                         {profilePublic ? "Your name is visible in channels" : "Only your bot ID is shown"}
                       </p>
                     </div>
-                    {saveMsg && (
-                      <p className={`text-xs font-mono ${saveMsg.startsWith("Error") ? "text-error" : "text-accent-green"}`}>{saveMsg}</p>
-                    )}
-                    <Button variant="primary" size="sm" onClick={handleSaveProfile} disabled={saving || !profileName.trim()}>
+                    {/* Live region for save feedback */}
+                    <p
+                      aria-live="polite"
+                      aria-atomic="true"
+                      className={`text-xs font-mono ${saveMsg?.startsWith("Error") ? "text-error" : "text-accent-green"}`}
+                    >
+                      {saveMsg ?? ""}
+                    </p>
+                    <Button variant="primary" size="sm" onClick={handleSaveProfile} disabled={saving || !profileName.trim()} aria-disabled={saving || !profileName.trim()} aria-busy={saving}>
                       {saving ? "Saving..." : "Save Profile"}
                     </Button>
                   </>
@@ -245,6 +277,7 @@ export function Login() {
               <Button
                 variant="ghost"
                 size="sm"
+                aria-live="polite"
                 onClick={() => {
                   navigator.clipboard.writeText(`https://bottel.ai/u/${botId}`)
                     .then(() => { setProfileLinkCopied(true); setTimeout(() => setProfileLinkCopied(false), 2000); })
@@ -268,14 +301,14 @@ export function Login() {
       </p>
 
       <div className="space-y-4">
-        <Button variant="primary" size="lg" onClick={handleGenerate} disabled={loading} className="w-full">
+        <Button variant="primary" size="lg" onClick={handleGenerate} disabled={loading} aria-busy={loading && !showImport} className="w-full">
           {loading && !showImport ? "Creating..." : "Create Identity"}
         </Button>
         <p className="text-xs text-text-muted font-mono text-center">
           By creating an identity you agree to our{" "}
-          <Link to="/terms" className="text-accent hover:underline">Terms</Link>
+          <Link to="/terms" className="text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm">Terms</Link>
           {" "}and{" "}
-          <Link to="/privacy" className="text-accent hover:underline">Privacy Policy</Link>.
+          <Link to="/privacy" className="text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded-sm">Privacy Policy</Link>.
         </p>
 
         {!showImport && (
@@ -292,14 +325,23 @@ export function Login() {
               value={keyInput}
               onChange={(e) => setKeyInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleImport(); }}
+              aria-required="true"
             />
-            <Button variant="primary" size="lg" onClick={handleImport} disabled={loading} className="w-full">
+            <Button variant="primary" size="lg" onClick={handleImport} disabled={loading} aria-busy={loading && showImport} className="w-full">
               {loading ? "Importing..." : "Import Key"}
             </Button>
           </>
         )}
 
-        {error && <p className="text-sm text-red-400 font-mono">{error}</p>}
+        {/* Live region for sign-in errors */}
+        <p
+          role="alert"
+          aria-live="assertive"
+          aria-atomic="true"
+          className="text-sm text-red-400 font-mono"
+        >
+          {error ?? ""}
+        </p>
       </div>
 
       <p className="text-xs text-text-muted font-mono mt-6">

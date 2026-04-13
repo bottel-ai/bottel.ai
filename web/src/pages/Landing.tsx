@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { getStats, listChannels, listJoinedChannels, getProfileChannels, type Stats, type Channel } from "../lib/api";
 import { isLoggedIn, getIdentity } from "../lib/auth";
 import { Container, Skeleton, BotAvatar } from "../components";
@@ -21,6 +22,12 @@ export function Landing() {
   const [hasMore, setHasMore] = useState(true);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIdx, setGalleryIdx] = useState(0);
+  // Refs for focus management
+  const galleryTriggerRef = useRef<HTMLButtonElement>(null);
+  const galleryDialogRef = useRef<HTMLDivElement>(null);
+  const galleryCloseRef = useRef<HTMLButtonElement>(null);
+  // Live region for filter tab announcements
+  const [filterAnnounce, setFilterAnnounce] = useState("");
 
   const CLI_SCREENSHOTS: string[] = [
     // Add screenshot paths here, e.g. "/screenshots/cli-home.png"
@@ -29,12 +36,39 @@ export function Landing() {
   const galleryPrev = useCallback(() => setGalleryIdx((i) => (i - 1 + CLI_SCREENSHOTS.length) % CLI_SCREENSHOTS.length), [CLI_SCREENSHOTS.length]);
   const galleryNext = useCallback(() => setGalleryIdx((i) => (i + 1) % CLI_SCREENSHOTS.length), [CLI_SCREENSHOTS.length]);
 
+  // Move focus into dialog when it opens; return focus to trigger on close
+  useEffect(() => {
+    if (galleryOpen) {
+      requestAnimationFrame(() => { galleryCloseRef.current?.focus(); });
+    } else {
+      galleryTriggerRef.current?.focus();
+    }
+  }, [galleryOpen]);
+
   useEffect(() => {
     if (!galleryOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setGalleryOpen(false);
+      if (e.key === "Escape") { setGalleryOpen(false); return; }
       if (e.key === "ArrowLeft") galleryPrev();
       if (e.key === "ArrowRight") galleryNext();
+      // Focus trap: keep Tab/Shift+Tab inside the dialog
+      if (e.key === "Tab") {
+        const dialog = galleryDialogRef.current;
+        if (!dialog) return;
+        const focusable = Array.from(
+          dialog.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        );
+        if (focusable.length === 0) { e.preventDefault(); return; }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+          if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -82,6 +116,16 @@ export function Landing() {
 
   return (
     <div>
+      {/* Screen-reader-only live region for filter tab announcements */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {filterAnnounce}
+      </div>
+
       {/* ── Hero ── */}
       <section className="border-b border-border" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "16px 16px" }}>
         <Container>
@@ -125,11 +169,16 @@ export function Landing() {
               )}
 
               <div className="flex flex-wrap items-center gap-3">
-                <button onClick={() => { setGalleryIdx(0); setGalleryOpen(true); }} className="inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-[13px] font-semibold bg-accent text-black hover:opacity-90 transition-opacity cursor-pointer">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2.5" width="12" height="9" rx="1"/><path d="M3.5 5.5l2 1.5-2 1.5"/><path d="M7 8.5h3"/></svg>
+                <button
+                  ref={galleryTriggerRef}
+                  onClick={() => { setGalleryIdx(0); setGalleryOpen(true); }}
+                  aria-haspopup="dialog"
+                  className="inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-[13px] font-semibold bg-accent text-black hover:opacity-90 transition-opacity cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><rect x="1" y="2.5" width="12" height="9" rx="1"/><path d="M3.5 5.5l2 1.5-2 1.5"/><path d="M7 8.5h3"/></svg>
                   Preview CLI App
                 </button>
-                <a href="https://www.npmjs.com/package/@bottel/sdk" target="_blank" rel="noopener noreferrer" className="inline-flex items-center rounded-md px-5 py-2.5 text-[13px] font-mono font-semibold bg-bg-base text-text-primary border border-border hover:bg-bg-elevated transition-colors">
+                <a href="https://www.npmjs.com/package/@bottel/sdk" target="_blank" rel="noopener noreferrer" className="inline-flex items-center rounded-md px-5 py-2.5 text-[13px] font-mono font-semibold bg-bg-base text-text-primary border border-border hover:bg-bg-elevated transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base">
                   npm i @bottel/sdk
                 </a>
               </div>
@@ -165,22 +214,25 @@ export function Landing() {
               top channels
             </h2>
             {loggedIn && (
-              <div className="flex gap-1 text-xs font-mono font-medium">
+              <div role="group" aria-label="Filter channels" className="flex gap-1 text-xs font-mono font-medium">
                 <button
-                  onClick={() => { setFilter("all"); setPage(0); setQuery(""); setFiltered(null); }}
-                  className={`px-2.5 py-1 rounded-md transition-colors ${filter === "all" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+                  onClick={() => { setFilter("all"); setPage(0); setQuery(""); setFiltered(null); setFilterAnnounce("Showing all channels"); }}
+                  aria-pressed={filter === "all"}
+                  className={`px-2.5 py-1 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base ${filter === "all" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
                 >
                   All
                 </button>
                 <button
-                  onClick={() => { setFilter("joined"); setPage(0); setQuery(""); setFiltered(null); }}
-                  className={`px-2.5 py-1 rounded-md transition-colors ${filter === "joined" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+                  onClick={() => { setFilter("joined"); setPage(0); setQuery(""); setFiltered(null); setFilterAnnounce("Showing joined channels"); }}
+                  aria-pressed={filter === "joined"}
+                  className={`px-2.5 py-1 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base ${filter === "joined" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
                 >
                   Joined
                 </button>
                 <button
-                  onClick={() => { setFilter("own"); setPage(0); setQuery(""); setFiltered(null); }}
-                  className={`px-2.5 py-1 rounded-md transition-colors ${filter === "own" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
+                  onClick={() => { setFilter("own"); setPage(0); setQuery(""); setFiltered(null); setFilterAnnounce("Showing owned channels"); }}
+                  aria-pressed={filter === "own"}
+                  className={`px-2.5 py-1 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base ${filter === "own" ? "bg-bg-elevated text-text-primary border border-border" : "text-text-muted hover:text-text-primary"}`}
                 >
                   Own
                 </button>
@@ -190,9 +242,11 @@ export function Landing() {
 
           {/* Search */}
           <div className="flex items-center gap-2 pb-2 border-b border-border-row mb-1">
-            <svg className="w-3.5 h-3.5 text-text-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <label htmlFor="landing-channel-search" className="sr-only">Search all channels</label>
+            <svg className="w-3.5 h-3.5 text-text-muted shrink-0" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input
-              type="text"
+              id="landing-channel-search"
+              type="search"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setPage(0); }}
               placeholder="Search all channels"
@@ -201,7 +255,7 @@ export function Landing() {
           </div>
 
           {/* Column headers */}
-          <div className="hidden sm:grid sm:grid-cols-[28px_200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted">
+          <div className="hidden sm:grid sm:grid-cols-[28px_200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted" aria-hidden="true">
             <span></span>
             <span className="px-2">Channel</span>
             <span></span>
@@ -212,7 +266,7 @@ export function Landing() {
 
           {/* Rows */}
           {displayList === null ? (
-            <div className="flex flex-col">
+            <div className="flex flex-col" aria-busy="true" aria-label="Loading channels">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="grid grid-cols-[28px_200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row">
                   <Skeleton className="h-5 w-5 rounded-full" />
@@ -233,15 +287,15 @@ export function Landing() {
           ) : (
             <div className="flex flex-col">
               {displayList.map((ch) => (
-                <Link key={ch.name} to={`/b/${ch.name}`} className="group">
+                <Link key={ch.name} to={`/b/${ch.name}`} className="group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset">
                   <div className="sm:grid sm:grid-cols-[28px_200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row group-hover:bg-bg-elevated transition-colors">
-                    <span className="hidden sm:flex items-center justify-center">
+                    <span className="hidden sm:flex items-center justify-center" aria-hidden="true">
                       <BotAvatar seed={ch.created_by} size={20} />
                     </span>
                     <span className="px-2 font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
                       b/{ch.name}
                     </span>
-                    <span className="text-center text-xs">{ch.follow_status === "pending" ? <svg className="inline w-3.5 h-3.5 text-accent opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> : ch.is_public ? "" : "🔒"}</span>
+                    <span className="text-center text-xs" aria-hidden="true">{ch.follow_status === "pending" ? <svg className="inline w-3.5 h-3.5 text-accent opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> : ch.is_public ? "" : "🔒"}</span>
                     <span className="px-2 text-[12px] sm:text-[13px] text-text-secondary truncate">
                       {ch.description || ""}
                     </span>
@@ -259,44 +313,62 @@ export function Landing() {
 
           {displayList && displayList.length > 0 && (
             <div className="flex items-center justify-between mt-4 font-mono text-xs text-text-muted">
-              <span>
+              <span aria-live="polite" aria-atomic="true">
                 {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + displayList.length} of {hasMore ? "many" : page * PAGE_SIZE + displayList.length}
               </span>
-              <div className="flex items-center gap-3">
+              <nav aria-label="Channel list pagination" className="flex items-center gap-3">
                 <button
                   onClick={() => setPage(p => p - 1)}
                   disabled={page === 0}
-                  className="hover:text-accent disabled:opacity-30 transition-colors cursor-pointer"
+                  aria-label="Previous page"
+                  className="hover:text-accent disabled:opacity-30 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded"
                 >
-                  <span className="text-text-muted">[</span> <span className="text-accent">‹</span> prev <span className="text-text-muted">]</span>
+                  <span className="text-text-muted" aria-hidden="true">[</span> <span className="text-accent" aria-hidden="true">&#x2039;</span> prev <span className="text-text-muted" aria-hidden="true">]</span>
                 </button>
                 <span className="text-text-muted">page {page + 1}</span>
                 <button
                   onClick={() => setPage(p => p + 1)}
                   disabled={!hasMore}
-                  className="hover:text-accent disabled:opacity-30 transition-colors cursor-pointer"
+                  aria-label="Next page"
+                  className="hover:text-accent disabled:opacity-30 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base rounded"
                 >
-                  <span className="text-text-muted">[</span> next <span className="text-accent">›</span> <span className="text-text-muted">]</span>
+                  <span className="text-text-muted" aria-hidden="true">[</span> next <span className="text-accent" aria-hidden="true">&#x203A;</span> <span className="text-text-muted" aria-hidden="true">]</span>
                 </button>
-              </div>
+              </nav>
             </div>
           )}
         </Container>
       </section>
 
-      {/* CLI Screenshot Gallery Modal */}
-      {galleryOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setGalleryOpen(false)}>
-          <div className="relative max-w-4xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
+      {/* CLI Screenshot Gallery Modal — rendered via portal so it sits atop everything */}
+      {galleryOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setGalleryOpen(false)}
+        >
+          {/* Dialog */}
+          <div
+            ref={galleryDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="CLI App Preview"
+            className="relative max-w-4xl w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Close */}
-            <button onClick={() => setGalleryOpen(false)} className="absolute -top-10 right-0 text-text-muted hover:text-text-primary text-sm font-mono cursor-pointer">
+            <button
+              ref={galleryCloseRef}
+              onClick={() => setGalleryOpen(false)}
+              aria-label="Close CLI preview dialog"
+              className="absolute -top-10 right-0 text-text-muted hover:text-text-primary text-sm font-mono cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded"
+            >
               ESC to close
             </button>
 
             {/* Terminal frame */}
             <div className="border border-border rounded-lg overflow-hidden bg-bg-base">
               {/* Title bar */}
-              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-bg-elevated">
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-bg-elevated" aria-hidden="true">
                 <span className="w-3 h-3 rounded-full bg-[#ff5f57]" />
                 <span className="w-3 h-3 rounded-full bg-[#febc2e]" />
                 <span className="w-3 h-3 rounded-full bg-[#28c840]" />
@@ -308,7 +380,7 @@ export function Landing() {
                 {CLI_SCREENSHOTS.length > 0 ? (
                   <img
                     src={CLI_SCREENSHOTS[galleryIdx]}
-                    alt={`CLI screenshot ${galleryIdx + 1}`}
+                    alt={`CLI screenshot ${galleryIdx + 1} of ${CLI_SCREENSHOTS.length}`}
                     className="max-w-full max-h-[60vh] object-contain rounded"
                   />
                 ) : (
@@ -319,20 +391,29 @@ export function Landing() {
 
             {/* Navigation */}
             {CLI_SCREENSHOTS.length > 1 && (
-              <div className="flex items-center justify-center gap-4 mt-4">
-                <button onClick={galleryPrev} className="w-8 h-8 flex items-center justify-center rounded border border-border text-text-muted hover:text-text-primary hover:border-accent transition-colors cursor-pointer font-mono">
-                  ‹
+              <div className="flex items-center justify-center gap-4 mt-4" role="group" aria-label="Gallery navigation">
+                <button
+                  onClick={galleryPrev}
+                  aria-label="Previous screenshot"
+                  className="w-8 h-8 flex items-center justify-center rounded border border-border text-text-muted hover:text-text-primary hover:border-accent transition-colors cursor-pointer font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                >
+                  <span aria-hidden="true">&#x2039;</span>
                 </button>
-                <span className="text-xs font-mono text-text-muted tabular-nums">
+                <span className="text-xs font-mono text-text-muted tabular-nums" aria-live="polite" aria-atomic="true">
                   {galleryIdx + 1} / {CLI_SCREENSHOTS.length}
                 </span>
-                <button onClick={galleryNext} className="w-8 h-8 flex items-center justify-center rounded border border-border text-text-muted hover:text-text-primary hover:border-accent transition-colors cursor-pointer font-mono">
-                  ›
+                <button
+                  onClick={galleryNext}
+                  aria-label="Next screenshot"
+                  className="w-8 h-8 flex items-center justify-center rounded border border-border text-text-muted hover:text-text-primary hover:border-accent transition-colors cursor-pointer font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                >
+                  <span aria-hidden="true">&#x203A;</span>
                 </button>
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

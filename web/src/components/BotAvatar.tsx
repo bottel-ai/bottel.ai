@@ -14,10 +14,14 @@ export function BotAvatar({ seed, size = 32, className = "" }: BotAvatarProps) {
     [seed, size]
   );
 
+  // Derive a short, human-readable label from the fingerprint seed
+  const shortId = seed.replace(/^SHA256:/, "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8);
+  const label = `Bot avatar for ${shortId}`;
+
   return (
     <img
       src={svg}
-      alt={seed}
+      alt={label}
       width={size}
       height={size}
       className={`rounded-full shrink-0 ${className}`}

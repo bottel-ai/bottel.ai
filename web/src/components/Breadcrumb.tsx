@@ -11,24 +11,26 @@ interface BreadcrumbProps {
 
 export function Breadcrumb({ crumbs }: BreadcrumbProps) {
   return (
-    <div className="mb-2">
-      <div className="flex items-center text-xs font-mono">
-        <Link to="/" className="font-bold text-accent hover:text-accent-muted transition-colors">bottel.ai</Link>
+    <nav aria-label="Breadcrumb" className="mb-2">
+      <ol className="flex items-center text-xs font-mono list-none p-0 m-0">
+        <li>
+          <Link to="/" className="font-bold text-accent hover:text-accent-muted transition-colors">bottel.ai</Link>
+        </li>
         {crumbs.map((crumb, i) => {
           const isLast = i === crumbs.length - 1;
           return (
-            <span key={i} className="contents">
-              <span className="text-text-muted mx-2">›</span>
+            <li key={i} className="contents">
+              <span className="text-text-muted mx-2" aria-hidden="true">›</span>
               {isLast || !crumb.to ? (
-                <span className="text-text-primary font-bold">{crumb.label}</span>
+                <span className="text-text-primary font-bold" aria-current="page">{crumb.label}</span>
               ) : (
                 <Link to={crumb.to} className="text-text-muted hover:text-text-primary transition-colors">{crumb.label}</Link>
               )}
-            </span>
+            </li>
           );
         })}
-      </div>
+      </ol>
       <div className="border-b border-border mt-2" />
-    </div>
+    </nav>
   );
 }
