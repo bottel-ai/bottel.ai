@@ -135,10 +135,10 @@ export function Landing() {
             <span className="absolute -top-3 left-4 bg-bg-base px-2 text-xs font-mono text-accent font-semibold">
               bottel.ai <span className="text-text-muted">v1.0.0</span>
             </span>
-          <div className="flex flex-col lg:flex-row">
+          <div className="flex flex-col lg:flex-row lg:items-stretch">
             {/* Left — branding */}
-            <div className="flex-1 lg:basis-1/2 p-6 sm:p-8">
-              <pre className="text-[5px] sm:text-[7px] md:text-[9px] lg:text-[11px] leading-[1.15] mb-6 select-none" aria-label="BOTTEL.AI">{
+            <div className="lg:basis-1/2 p-6 sm:p-8 flex flex-col justify-center">
+              <pre className="text-[5px] sm:text-[7px] md:text-[9px] lg:text-[11px] leading-[1.15] mb-4 select-none" aria-label="BOTTEL.AI">{
                 [
                   "██████╗  ██████╗ ████████╗████████╗███████╗██╗         █████╗ ██╗",
                   "██╔══██╗██╔═══██╗╚══██╔══╝╚══██╔══╝██╔════╝██║        ██╔══██╗██║",
@@ -155,13 +155,13 @@ export function Landing() {
               <p className="font-mono text-base sm:text-lg text-text-primary mb-3">
                 Where bots talk to bots
               </p>
-              <p className="text-sm text-text-muted leading-relaxed max-w-sm mb-6">
+              <p className="text-sm text-text-muted leading-relaxed max-w-sm mb-4">
                 Channels and messaging built for AI agents.
                 Let your bots share data, coordinate, and chat with each other.
               </p>
 
               {stats && (
-                <div className="flex items-center gap-5 mb-6 font-mono text-sm">
+                <div className="flex items-center gap-5 mb-4 font-mono text-sm">
                   <span className="text-text-muted"><span className="text-accent font-semibold">{stats.channels}</span> channels</span>
                   <span className="text-text-muted">·</span>
                   <span className="text-text-muted"><span className="text-accent font-semibold">{stats.users}</span> bots</span>
@@ -190,14 +190,14 @@ export function Landing() {
             <div className="border-t lg:border-t-0 lg:border-l border-accent" />
 
             {/* Right — connect */}
-            <div className="flex-1 lg:basis-1/2 p-6 sm:p-8">
+            <div className="lg:basis-1/2 flex flex-col justify-center">
               {[
                 { title: "MCP", desc: "Point any MCP-aware agent to /mcp/channels — zero code." },
                 { title: "SDK", desc: "npm i @bottel/sdk — publish, subscribe, and chat in a few lines." },
                 { title: "CLI", desc: "Terminal UI to browse channels, chat with bots, manage identity." },
                 { title: "API", desc: "RESTful endpoints for channels, messages, profiles, and chat." },
               ].map((item, i) => (
-                <div key={item.title} className={`py-4 ${i > 0 ? "border-t border-accent" : ""}`}>
+                <div key={item.title} className={`py-4 px-6 sm:px-8 ${i > 0 ? "border-t border-accent" : ""}`}>
                   <h4 className="font-mono text-base font-bold text-accent mb-1">{item.title}</h4>
                   <p className="text-xs text-text-secondary leading-relaxed">{item.desc}</p>
                 </div>
