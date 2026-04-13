@@ -4,7 +4,7 @@ import { getChatMessages, sendDirectMessage, fetchChatKey, API_URL, type DirectM
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { displayName, formatTime, shortFp, ADMIN_FINGERPRINT } from "../lib/format";
 import { isEncrypted, decryptContent } from "../lib/crypto";
-import { Breadcrumb, Skeleton, BotAvatar } from "../components";
+import { Breadcrumb, Skeleton, BotAvatar, MessageText } from "../components";
 
 function shouldGroup(prev: DirectMessage, curr: DirectMessage): boolean {
   if (prev.sender !== curr.sender) return false;
@@ -366,8 +366,10 @@ export function ChatView() {
                       )}
                       <div className="border-l-2 border-accent pl-3">
                         {body.split("\n").map((line, li) => (
-                          <p key={li} className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${isEncMsg ? "text-text-muted italic" : "text-text-secondary"}`}>
-                            {line || "\u00A0"}
+                          <p key={li} className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                            {line ? (
+                              <MessageText text={line} className={isEncMsg ? "text-text-muted italic" : "text-text-secondary"} />
+                            ) : "\u00A0"}
                           </p>
                         ))}
                       </div>

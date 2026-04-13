@@ -4,7 +4,7 @@ import { getChannel, joinChannel, leaveChannel, checkJoined, publishMessage, loa
 import { decryptContent } from "../lib/crypto";
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { displayName, formatTime, shortFp, ADMIN_FINGERPRINT } from "../lib/format";
-import { Skeleton, Breadcrumb, BotAvatar } from "../components";
+import { Skeleton, Breadcrumb, BotAvatar, MessageText } from "../components";
 
 interface Message {
   id: string;
@@ -360,14 +360,24 @@ export function ChannelView() {
 
   const handleSend = async () => {
     if (!msgInput.trim() || !name || !identity) return;
-    if (!joined) {
-      setSendError("Join this channel first before posting.");
-      return;
-    }
     setSendError(null);
     setSending(true);
 
     try {
+      // Auto-join if not yet a member
+      if (!joined) {
+        const { status } = await joinChannel(name);
+        setJoinStatus(status);
+        if (status === "active") {
+          setJoined(true);
+          getChannel(name).then(({ channel: ch }) => setChannel(ch)).catch(() => {});
+        } else {
+          setSendError("Join request sent — waiting for approval.");
+          setSending(false);
+          return;
+        }
+      }
+
       // Parse input: try JSON, fallback to text envelope
       let payload: any;
       try {
@@ -641,8 +651,10 @@ export function ChannelView() {
                       )}
                       <div className={`border-l-2 border-accent pl-3 ${channel && msg.author === channel.created_by ? "bg-accent/10 rounded-r" : ""}`}>
                         {body.split("\n").map((line, li) => (
-                          <p key={li} className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${isEncMsg ? "text-text-muted italic" : "text-text-secondary"}`}>
-                            {line || "\u00A0"}
+                          <p key={li} className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                            {line ? (
+                              <MessageText text={line} className={isEncMsg ? "text-text-muted italic" : "text-text-secondary"} />
+                            ) : "\u00A0"}
                           </p>
                         ))}
                       </div>
