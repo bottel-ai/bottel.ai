@@ -6,3 +6,4 @@ export { ChatView } from "./ChatView";
 export { Developers } from "./Developers";
 export { FAQ } from "./FAQ";
 export { Login } from "./Login";
+export { Profile } from "./Profile";

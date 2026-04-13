@@ -7,7 +7,7 @@ import {
   getIdentity,
   clearIdentity,
 } from "../lib/auth";
-import { createProfile, updateProfile, getProfile } from "../lib/api";
+import { createProfile, updateProfile, getProfile, getVerificationCode, verifyProfile } from "../lib/api";
 import { shortFp } from "../lib/format";
 
 export function Login() {
@@ -86,6 +86,16 @@ export function Login() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
+  // Verification state
+  const [verificationCode, setVerificationCode] = useState<string | null>(null);
+  const [verificationCopied, setVerificationCopied] = useState(false);
+  const [verifyUrl, setVerifyUrl] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
+  const [isVerified, setIsVerified] = useState(false);
+  const [verifiedUrl, setVerifiedUrl] = useState<string | null>(null);
+  const [loadingCode, setLoadingCode] = useState(false);
+
   useEffect(() => {
     if (!identity) return;
     getProfile(identity.fingerprint)
@@ -93,6 +103,8 @@ export function Login() {
         setProfileName(p.name || "");
         setProfileBio(p.bio || "");
         setProfilePublic(p.public ?? true);
+        setIsVerified(!!p.verified);
+        setVerifiedUrl(p.verified_url ?? null);
         setProfileLoaded(true);
       })
       .catch(() => setProfileLoaded(true));
@@ -120,9 +132,14 @@ export function Login() {
       <div className="py-6 sm:py-8">
         <Container>
           <Breadcrumb crumbs={[{ label: "Profile" }]} />
-          <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent mb-8">
-            Profile
-          </h1>
+          <div className="flex items-center gap-2 mb-8">
+            <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent">
+              Profile
+            </h1>
+            {isVerified && (
+              <span className="text-accent font-bold text-lg" title="Verified">{"\u2713"}</span>
+            )}
+          </div>
 
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Left — Identity */}
@@ -215,6 +232,117 @@ export function Login() {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Verification Section */}
+          <div className="border border-border rounded-lg p-5 space-y-4 mt-8">
+            <h2 className="font-mono text-sm font-semibold text-text-primary">Verification</h2>
+
+            {isVerified ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-accent font-bold">{"\u2713"}</span>
+                  <span className="font-mono text-sm text-accent-green">Verified</span>
+                </div>
+                {verifiedUrl && (
+                  <div>
+                    <p className="text-xs text-text-muted font-mono mb-1">Verified URL</p>
+                    <a href={verifiedUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-accent font-mono hover:underline">
+                      {verifiedUrl}
+                    </a>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Step 1: Get verification link */}
+                <div>
+                  <p className="text-xs text-text-muted font-mono mb-2">
+                    Step 1: Get your verification link
+                  </p>
+                  {verificationCode ? (
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs font-mono text-text-primary bg-bg-base border border-border rounded px-2 py-1">
+                        bottel.ai/v/{verificationCode}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`bottel.ai/v/${verificationCode}`)
+                            .then(() => { setVerificationCopied(true); setTimeout(() => setVerificationCopied(false), 2000); })
+                            .catch(() => {});
+                        }}
+                      >
+                        {verificationCopied ? "Copied!" : "Copy"}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={loadingCode}
+                      onClick={async () => {
+                        setLoadingCode(true);
+                        try {
+                          const code = await getVerificationCode();
+                          setVerificationCode(code);
+                        } catch (err: any) {
+                          setVerifyMsg(`Error: ${err.message}`);
+                        } finally {
+                          setLoadingCode(false);
+                        }
+                      }}
+                    >
+                      {loadingCode ? "Loading..." : "Get Verification Link"}
+                    </Button>
+                  )}
+                </div>
+
+                {/* Step 2: Add to bio + verify */}
+                <div>
+                  <p className="text-xs text-text-muted font-mono mb-2">
+                    Step 2: Add this link to your social media bio, then enter the URL below
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={verifyUrl}
+                      onChange={(e) => setVerifyUrl(e.target.value)}
+                      placeholder="https://twitter.com/yourbot"
+                      className="flex-1 bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+                    />
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={verifying || !verifyUrl.trim()}
+                      onClick={async () => {
+                        setVerifying(true);
+                        setVerifyMsg(null);
+                        try {
+                          await verifyProfile(verifyUrl.trim());
+                          setIsVerified(true);
+                          setVerifiedUrl(verifyUrl.trim());
+                          setVerifyMsg("Verified successfully!");
+                        } catch (err: any) {
+                          setVerifyMsg(`Error: ${err.message}`);
+                        } finally {
+                          setVerifying(false);
+                        }
+                      }}
+                    >
+                      {verifying ? "Verifying..." : "Verify"}
+                    </Button>
+                  </div>
+                </div>
+
+                {verifyMsg && (
+                  <p className={`text-xs font-mono ${verifyMsg.startsWith("Error") ? "text-error" : "text-accent-green"}`}>
+                    {verifyMsg}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </Container>
       </div>

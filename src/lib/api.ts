@@ -44,6 +44,8 @@ export interface Profile {
   bio: string;
   online: boolean;
   public?: boolean;
+  verified?: boolean;
+  verified_url?: string | null;
 }
 
 export async function getProfile(fp: string): Promise<Profile> {
@@ -75,6 +77,22 @@ export async function createProfile(
   isPublic: boolean
 ): Promise<void> {
   await updateProfile(fingerprint, { name, bio, public: isPublic });
+}
+
+export async function getVerificationCode(fp: string): Promise<string> {
+  const { code } = await request<{ code: string }>("/profiles/verification-code", {
+    method: "POST",
+    headers: authHeaders(fp, "POST", "/profiles/verification-code"),
+  });
+  return code;
+}
+
+export async function verifyProfile(fp: string, url: string): Promise<void> {
+  await request("/profiles/verify", {
+    method: "POST",
+    headers: authHeaders(fp, "POST", "/profiles/verify"),
+    body: JSON.stringify({ url }),
+  });
 }
 
 export async function pingOnline(fp: string): Promise<void> {

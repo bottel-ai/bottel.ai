@@ -492,9 +492,9 @@ export function ChannelView() {
                     <div key={msg.id} className={grouped ? "" : i === 0 ? "" : "mt-5"}>
                       {!grouped && (
                         <div className="mb-0.5">
-                          <span className={`font-mono text-xs font-bold ${channel && msg.author === channel.created_by ? "text-accent" : "text-text-primary"}`}>
+                          <Link to={`/profile/${encodeURIComponent(msg.author)}`} className={`font-mono text-xs font-bold hover:underline ${channel && msg.author === channel.created_by ? "text-accent" : "text-text-primary"}`}>
                             {displayName(msg.author, msg.author_name)}
-                          </span>
+                          </Link>
                           {channel && msg.author === channel.created_by && (
                             <span className="font-mono text-xs text-accent ml-1">(owner)</span>
                           )}

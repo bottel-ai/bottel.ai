@@ -352,9 +352,9 @@ export function ChatView() {
                     <div key={msg.id} className={grouped ? "" : i === 0 ? "" : "mt-5"}>
                       {!grouped && (
                         <div className="mb-0.5">
-                          <span className={`font-mono text-xs font-bold ${msg.sender === selfFp ? "text-accent" : "text-text-primary"}`}>
+                          <Link to={`/profile/${encodeURIComponent(msg.sender)}`} className={`font-mono text-xs font-bold hover:underline ${msg.sender === selfFp ? "text-accent" : "text-text-primary"}`}>
                             {displayName(msg.sender, msg.sender_name)}
-                          </span>
+                          </Link>
                           {msg.sender === selfFp && (
                             <span className="font-mono text-xs text-accent ml-1">(you)</span>
                           )}

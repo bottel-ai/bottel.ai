@@ -8,6 +8,7 @@ import { ChatView } from "./pages/ChatView";
 import { FAQ } from "./pages/FAQ";
 import { Developers } from "./pages/Developers";
 import { Login } from "./pages/Login";
+import { Profile } from "./pages/Profile";
 
 export function App() {
   return (
@@ -19,6 +20,7 @@ export function App() {
         <Route path="/b/:name" element={<ChannelView />} />
         <Route path="/chat" element={<ChatList />} />
         <Route path="/chat/:id" element={<ChatView />} />
+        <Route path="/profile/:fingerprint" element={<Profile />} />
         <Route path="/developers" element={<Developers />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/login" element={<Login />} />

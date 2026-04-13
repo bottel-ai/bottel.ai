@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   bio          TEXT DEFAULT '',
   public       INTEGER DEFAULT 0,
   public_key   TEXT DEFAULT NULL,
+  verification_code TEXT DEFAULT NULL,
+  verified_url TEXT DEFAULT NULL,
+  verified     INTEGER DEFAULT 0,
   online_at    TEXT DEFAULT (datetime('now')),
   created_at   TEXT DEFAULT (datetime('now'))
 );

@@ -172,6 +172,19 @@ app.get("/stats", edgeCache(60), async (c) => {
 });
 
 // =====================================================================
+// Verification landing page
+// =====================================================================
+
+app.get("/v/:code", async (c) => {
+  const code = c.req.param("code");
+  const profile = await c.env.DB.prepare(
+    "SELECT fingerprint, name, bio, verified FROM profiles WHERE verification_code = ?"
+  ).bind(code).first();
+  if (!profile) return c.json({ error: "Not found" }, 404);
+  return c.json({ bot: { name: (profile as any).name, bio: (profile as any).bio, verified: !!(profile as any).verified } });
+});
+
+// =====================================================================
 // Profiles
 // =====================================================================
 
@@ -247,7 +260,7 @@ app.get("/profiles/:fp", edgeCache(30), async (c) => {
     p = cached;
   } else {
     p = await c.env.DB.prepare(
-      "SELECT fingerprint, name, bio, online_at, public FROM profiles WHERE fingerprint = ?"
+      "SELECT fingerprint, name, bio, online_at, public, verified, verified_url FROM profiles WHERE fingerprint = ?"
     )
       .bind(fp)
       .first();
@@ -259,7 +272,12 @@ app.get("/profiles/:fp", edgeCache(30), async (c) => {
     ? Date.now() - new Date((p.online_at as string) + "Z").getTime() < 300000
     : false;
   return c.json({
-    profile: { fingerprint: p.fingerprint, name: p.name, bio: p.bio, online, public: !!(p as any).public },
+    profile: {
+      fingerprint: p.fingerprint, name: p.name, bio: p.bio, online,
+      public: !!(p as any).public,
+      verified: !!(p as any).verified,
+      verified_url: (p as any).verified_url,
+    },
   });
 });
 
@@ -270,6 +288,79 @@ app.post("/profiles/ping", authMiddleware, async (c) => {
     .bind(fp)
     .run();
   return c.json({ ok: true });
+});
+
+// POST /profiles/verification-code — generate verification code (auth)
+app.post("/profiles/verification-code", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+
+  // Check if already has a code
+  const existing = await c.env.DB.prepare(
+    "SELECT verification_code FROM profiles WHERE fingerprint = ?"
+  ).bind(fp).first<{ verification_code: string | null }>();
+
+  if (existing?.verification_code) {
+    return c.json({ code: existing.verification_code });
+  }
+
+  // Generate 8-char alphanumeric code
+  const code = crypto.randomUUID().replace(/-/g, "").substring(0, 8);
+  await c.env.DB.prepare(
+    "UPDATE profiles SET verification_code = ? WHERE fingerprint = ?"
+  ).bind(code, fp).run();
+
+  return c.json({ code });
+});
+
+// POST /profiles/verify — verify by checking a URL (auth, rate limited)
+app.post("/profiles/verify", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
+
+  // Rate limit: 5 verify attempts/min per user
+  if (!checkRateLimit(fp, "_verify", 5)) {
+    return c.json({ error: "Rate limit exceeded" }, 429);
+  }
+
+  const { url } = await c.req.json<{ url: string }>();
+
+  if (!url || typeof url !== "string") return c.json({ error: "url required" }, 400);
+  if (url.length > 500) return c.json({ error: "URL too long" }, 400);
+
+  // Get the verification code
+  const profile = await c.env.DB.prepare(
+    "SELECT verification_code FROM profiles WHERE fingerprint = ?"
+  ).bind(fp).first<{ verification_code: string | null }>();
+
+  if (!profile?.verification_code) {
+    return c.json({ error: "Generate a verification code first" }, 400);
+  }
+
+  // Fetch the URL and search for the code
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "bottel.ai-verifier/1.0" },
+      redirect: "follow",
+    });
+    if (!res.ok) return c.json({ error: `Failed to fetch URL (${res.status})` }, 400);
+
+    const html = await res.text();
+    const codeFound = html.includes(profile.verification_code) ||
+                      html.includes(`bottel.ai/v/${profile.verification_code}`);
+
+    if (!codeFound) {
+      return c.json({ error: "Verification code not found on that page. Make sure your bio contains the verification link." }, 400);
+    }
+
+    // Verified!
+    await c.env.DB.prepare(
+      "UPDATE profiles SET verified = 1, verified_url = ? WHERE fingerprint = ?"
+    ).bind(url, fp).run();
+
+    profileCache.delete(fp);
+    return c.json({ verified: true, url });
+  } catch (err: any) {
+    return c.json({ error: `Could not fetch URL: ${err.message}` }, 400);
+  }
 });
 
 // =====================================================================
