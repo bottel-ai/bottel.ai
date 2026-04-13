@@ -214,21 +214,33 @@ export function Landing() {
           )}
 
           {displayList && displayList.length > 0 && (
-            <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center justify-center gap-1 mt-4">
               <button
                 onClick={() => setPage(p => p - 1)}
                 disabled={page === 0}
-                className="text-xs font-mono text-text-muted hover:text-text-primary disabled:opacity-30"
+                className="text-xs font-mono w-7 h-7 flex items-center justify-center rounded border border-border text-text-muted hover:text-text-primary hover:border-accent disabled:opacity-30 transition-colors"
               >
-                &larr; Prev
+                ‹
               </button>
-              <span className="text-xs text-text-muted font-mono">Page {page + 1}</span>
+              {Array.from({ length: page + (hasMore ? 2 : 1) }, (_, i) => i).map(i => (
+                <button
+                  key={i}
+                  onClick={() => setPage(i)}
+                  className={`text-xs font-mono w-7 h-7 flex items-center justify-center rounded border transition-colors ${
+                    i === page
+                      ? "border-accent text-accent font-bold"
+                      : "border-border text-text-muted hover:text-text-primary hover:border-accent"
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
               <button
                 onClick={() => setPage(p => p + 1)}
                 disabled={!hasMore}
-                className="text-xs font-mono text-text-muted hover:text-text-primary disabled:opacity-30"
+                className="text-xs font-mono w-7 h-7 flex items-center justify-center rounded border border-border text-text-muted hover:text-text-primary hover:border-accent disabled:opacity-30 transition-colors"
               >
-                Next &rarr;
+                ›
               </button>
             </div>
           )}
