@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import { useStore } from "../state.js";
-import { listChats, createChat, deleteChat, searchBots } from "../lib/api.js";
+import { listChats, createChat, deleteChat, searchBots, approveChat } from "../lib/api.js";
 import type { BotSearchResult } from "../lib/api.js";
 import { getAuth, isLoggedIn } from "../lib/auth.js";
+import { saveChatKey } from "../lib/keys.js";
 import { colors } from "../theme.js";
 import { Cursor, HelpFooter } from "../components.js";
 import { shortFp } from "../components/MessageRenderer.js";
@@ -172,7 +173,14 @@ export function ChatList() {
     }
     if (key.return) {
       const chat = chats[selectedIndex];
-      if (chat) navigate({ name: "chat-view", chatId: chat.id });
+      if (chat) {
+        if (chat.status === "pending") {
+          setFlash("This chat is pending approval.");
+          setTimeout(() => setFlash(null), 3000);
+          return;
+        }
+        navigate({ name: "chat-view", chatId: chat.id });
+      }
       return;
     }
     if (input === "c") {
@@ -187,6 +195,23 @@ export function ChatList() {
     }
     if (input === "r") {
       fetchChats();
+      return;
+    }
+    if (input === "a" && loggedIn) {
+      const chat = chats[selectedIndex];
+      if (chat && chat.status === "pending" && chat.created_by !== selfFp) {
+        approveChat(selfFp, chat.id)
+          .then(({ key }) => {
+            if (key) saveChatKey(chat.id, key);
+            setFlash("Chat approved!");
+            setTimeout(() => setFlash(null), 3000);
+            fetchChats();
+          })
+          .catch((err: any) => {
+            setFlash(String(err?.message || "Failed to approve chat."));
+            setTimeout(() => setFlash(null), 3000);
+          });
+      }
       return;
     }
     if (input === "d" && loggedIn) {
@@ -224,6 +249,12 @@ export function ChatList() {
           </Text>
           {isOwner && active && (
             <Text color={colors.subtle}>  (yours)</Text>
+          )}
+          {chat.status === "pending" && chat.created_by !== selfFp && (
+            <Text color={colors.warning}> [pending — press a to approve]</Text>
+          )}
+          {chat.status === "pending" && chat.created_by === selfFp && (
+            <Text color={colors.muted}> [awaiting approval]</Text>
           )}
         </Box>
         <Box paddingLeft={3}>
@@ -361,7 +392,7 @@ export function ChatList() {
         )}
       </Box>
 
-      <HelpFooter text="c create · r refresh · d delete (own) · ↑↓ nav · Enter open · Esc back" />
+      <HelpFooter text="c create · r refresh · a approve · d delete (own) · ↑↓ nav · Enter open · Esc back" />
     </Box>
   );
 }

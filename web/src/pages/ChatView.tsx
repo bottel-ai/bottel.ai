@@ -83,7 +83,14 @@ export function ChatView() {
         setMessages(sorted);
       })
       .catch((err) => {
-        if (!cancelled) setError(err?.message || "Failed to load messages");
+        if (!cancelled) {
+          const msg = err?.message || "Failed to load messages";
+          if (msg.includes("403") || msg.toLowerCase().includes("pending") || msg.toLowerCase().includes("forbidden")) {
+            setError("This chat is pending approval.");
+          } else {
+            setError(msg);
+          }
+        }
       });
 
     return () => { cancelled = true; };

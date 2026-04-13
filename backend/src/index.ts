@@ -955,26 +955,25 @@ app.post("/chat/new", authMiddleware, async (c) => {
 
   // Check if chat already exists (order-independent)
   const existing = await c.env.DB.prepare(
-    `SELECT id, created_by, participant_a, participant_b, created_at FROM direct_chats
+    `SELECT id, created_by, participant_a, participant_b, status, created_at FROM direct_chats
      WHERE (participant_a = ? AND participant_b = ?) OR (participant_a = ? AND participant_b = ?)`
   ).bind(fp, otherFp, otherFp, fp).first();
 
   if (existing) {
-    return c.json({ chat: existing });
+    return c.json({ chat: existing, status: (existing as any).status });
   }
 
   const id = crypto.randomUUID();
-  const chatKey = await generateChannelKey();
   await c.env.DB.prepare(
-    `INSERT INTO direct_chats (id, created_by, participant_a, participant_b, encryption_key, created_at)
-     VALUES (?, ?, ?, ?, ?, datetime('now'))`
-  ).bind(id, fp, fp, otherFp, chatKey).run();
+    `INSERT INTO direct_chats (id, created_by, participant_a, participant_b, status, created_at)
+     VALUES (?, ?, ?, ?, 'pending', datetime('now'))`
+  ).bind(id, fp, fp, otherFp).run();
 
   const chat = await c.env.DB.prepare(
-    "SELECT id, created_by, participant_a, participant_b, created_at FROM direct_chats WHERE id = ?"
+    "SELECT id, created_by, participant_a, participant_b, status, created_at FROM direct_chats WHERE id = ?"
   ).bind(id).first();
 
-  return c.json({ chat, key: chatKey }, 201);
+  return c.json({ chat, status: "pending" }, 201);
 });
 
 // GET /chat/list — all chats for the current user (auth)
@@ -985,6 +984,7 @@ app.get("/chat/list", authMiddleware, async (c) => {
     `SELECT
        dc.id,
        dc.created_by,
+       dc.status,
        CASE WHEN dc.participant_a = ? THEN dc.participant_b ELSE dc.participant_a END AS other_fp,
        p.name AS other_name,
        dm.content AS last_message,
@@ -999,6 +999,26 @@ app.get("/chat/list", authMiddleware, async (c) => {
   ).bind(fp, fp, fp, fp).all();
 
   return c.json({ chats: result.results ?? [] });
+});
+
+// POST /chat/:id/approve — target participant approves a pending chat request (auth)
+app.post("/chat/:id/approve", authMiddleware, async (c) => {
+  const chatId = c.req.param("id")!;
+  const fp = c.get("fingerprint");
+
+  // Only participant_b (the target) can approve
+  const chat = await c.env.DB.prepare(
+    "SELECT * FROM direct_chats WHERE id = ? AND participant_b = ? AND status = 'pending'"
+  ).bind(chatId, fp).first();
+  if (!chat) return c.json({ error: "No pending chat request found" }, 404);
+
+  // Generate encryption key and activate
+  const chatKey = await generateChannelKey();
+  await c.env.DB.prepare(
+    "UPDATE direct_chats SET status = 'active', encryption_key = ? WHERE id = ?"
+  ).bind(chatKey, chatId).run();
+
+  return c.json({ status: "active", key: chatKey });
 });
 
 // GET /chat/:id/messages — messages with pagination (public — content is encrypted)
@@ -1040,9 +1060,10 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
 
   // Verify participant
   const chat = await c.env.DB.prepare(
-    "SELECT id, encryption_key FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
-  ).bind(chatId, fp, fp).first<{ id: string; encryption_key: string | null }>();
+    "SELECT id, encryption_key, status FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
+  ).bind(chatId, fp, fp).first<{ id: string; encryption_key: string | null; status: string }>();
   if (!chat) return c.json({ error: "Chat not found or access denied" }, 404);
+  if (chat.status === 'pending') return c.json({ error: "This chat request is pending approval." }, 403);
 
   // Rate limit: 60 msg/min per chat
   if (!checkRateLimit(fp, chatId, 60)) {
@@ -1099,10 +1120,11 @@ app.get("/chat/:id/key", authMiddleware, async (c) => {
   const fp = c.get("fingerprint");
 
   const chat = await c.env.DB.prepare(
-    "SELECT encryption_key FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
-  ).bind(chatId, fp, fp).first<{ encryption_key: string | null }>();
+    "SELECT encryption_key, status FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
+  ).bind(chatId, fp, fp).first<{ encryption_key: string | null; status: string }>();
 
   if (!chat) return c.json({ error: "Chat not found or access denied" }, 404);
+  if (chat.status !== 'active') return c.json({ error: "Chat not yet approved" }, 403);
   return c.json({ key: chat.encryption_key });
 });
 
@@ -1112,10 +1134,15 @@ app.delete("/chat/:id", authMiddleware, async (c) => {
   const fp = c.get("fingerprint");
 
   const chat = await c.env.DB.prepare(
-    "SELECT created_by FROM direct_chats WHERE id = ?"
-  ).bind(chatId).first<{ created_by: string }>();
+    "SELECT created_by, participant_b, status FROM direct_chats WHERE id = ?"
+  ).bind(chatId).first<{ created_by: string; participant_b: string; status: string }>();
   if (!chat) return c.json({ error: "Chat not found" }, 404);
-  if (chat.created_by !== fp) return c.json({ error: "Only the chat creator can delete it" }, 403);
+  // Allow creator to delete anytime, or participant_b to reject pending
+  if (chat.created_by !== fp) {
+    if (chat.participant_b !== fp || chat.status !== 'pending') {
+      return c.json({ error: "Only the chat creator can delete it" }, 403);
+    }
+  }
 
   await c.env.DB.batch([
     c.env.DB.prepare("DELETE FROM direct_messages WHERE chat_id = ?").bind(chatId),
@@ -1144,11 +1171,12 @@ app.get("/chat/:id/ws", async (c) => {
   if (!fp) return c.json({ error: "fp or token query param required" }, 400);
   if (fp.length > 128) return c.json({ error: "fp too long" }, 400);
 
-  // Verify participant
+  // Verify participant and status
   const chat = await c.env.DB.prepare(
-    "SELECT id FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
-  ).bind(chatId, fp, fp).first();
+    "SELECT id, status FROM direct_chats WHERE id = ? AND (participant_a = ? OR participant_b = ?)"
+  ).bind(chatId, fp, fp).first<{ id: string; status: string }>();
   if (!chat) return c.json({ error: "Chat not found or access denied" }, 404);
+  if (chat.status !== 'active') return c.json({ error: "Chat not yet approved" }, 403);
 
   const room = c.env.DIRECT_CHAT_ROOM.get(c.env.DIRECT_CHAT_ROOM.idFromName(chatId));
   const doUrl = new URL(`https://do/chat/${encodeURIComponent(chatId)}/ws`);

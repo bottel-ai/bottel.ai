@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { listChats, createChat, deleteChat, searchBots, type DirectChat, type BotSearchResult } from "../lib/api";
+import { listChats, createChat, deleteChat, searchBots, approveChat, type DirectChat, type BotSearchResult } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { shortFp, displayName, relativeTime } from "../lib/format";
 import { Breadcrumb } from "../components";
@@ -20,6 +20,9 @@ export function ChatList() {
 
   // Delete state
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Approve state
+  const [approving, setApproving] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const loggedIn = isLoggedIn();
@@ -83,6 +86,15 @@ export function ChatList() {
       setChats(prev => prev ? prev.filter(c => c.id !== chatId) : prev);
     } catch { /* silent */ }
     setConfirmDeleteId(null);
+  };
+
+  const handleApprove = async (chatId: string) => {
+    setApproving(chatId);
+    try {
+      await approveChat(chatId);
+      await fetchChats();
+    } catch { /* silent */ }
+    setApproving(null);
   };
 
   const previewMessage = (msg: string | null): string => {
@@ -190,52 +202,80 @@ export function ChatList() {
                 {chats.map((chat) => {
                   const name = displayName(chat.other_fp, chat.other_name);
                   const isOwner = chat.created_by === selfFp;
+                  const isPending = chat.status === "pending";
+                  const canApprove = isPending && !isOwner;
+
+                  const rowContent = (
+                    <>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="font-mono text-xs font-bold text-text-primary">{name}</span>
+                        {isPending && !isOwner && (
+                          <span className="font-mono text-xs text-warning">pending</span>
+                        )}
+                        {isPending && isOwner && (
+                          <span className="font-mono text-xs text-text-muted">awaiting approval</span>
+                        )}
+                        {chat.last_message_at && (
+                          <span className="font-mono text-xs text-text-muted">{relativeTime(chat.last_message_at)}</span>
+                        )}
+                      </div>
+                      <p className="font-mono text-xs text-text-muted truncate">
+                        {previewMessage(chat.last_message)}
+                      </p>
+                    </>
+                  );
 
                   return (
-                    <div key={chat.id} className="border border-border rounded-lg px-4 py-3 hover:border-accent transition-colors">
+                    <div key={chat.id} className={`border border-border rounded-lg px-4 py-3 transition-colors ${isPending ? "opacity-75" : "hover:border-accent"}`}>
                       <div className="flex items-start justify-between gap-2">
-                        <Link to={`/chat/${chat.id}`} className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="font-mono text-xs font-bold text-text-primary">{name}</span>
-                            {chat.last_message_at && (
-                              <span className="font-mono text-xs text-text-muted">{relativeTime(chat.last_message_at)}</span>
-                            )}
-                          </div>
-                          <p className="font-mono text-xs text-text-muted truncate">
-                            {previewMessage(chat.last_message)}
-                          </p>
-                        </Link>
-                        {isOwner && (
-                          <div className="shrink-0">
-                            {confirmDeleteId === chat.id ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-mono text-error">Delete?</span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDelete(chat.id)}
-                                  className="text-xs font-mono font-medium text-error hover:underline"
-                                >
-                                  Yes
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setConfirmDeleteId(null)}
-                                  className="text-xs font-mono text-text-muted hover:text-text-primary"
-                                >
-                                  No
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setConfirmDeleteId(chat.id)}
-                                className="text-xs font-mono text-text-muted hover:text-error transition-colors"
-                              >
-                                Delete
-                              </button>
-                            )}
-                          </div>
+                        {isPending ? (
+                          <div className="flex-1 min-w-0">{rowContent}</div>
+                        ) : (
+                          <Link to={`/chat/${chat.id}`} className="flex-1 min-w-0">{rowContent}</Link>
                         )}
+                        <div className="shrink-0 flex items-center gap-2">
+                          {canApprove && (
+                            <button
+                              type="button"
+                              onClick={() => handleApprove(chat.id)}
+                              disabled={approving === chat.id}
+                              className="text-xs font-mono font-medium px-2 py-1 rounded-md bg-accent text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                            >
+                              {approving === chat.id ? "Approving..." : "Approve"}
+                            </button>
+                          )}
+                          {isOwner && (
+                            <>
+                              {confirmDeleteId === chat.id ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-mono text-error">Delete?</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDelete(chat.id)}
+                                    className="text-xs font-mono font-medium text-error hover:underline"
+                                  >
+                                    Yes
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmDeleteId(null)}
+                                    className="text-xs font-mono text-text-muted hover:text-text-primary"
+                                  >
+                                    No
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteId(chat.id)}
+                                  className="text-xs font-mono text-text-muted hover:text-error transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

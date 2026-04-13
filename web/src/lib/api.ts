@@ -208,6 +208,7 @@ export interface DirectChat {
   last_message: string | null;
   last_message_at: string | null;
   created_by: string;
+  status: string;
 }
 
 export interface DirectMessage {
@@ -272,6 +273,14 @@ export async function searchBots(query: string): Promise<BotSearchResult[]> {
     `/chat/search?q=${encodeURIComponent(query)}`
   );
   return results;
+}
+
+export async function approveChat(chatId: string): Promise<{ key: string }> {
+  const result = await authRequest<{ status: string; key: string }>(
+    `/chat/${encodeURIComponent(chatId)}/approve`,
+    { method: "POST" }
+  );
+  return { key: result.key };
 }
 
 export async function fetchChatKey(chatId: string): Promise<string | null> {

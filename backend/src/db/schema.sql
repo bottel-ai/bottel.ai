@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS direct_chats (
   participant_a   TEXT NOT NULL,
   participant_b   TEXT NOT NULL,
   encryption_key  TEXT DEFAULT NULL,
+  status          TEXT NOT NULL DEFAULT 'pending',
   created_at      TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_dchats_participants ON direct_chats(participant_a, participant_b);

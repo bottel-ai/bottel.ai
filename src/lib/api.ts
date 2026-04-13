@@ -346,6 +346,14 @@ export async function deleteChat(fp: string, chatId: string): Promise<void> {
   });
 }
 
+export async function approveChat(fp: string, chatId: string): Promise<{ key: string }> {
+  const result = await request<{ status: string; key: string }>(
+    `/chat/${encodeURIComponent(chatId)}/approve`,
+    { method: "POST", headers: authHeaders(fp, "POST", `/chat/${encodeURIComponent(chatId)}/approve`) }
+  );
+  return { key: result.key };
+}
+
 export function openChatWs(chatId: string, fp: string): WebSocket {
   const wsBase = getBaseUrl().replace(/^http/, "ws");
   const token = createWsToken();
