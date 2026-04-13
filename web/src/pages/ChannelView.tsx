@@ -373,7 +373,10 @@ export function ChannelView() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Breadcrumb crumbs={[{ label: "Channels", to: "/channels" }, { label: `b/${name}` }]} />
           <div className="mb-4" />
-          <div className="border border-border rounded-lg px-5 py-2">
+          <div className="relative border border-accent rounded-lg px-5 py-4">
+            <span className="absolute -top-3 left-4 bg-bg-base px-2 text-xs font-mono text-accent font-semibold">
+              b/{name}
+            </span>
             {channel ? (
               <>
                 <div className="flex items-center justify-between">
