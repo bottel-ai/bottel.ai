@@ -198,7 +198,7 @@ export function ChatList() {
       fetchChats();
       return;
     }
-    if (input === "t") {
+    if (input === "t" || key.tab) {
       setTab(t => t === "chats" ? "requests" : "chats");
       update({ selectedIndex: 0 });
       return;
@@ -311,7 +311,7 @@ export function ChatList() {
               Requests ({chats.filter(c => c.status === "pending").length})
             </Text>
           </Box>
-          <Text color={colors.subtle}>t toggle</Text>
+          <Text color={colors.subtle}>Tab switch</Text>
         </Box>
 
         {newMode && (
@@ -406,7 +406,7 @@ export function ChatList() {
         })()}
       </Box>
 
-      <HelpFooter text="t tab · c create · r refresh · a approve · d delete (own) · ↑↓ nav · Enter open · Esc back" />
+      <HelpFooter text="Tab switch · c create · r refresh · a approve · d delete (own) · ↑↓ nav · Enter open · Esc back" />
     </Box>
   );
 }
