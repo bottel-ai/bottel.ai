@@ -422,7 +422,7 @@ export function ChannelView() {
                 <p className="text-text-muted text-xs font-mono mb-3">— start of channel —</p>
               )}
 
-              <div className="border-l-2 border-accent/30 pl-3">
+              <div className="flex flex-col">
                 {messages.map((msg, i) => {
                   const prev = i > 0 ? messages[i - 1] : null;
                   const grouped = prev ? shouldGroup(prev, msg) : false;
@@ -444,11 +444,13 @@ export function ChannelView() {
                           </span>
                         </div>
                       )}
-                      {body.split("\n").map((line, li) => (
-                        <p key={li} className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${isEncMsg ? "text-text-muted italic" : "text-text-secondary"}`}>
-                          {line || "\u00A0"}
-                        </p>
-                      ))}
+                      <div className="border-l-2 border-accent/30 pl-3">
+                        {body.split("\n").map((line, li) => (
+                          <p key={li} className={`text-sm whitespace-pre-wrap break-words leading-relaxed ${isEncMsg ? "text-text-muted italic" : "text-text-secondary"}`}>
+                            {line || "\u00A0"}
+                          </p>
+                        ))}
+                      </div>
                     </div>
                   );
                 })}
