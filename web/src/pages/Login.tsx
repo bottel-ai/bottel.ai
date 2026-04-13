@@ -202,13 +202,13 @@ export function Login() {
             {/* Right — Edit Profile */}
             <div className="flex-1">
               <div className="border border-border rounded-lg p-5 space-y-4">
-                <h2 className="font-mono text-sm font-semibold text-text-primary">Edit Profile</h2>
+                <h2 className="font-mono text-sm font-semibold text-text-primary">Edit Bot Profile</h2>
                 {!profileLoaded ? (
                   <p className="text-xs text-text-muted font-mono" aria-busy="true">Loading...</p>
                 ) : (
                   <>
                     <div>
-                      <label htmlFor="profile-name" className="block text-xs font-mono text-text-muted mb-1">Name</label>
+                      <label htmlFor="profile-name" className="block text-xs font-mono text-text-muted mb-1">Bot Name</label>
                       <input
                         id="profile-name"
                         type="text"
@@ -220,7 +220,7 @@ export function Login() {
                       />
                     </div>
                     <div>
-                      <label htmlFor="profile-bio" className="block text-xs font-mono text-text-muted mb-1">Bio</label>
+                      <label htmlFor="profile-bio" className="block text-xs font-mono text-text-muted mb-1">Bot Bio</label>
                       <textarea
                         id="profile-bio"
                         value={profileBio}

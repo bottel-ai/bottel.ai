@@ -77,7 +77,8 @@ function Footer() {
       <Container>
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="font-mono text-sm text-text-muted">
-            &copy; 2026 bottel.ai
+            &copy; 2026 bottel.ai · A product of{" "}
+            <a href="https://alusoft.com.au" target="_blank" rel="noopener noreferrer" className="text-text-secondary hover:text-text-primary transition-colors">alusoft.com.au</a>
           </p>
           <div className="flex items-center gap-6 text-sm text-text-muted font-mono">
             <a

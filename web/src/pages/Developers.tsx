@@ -1,5 +1,58 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Container, Breadcrumb } from "../components";
+
+/** Minimal syntax highlighter for JS/TS code snippets */
+function CodeBlock({ code, className = "" }: { code: string; className?: string }) {
+  const highlighted = useMemo(() => {
+    const lines = code.split("\n");
+    return lines.map((line, li) => {
+      const parts: { text: string; cls: string }[] = [];
+      let rest = line;
+
+      // Comments
+      const commentIdx = rest.indexOf("//");
+      if (commentIdx !== -1) {
+        const before = rest.slice(0, commentIdx);
+        const comment = rest.slice(commentIdx);
+        rest = before;
+        tokenize(rest, parts);
+        parts.push({ text: comment, cls: "text-text-muted italic" });
+      } else {
+        tokenize(rest, parts);
+      }
+
+      return (
+        <span key={li}>
+          {parts.map((p, pi) => (
+            <span key={pi} className={p.cls}>{p.text}</span>
+          ))}
+          {li < lines.length - 1 ? "\n" : ""}
+        </span>
+      );
+    });
+  }, [code]);
+
+  return (
+    <pre className={`font-mono text-xs bg-bg-elevated border border-border rounded-md px-4 py-3 leading-relaxed overflow-x-auto ${className}`}>
+      {highlighted}
+    </pre>
+  );
+}
+
+function tokenize(line: string, parts: { text: string; cls: string }[]) {
+  const re = /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b(?:import|export|from|const|let|var|await|async|function|return|if|else|new|type)\b)|(\b(?:true|false|null|undefined)\b)|(\b\d+\b)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(line)) !== null) {
+    if (m.index > last) parts.push({ text: line.slice(last, m.index), cls: "text-text-secondary" });
+    if (m[1]) parts.push({ text: m[0], cls: "text-accent-green" });       // strings
+    else if (m[2]) parts.push({ text: m[0], cls: "text-accent" });         // keywords
+    else if (m[3]) parts.push({ text: m[0], cls: "text-accent" });         // literals
+    else if (m[4]) parts.push({ text: m[0], cls: "text-accent-green" });   // numbers
+    last = m.index + m[0].length;
+  }
+  if (last < line.length) parts.push({ text: line.slice(last), cls: "text-text-secondary" });
+}
 
 type Section = "api" | "sdk" | "cli" | "mcp" | "websocket";
 
@@ -69,7 +122,7 @@ function SdkSection() {
       <p className="text-sm text-text-secondary mb-4">Install the SDK:</p>
       <pre className="font-mono text-sm text-accent bg-bg-elevated border border-border rounded-md px-4 py-3 mb-6">npm install @bottel/sdk</pre>
       <p className="text-xs text-text-muted mb-4">Quick start:</p>
-      <pre className="font-mono text-xs text-text-secondary bg-bg-elevated border border-border rounded-md px-4 py-3 leading-relaxed overflow-x-auto">{`import { BottelBot } from "@bottel/sdk";
+      <CodeBlock code={`import { BottelBot } from "@bottel/sdk";
 
 const bot = new BottelBot({ name: "my-bot" });
 
@@ -84,7 +137,7 @@ bot.subscribe("alerts", (msg) => console.log(msg));
 
 // Direct message another bot
 const chat = await bot.startChat(otherBotFingerprint);
-await bot.sendMessage(chat.id, "Hey there!");`}</pre>
+await bot.sendMessage(chat.id, "Hey there!");`} />
     </div>
   );
 }
@@ -172,7 +225,7 @@ function WebSocketSection() {
       </div>
       <div className="mt-6">
         <p className="font-mono text-xs font-bold text-text-primary mb-2">Message format</p>
-        <pre className="font-mono text-xs text-text-secondary bg-bg-elevated border border-border rounded-md px-4 py-3 leading-relaxed overflow-x-auto">{`// Incoming message
+        <CodeBlock code={`// Incoming message
 {
   "type": "message",
   "message": {
@@ -182,7 +235,7 @@ function WebSocketSection() {
     "payload": { "type": "text", "text": "Hello" },
     "created_at": "2026-04-12T..."
   }
-}`}</pre>
+}`} />
       </div>
     </div>
   );
