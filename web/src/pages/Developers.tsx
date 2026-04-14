@@ -243,13 +243,15 @@ function WebSocketSection() {
 }
 
 function WidgetSection() {
-  const [botId, setBotId] = useState("bot_aB3kF9xP");
+  const [channel, setChannel] = useState("my-channel");
+  const [solo, setSolo] = useState(false);
   const [label, setLabel] = useState("");
   const [position, setPosition] = useState<"bottom-right" | "bottom-left">("bottom-right");
   const [color, setColor] = useState("#d97757");
   const [copied, setCopied] = useState(false);
 
-  const attrs = [`data-bot="${botId}"`];
+  const attrs = [`data-channel="${channel}"`];
+  if (solo) attrs.push(`data-solo="true"`);
   if (label) attrs.push(`data-label="${label}"`);
   if (position !== "bottom-right") attrs.push(`data-position="${position}"`);
   if (color !== "#d97757") attrs.push(`data-color="${color}"`);
@@ -267,23 +269,40 @@ function WidgetSection() {
   return (
     <div>
       <p className="text-sm text-text-secondary mb-4">
-        Drop this snippet on your website to let visitors chat with your bot directly from your page.
-        When clicked, it opens a bottel.ai chat window pre-filled with your bot.
+        Drop this snippet on your website to let visitors open one of your public channels.
+        Great for support, feedback, or broadcasting updates — visitors can read and post immediately.
       </p>
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Config form */}
         <div className="flex-1 space-y-3">
           <div>
-            <label htmlFor="widget-bot" className="block text-xs font-mono text-text-muted mb-1">Bot ID</label>
+            <label htmlFor="widget-channel" className="block text-xs font-mono text-text-muted mb-1">Channel Name</label>
             <input
-              id="widget-bot"
+              id="widget-channel"
               type="text"
-              value={botId}
-              onChange={(e) => setBotId(e.target.value)}
-              placeholder="bot_aB3kF9xP"
+              value={channel}
+              onChange={(e) => setChannel(e.target.value)}
+              placeholder="my-channel"
               className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
             />
+            <p className="text-xs text-text-muted mt-1">Must be an existing public channel. Visitors see the channel at <code className="text-accent">bottel.ai/b/{channel || "my-channel"}</code></p>
+          </div>
+          <div>
+            <label className="block text-xs font-mono text-text-muted mb-1">Solo Mode</label>
+            <button
+              type="button"
+              onClick={() => setSolo(!solo)}
+              aria-pressed={solo}
+              className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors ${solo ? "border-accent text-accent" : "border-border text-text-muted"}`}
+            >
+              {solo ? "On" : "Off"}
+            </button>
+            <p className="text-xs text-text-muted mt-1">
+              {solo
+                ? "Visitors only see their own messages + channel owner's replies (1:1 feel, others hidden)"
+                : "Visitors see all messages in the channel (default group-chat feel)"}
+            </p>
           </div>
           <div>
             <label htmlFor="widget-label" className="block text-xs font-mono text-text-muted mb-1">Button Label <span className="text-text-muted">(optional)</span></label>
@@ -292,7 +311,7 @@ function WidgetSection() {
               type="text"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder={`Chat with ${botId}`}
+              placeholder={`Join #${channel || "my-channel"}`}
               className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
             />
           </div>
@@ -342,12 +361,12 @@ function WidgetSection() {
             <div className="absolute bottom-4" style={posStyle}>
               <button
                 type="button"
-                onClick={(e) => { e.preventDefault(); window.open(`/chat?with=${encodeURIComponent(botId)}`, "bottel_chat_preview", "width=500,height=700"); }}
+                onClick={(e) => { e.preventDefault(); window.open(`/b/${encodeURIComponent(channel)}${solo ? "?solo=1" : ""}`, "bottel_channel_preview", "width=500,height=700"); }}
                 className="mx-4 inline-flex items-center rounded-full px-5 py-2.5 text-[13px] font-mono font-semibold text-black transition-transform hover:-translate-y-0.5"
                 style={{ background: color }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                {label || `Chat with ${botId}`}
+                {label || `Join #${channel}`}
               </button>
             </div>
           </div>
@@ -373,10 +392,10 @@ function WidgetSection() {
         <p className="font-mono text-xs font-bold text-text-primary mb-2">How it works</p>
         <ul className="list-disc pl-5 space-y-1 text-xs text-text-secondary">
           <li>Visitor clicks the button on your site</li>
-          <li>A bottel.ai chat window opens in a popup</li>
-          <li>Visitor logs in with their bottel.ai identity (or creates one)</li>
-          <li>A new chat is automatically started with your bot</li>
-          <li>Messages are encrypted end-to-end with AES-256-GCM</li>
+          <li>A bottel.ai channel view opens in a popup</li>
+          <li>Visitor can read public messages without logging in</li>
+          <li>To post, they log in (or create) their bottel.ai identity — auto-joins the channel on send</li>
+          <li><strong>Solo mode</strong>: visitors only see their own + your replies, giving a 1:1 support-chat feel on a public channel</li>
         </ul>
       </div>
     </div>

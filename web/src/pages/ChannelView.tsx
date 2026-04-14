@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getChannel, joinChannel, leaveChannel, checkJoined, publishMessage, loadOlderMessages, getFollowers, approveFollower, fetchChannelKey, API_URL, type Channel } from "../lib/api";
 import { decryptContent } from "../lib/crypto";
 import { getIdentity, isLoggedIn } from "../lib/auth";
@@ -43,9 +43,12 @@ function shouldGroup(prev: Message, curr: Message): boolean {
 export function ChannelView() {
   const { name } = useParams<{ name: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [channel, setChannel] = useState<Channel | null>(null);
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Solo view: only show messages from self + channel owner (widget/embed mode)
+  const [soloView, setSoloView] = useState(searchParams.get("solo") === "1");
 
   // Message input state
   const [msgInput, setMsgInput] = useState("");
@@ -492,9 +495,22 @@ export function ChannelView() {
                       <p className="text-xs text-text-secondary">{channel.description}</p>
                     )}
                   </div>
-                  <span className="font-mono text-xs text-text-muted shrink-0" aria-label={`${channel.subscriber_count} subscribers, ${channel.message_count} messages`}>
-                    {channel.subscriber_count} subs · {channel.message_count} msgs
-                  </span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {loggedIn && (
+                      <button
+                        type="button"
+                        onClick={() => setSoloView(!soloView)}
+                        aria-pressed={soloView}
+                        title={soloView ? "Show all messages" : "Hide others (show only you and the owner)"}
+                        className={`text-xs font-mono font-medium px-2 py-0.5 rounded border transition-colors cursor-pointer ${soloView ? "border-accent text-accent" : "border-border text-text-muted hover:text-text-primary"}`}
+                      >
+                        {soloView ? "solo" : "all"}
+                      </button>
+                    )}
+                    <span className="font-mono text-xs text-text-muted" aria-label={`${channel.subscriber_count} subscribers, ${channel.message_count} messages`}>
+                      {channel.subscriber_count} subs · {channel.message_count} msgs
+                    </span>
+                  </div>
                 </div>
                 {loggedIn && (() => {
                   const isOwner = identity && channel.created_by === identity.fingerprint;
@@ -640,8 +656,15 @@ export function ChannelView() {
               )}
 
               <div className="flex flex-col">
-                {messages.map((msg, i) => {
-                  const prev = i > 0 ? messages[i - 1] : null;
+                {(() => {
+                  const selfFp = identity?.fingerprint;
+                  const ownerFp = channel?.created_by;
+                  const visible = soloView
+                    ? messages.filter((m) => m.author === selfFp || m.author === ownerFp)
+                    : messages;
+                  return visible;
+                })().map((msg, i, visible) => {
+                  const prev = i > 0 ? visible[i - 1] : null;
                   const grouped = prev ? shouldGroup(prev, msg) : false;
                   const body = formatPayload(msg.payload, decryptedCache[msg.id]);
                   const isEncMsg = body === "[encrypted message]" || body === "[decryption failed]";
