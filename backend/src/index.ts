@@ -247,10 +247,9 @@ app.get("/profiles/by-bot-id/:botId", edgeCache(30), async (c) => {
   const suffix = botId.startsWith("bot_") ? botId.slice(4) : botId;
   if (!suffix || suffix.length < 4) return c.json({ error: "Invalid bot ID" }, 400);
 
-  // Fetch all profiles and compute bot_ID in code (profiles table is small)
-  // For scale, add a bot_id column. For now this works.
+  // Only surface PUBLIC profiles via this unauthenticated lookup endpoint.
   const result = await c.env.DB.prepare(
-    "SELECT fingerprint, name, bio, online_at, public FROM profiles LIMIT 500"
+    "SELECT fingerprint, name, bio, online_at, public FROM profiles WHERE public = 1 LIMIT 500"
   ).all();
 
   const rows = result.results ?? [];
@@ -273,8 +272,8 @@ app.get("/profiles/by-bot-id/:botId", edgeCache(30), async (c) => {
 });
 
 // GET /profiles/:fp/channels — channels created by this bot
-app.get("/profiles/:fp/channels", edgeCache(15), async (c) => {
-  c.header("Cache-Control", "public, max-age=15");
+app.get("/profiles/:fp/channels", edgeCache(60), async (c) => {
+  c.header("Cache-Control", "public, max-age=60");
   const fp = c.req.param("fp")!;
   const result = await c.env.DB.prepare(
     `SELECT name, description, created_by, message_count, subscriber_count, is_public, created_at
@@ -332,8 +331,8 @@ app.post("/profiles/ping", authMiddleware, async (c) => {
 const CHANNEL_NAME_RE = /^[a-z0-9-]{1,50}$/;
 
 // GET /channels?q=&sort= (cached 30s)
-app.get("/channels", edgeCache(15), async (c) => {
-  c.header("Cache-Control", "public, max-age=15");
+app.get("/channels", edgeCache(30), async (c) => {
+  c.header("Cache-Control", "public, max-age=30");
   const q = c.req.query("q") || "";
   const sort = c.req.query("sort") || "";
   const limitRaw = parseInt(c.req.query("limit") || "20", 10);
@@ -379,8 +378,8 @@ app.get("/channels/joined", authMiddleware, async (c) => {
 });
 
 // GET /channels/:name — metadata (cached 30s) + recent 50 messages (always fresh)
-app.get("/channels/:name", edgeCache(5), async (c) => {
-  c.header("Cache-Control", "public, max-age=5");
+app.get("/channels/:name", edgeCache(15), async (c) => {
+  c.header("Cache-Control", "public, max-age=15");
   const name = c.req.param("name");
 
   // Try channel metadata cache to skip that D1 read.
@@ -497,8 +496,8 @@ app.post("/channels", authMiddleware, async (c) => {
 //   before=<iso> → messages strictly older than that timestamp (for pagination
 //                  when scrolling up in the channel view)
 //   limit=<n>    → max messages to return (default 50, hard cap 200)
-app.get("/channels/:name/messages", edgeCache(5), async (c) => {
-  c.header("Cache-Control", "public, max-age=5");
+app.get("/channels/:name/messages", edgeCache(10), async (c) => {
+  c.header("Cache-Control", "public, max-age=10");
   const name = c.req.param("name");
   const since = c.req.query("since");
   const before = c.req.query("before");
@@ -802,6 +801,7 @@ app.delete("/channels/:name/follow", authMiddleware, async (c) => {
 
 // GET /channels/:name/follow — check if current user follows (auth)
 app.get("/channels/:name/follow", authMiddleware, async (c) => {
+  c.header("Cache-Control", "private, no-store");
   const name = c.req.param("name");
   const fp = c.get("fingerprint");
 
@@ -892,6 +892,7 @@ app.delete("/channels/:name/ban/:fp", authMiddleware, async (c) => {
 
 // GET /channels/:name/key — re-fetch decryption key for approved members (auth)
 app.get("/channels/:name/key", authMiddleware, async (c) => {
+  c.header("Cache-Control", "private, no-store");
   const name = c.req.param("name");
   const fp = c.get("fingerprint");
 
@@ -914,6 +915,7 @@ app.get("/channels/:name/key", authMiddleware, async (c) => {
 
 // GET /channels/:name/followers — list followers (creator only, auth)
 app.get("/channels/:name/followers", authMiddleware, async (c) => {
+  c.header("Cache-Control", "private, no-store");
   const name = c.req.param("name");
   const status = c.req.query("status"); // optional: 'pending' | 'active' | 'banned'
 
@@ -949,6 +951,7 @@ app.get("/channels/:name/followers", authMiddleware, async (c) => {
 
 // GET /chat/search?q= — search bots for starting a new chat (rate limited)
 app.get("/chat/search", authMiddleware, async (c) => {
+  c.header("Cache-Control", "private, no-store");
   const fp = c.get("fingerprint");
 
   // Rate limit: 30 searches/min per user.
@@ -964,6 +967,7 @@ app.get("/chat/search", authMiddleware, async (c) => {
   const result = await c.env.DB.prepare(
     `SELECT fingerprint, name, bio FROM profiles
      WHERE fingerprint != ?
+       AND public = 1
        AND (LOWER(name) LIKE LOWER(?)
          OR fingerprint LIKE ?)
      LIMIT 3`
@@ -994,30 +998,26 @@ app.post("/chat/new", authMiddleware, async (c) => {
   if (body.participant.length > 200) return c.json({ error: "participant identifier too long" }, 400);
 
   // Look up by fingerprint first, then by name if not found.
+  // Only match public profiles — private users can't be DM'd without opt-in.
   let otherFp = body.participant;
   let other = await c.env.DB.prepare(
-    "SELECT fingerprint FROM profiles WHERE fingerprint = ?"
+    "SELECT fingerprint FROM profiles WHERE fingerprint = ? AND public = 1"
   ).bind(otherFp).first<{ fingerprint: string }>();
   if (!other) {
-    // Try exact name match (case-insensitive).
     other = await c.env.DB.prepare(
-      "SELECT fingerprint FROM profiles WHERE LOWER(name) = LOWER(?)"
+      "SELECT fingerprint FROM profiles WHERE LOWER(name) = LOWER(?) AND public = 1"
     ).bind(otherFp).first<{ fingerprint: string }>();
     if (!other) {
-      // Try bot_ID or human_ID format: strip prefix and search fingerprints
-      // that contain the suffix. The ID is computed from the fingerprint
-      // hash with non-alphanumeric chars stripped, so we search with LIKE.
       const idSuffix = otherFp.startsWith("bot_") ? otherFp.slice(4)
         : otherFp.startsWith("human_") ? otherFp.slice(6)
         : otherFp;
       other = await c.env.DB.prepare(
-        "SELECT fingerprint FROM profiles WHERE fingerprint LIKE ? LIMIT 1"
+        "SELECT fingerprint FROM profiles WHERE fingerprint LIKE ? AND public = 1 LIMIT 1"
       ).bind(`%${idSuffix}%`).first<{ fingerprint: string }>();
     }
     if (!other) {
-      // Final fallback: partial name match.
       other = await c.env.DB.prepare(
-        "SELECT fingerprint FROM profiles WHERE LOWER(name) LIKE LOWER(?) LIMIT 1"
+        "SELECT fingerprint FROM profiles WHERE LOWER(name) LIKE LOWER(?) AND public = 1 LIMIT 1"
       ).bind(`%${otherFp}%`).first<{ fingerprint: string }>();
     }
     if (!other) return c.json({ error: "Bot not found. Try a name, bot_ID, or fingerprint." }, 404);
@@ -1058,6 +1058,7 @@ app.post("/chat/new", authMiddleware, async (c) => {
 
 // GET /chat/list — all chats for the current user (auth)
 app.get("/chat/list", authMiddleware, async (c) => {
+  c.header("Cache-Control", "private, no-store");
   const fp = c.get("fingerprint");
 
   const result = await c.env.DB.prepare(
@@ -1206,6 +1207,7 @@ app.post("/chat/:id/messages", authMiddleware, async (c) => {
 
 // GET /chat/:id/key — fetch the chat encryption key (auth, participant only)
 app.get("/chat/:id/key", authMiddleware, async (c) => {
+  c.header("Cache-Control", "private, no-store");
   const chatId = c.req.param("id")!;
   const fp = c.get("fingerprint");
 
