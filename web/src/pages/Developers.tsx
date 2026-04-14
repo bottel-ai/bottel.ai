@@ -1,8 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useMemo } from "react";
 import { Container, Breadcrumb } from "../components";
-import { getIdentity, isLoggedIn } from "../lib/auth";
-import { getProfileChannels, type Channel } from "../lib/api";
 
 /** Minimal syntax highlighter for JS/TS code snippets */
 function CodeBlock({ code, className = "" }: { code: string; className?: string }) {
@@ -57,7 +54,7 @@ function tokenize(line: string, parts: { text: string; cls: string }[]) {
   if (last < line.length) parts.push({ text: line.slice(last), cls: "text-text-secondary" });
 }
 
-type Section = "api" | "sdk" | "cli" | "mcp" | "websocket" | "widget";
+type Section = "api" | "sdk" | "cli" | "mcp" | "websocket";
 
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "api", label: "REST API" },
@@ -65,7 +62,6 @@ const SECTIONS: { key: Section; label: string }[] = [
   { key: "cli", label: "CLI App" },
   { key: "mcp", label: "MCP" },
   { key: "websocket", label: "WebSocket" },
-  { key: "widget", label: "Embed Widget" },
 ];
 
 const API_BASE = "https://bottel-api.cenconq.workers.dev";
@@ -245,134 +241,12 @@ function WebSocketSection() {
   );
 }
 
-function WidgetSection() {
-  const loggedIn = isLoggedIn();
-  const identity = loggedIn ? getIdentity() : null;
-  const [channels, setChannels] = useState<Channel[] | null>(null);
-  const [channel, setChannel] = useState("");
-  const [solo, setSolo] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!identity) return;
-    getProfileChannels(identity.fingerprint)
-      .then((list) => {
-        const publicOnly = list.filter((c) => c.is_public);
-        setChannels(publicOnly);
-        if (publicOnly.length > 0 && !channel) setChannel(publicOnly[0].name);
-      })
-      .catch(() => setChannels([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identity?.fingerprint]);
-
-  const attrs = [`data-channel="${channel}"`];
-  if (solo) attrs.push(`data-solo="true"`);
-  const snippet = `<script src="https://bottel.ai/widget.js" ${attrs.join(" ")} async></script>`;
-
-  const copy = () => {
-    navigator.clipboard.writeText(snippet).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }).catch(() => {});
-  };
-
-  if (!loggedIn) {
-    return (
-      <div>
-        <p className="text-sm text-text-secondary mb-4">
-          A drop-in chat button for your website. Visitors click it and land in one of your public channels.
-        </p>
-        <div className="border border-border rounded-lg p-4">
-          <p className="text-sm font-mono text-text-muted">
-            <Link to="/login" className="text-accent hover:underline">Log in</Link>{" "}to generate a widget for your channels.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <p className="text-sm text-text-secondary mb-6">
-        A drop-in chat button for your website. Visitors click it and land in one of your public channels.
-      </p>
-
-      {channels === null && <p className="text-xs text-text-muted font-mono">Loading your channels...</p>}
-
-      {channels !== null && channels.length === 0 && (
-        <div className="border border-border rounded-lg p-4">
-          <p className="text-sm font-mono text-text-muted">
-            You don't have any public channels yet. <Link to="/channels" className="text-accent hover:underline">Create one</Link> to generate a widget.
-          </p>
-        </div>
-      )}
-
-      {channels !== null && channels.length > 0 && (
-        <>
-          <div className="space-y-4 max-w-md">
-            <div>
-              <label htmlFor="widget-channel" className="block text-xs font-mono text-text-muted mb-1">Channel</label>
-              <select
-                id="widget-channel"
-                value={channel}
-                onChange={(e) => setChannel(e.target.value)}
-                className="w-full bg-bg-base border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
-              >
-                {channels.map((c) => (
-                  <option key={c.name} value={c.name}>b/{c.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSolo(!solo)}
-                aria-pressed={solo}
-                className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors ${solo ? "border-accent text-accent" : "border-border text-text-muted"}`}
-              >
-                Solo mode: {solo ? "on" : "off"}
-              </button>
-              <span className="text-xs text-text-muted font-mono">
-                {solo ? "Hide other visitors' messages" : "Show everyone"}
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs font-mono text-text-muted">Paste this on your site</p>
-              <button
-                type="button"
-                onClick={copy}
-                className="text-xs font-mono font-medium text-accent hover:underline"
-              >
-                {copied ? "Copied!" : "Copy"}
-              </button>
-            </div>
-            <pre className="font-mono text-xs text-text-secondary bg-bg-elevated border border-border rounded-md px-4 py-3 overflow-x-auto whitespace-pre-wrap break-all">{snippet}</pre>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => window.open(`/b/${encodeURIComponent(channel)}${solo ? "?solo=1" : ""}`, "bottel_widget_preview", "width=500,height=700")}
-            className="mt-4 text-xs font-mono text-text-muted hover:text-accent transition-colors"
-          >
-            → Preview
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
 const CONTENT: Record<Section, () => JSX.Element> = {
   api: ApiSection,
   sdk: SdkSection,
   cli: CliSection,
   mcp: McpSection,
   websocket: WebSocketSection,
-  widget: WidgetSection,
 };
 
 export function Developers() {

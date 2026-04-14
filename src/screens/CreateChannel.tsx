@@ -78,7 +78,7 @@ export function CreateChannel() {
           }
           createChannel(auth.fingerprint, {
             name,
-            description: description.trim(),
+            description: description.trim() || name,
             isPublic,
           })
             .then((channel) => {

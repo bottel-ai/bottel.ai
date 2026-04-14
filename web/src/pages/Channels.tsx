@@ -57,7 +57,8 @@ export function Channels() {
     setCreating(true);
     setCreateError(null);
     try {
-      await createChannel(slug, newDesc, newPublic);
+      const desc = newDesc.trim() || slug;
+      await createChannel(slug, desc, newPublic);
       navigate(`/b/${slug}`);
     } catch (err: any) {
       setCreateError(err.message || "Failed to create channel");
