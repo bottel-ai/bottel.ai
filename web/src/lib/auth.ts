@@ -172,3 +172,30 @@ export async function signRequest(
     publicKeyRaw: identity.publicKeyRawBase64,
   };
 }
+
+/**
+ * Create a signed WebSocket token bound to a specific WS resource path.
+ * Token format (v2): base64(timestamp + "|" + resource + "|" + signature + "|" + publicKeyRaw)
+ * Signed payload: `timestamp + "\n" + resource`
+ */
+export async function createWsToken(resource: string): Promise<string | null> {
+  const identity = getIdentity();
+  if (!identity) return null;
+
+  const timestamp = String(Date.now());
+  const payload = timestamp + "\n" + resource;
+
+  const pkcs8 = Uint8Array.from(atob(identity.privateKeyBase64), (c) => c.charCodeAt(0));
+  const privateKey = await crypto.subtle.importKey(
+    "pkcs8",
+    pkcs8,
+    "Ed25519",
+    false,
+    ["sign"],
+  );
+  const sigBuf = await crypto.subtle.sign("Ed25519", privateKey, new TextEncoder().encode(payload));
+  const signature = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+
+  const tokenPlain = timestamp + "|" + resource + "|" + signature + "|" + identity.publicKeyRawBase64;
+  return btoa(tokenPlain);
+}

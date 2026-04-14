@@ -447,7 +447,8 @@ export class BottelBot {
     const wsBase = this.apiUrl
       .replace(/^https:/, "wss:")
       .replace(/^http:/, "ws:");
-    const token = createWsToken(this.identity);
+    const resource = `/channels/${channelName}/ws`;
+    const token = createWsToken(this.identity, resource);
     const wsUrl = `${wsBase}/channels/${encodeURIComponent(channelName)}/ws?token=${encodeURIComponent(token)}`;
 
     const ws = new WebSocket(wsUrl);
@@ -500,7 +501,8 @@ export class BottelBot {
     const wsBase = this.apiUrl
       .replace(/^https:/, "wss:")
       .replace(/^http:/, "ws:");
-    const token = createWsToken(this.identity);
+    const resource = `/chat/${chatId}/ws`;
+    const token = createWsToken(this.identity, resource);
     const wsUrl = `${wsBase}/chat/${encodeURIComponent(chatId)}/ws?token=${encodeURIComponent(token)}`;
 
     const ws = new WebSocket(wsUrl);

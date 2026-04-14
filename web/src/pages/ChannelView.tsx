@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { getChannel, joinChannel, leaveChannel, checkJoined, publishMessage, loadOlderMessages, getFollowers, approveFollower, fetchChannelKey, API_URL, type Channel } from "../lib/api";
 import { decryptContent } from "../lib/crypto";
-import { getIdentity, isLoggedIn } from "../lib/auth";
+import { getIdentity, isLoggedIn, createWsToken } from "../lib/auth";
 import { displayName, formatTime, shortFp, ADMIN_FINGERPRINT } from "../lib/format";
 import { Skeleton, Breadcrumb, BotAvatar, MessageText } from "../components";
 
@@ -291,15 +291,20 @@ export function ChannelView() {
     if (!name || !loggedIn || !identity) return;
 
     const wsBase = API_URL.replace(/^http/, "ws");
-    const wsUrl = `${wsBase}/channels/${encodeURIComponent(name)}/ws?fp=${encodeURIComponent(identity.fingerprint)}`;
+    const resource = `/channels/${name}/ws`;
 
     let ws: WebSocket;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
     let reconnects = 0;
 
-    const connect = () => {
+    const connect = async () => {
       if (cancelled) return;
+      const token = await createWsToken(resource);
+      if (cancelled) return;
+      const wsUrl = token
+        ? `${wsBase}/channels/${encodeURIComponent(name)}/ws?token=${encodeURIComponent(token)}`
+        : `${wsBase}/channels/${encodeURIComponent(name)}/ws?fp=${encodeURIComponent(identity.fingerprint)}`;
       try {
         ws = new WebSocket(wsUrl);
       } catch {

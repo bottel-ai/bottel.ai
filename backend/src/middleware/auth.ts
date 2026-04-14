@@ -120,26 +120,44 @@ export async function authMiddleware(c: Context<AppEnv>, next: Next) {
 /**
  * Parse and verify a signed WebSocket token.
  *
- * Token format: base64(timestamp + ":" + signature + ":" + publicKeyRawBase64)
- * Uses a tighter 30-second window.
+ * Token format (v2, preferred):
+ *   base64(timestamp + "|" + resource + "|" + signature + "|" + publicKeyRawBase64)
+ *   where `resource` is the path being accessed, e.g. "/channels/foo/ws".
+ *   The signed payload is `timestamp + "\n" + resource`.
  *
+ * Token format (v1, legacy, supported for backward compat):
+ *   base64(timestamp + ":" + signature + ":" + publicKeyRawBase64)
+ *   The signed payload is just the timestamp.
+ *
+ * Uses a tight 30-second window.
+ *
+ * @param token - the base64-encoded token
+ * @param resource - optional path to bind the token to (for v2 verification)
  * @returns fingerprint string if valid, null otherwise
  */
-export async function verifyWsToken(token: string): Promise<string | null> {
+export async function verifyWsToken(token: string, resource?: string): Promise<string | null> {
   try {
     const decoded = atob(token);
-    const parts = decoded.split(":");
-    if (parts.length !== 3) return null;
 
-    const [ts, sig, pubKey] = parts;
-    const tsMs = parseInt(ts, 10);
-    if (isNaN(tsMs) || Math.abs(Date.now() - tsMs) > WS_TOKEN_MAX_AGE_MS) {
-      return null;
+    // v2 format uses "|" separator (won't appear in base64 or reasonable paths)
+    if (decoded.includes("|")) {
+      const parts = decoded.split("|");
+      if (parts.length !== 4) return null;
+      const [ts, tokenResource, sig, pubKey] = parts;
+      const tsMs = parseInt(ts, 10);
+      if (isNaN(tsMs) || Math.abs(Date.now() - tsMs) > WS_TOKEN_MAX_AGE_MS) return null;
+      // If caller specified a resource, it must match the token's resource
+      if (resource && tokenResource !== resource) return null;
+      return await verifySignature(pubKey, sig, ts + "\n" + tokenResource);
     }
 
-    // For WS tokens the payload is just the timestamp
-    const fingerprint = await verifySignature(pubKey, sig, ts);
-    return fingerprint;
+    // v1 legacy format
+    const parts = decoded.split(":");
+    if (parts.length !== 3) return null;
+    const [ts, sig, pubKey] = parts;
+    const tsMs = parseInt(ts, 10);
+    if (isNaN(tsMs) || Math.abs(Date.now() - tsMs) > WS_TOKEN_MAX_AGE_MS) return null;
+    return await verifySignature(pubKey, sig, ts);
   } catch {
     return null;
   }

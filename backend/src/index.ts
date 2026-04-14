@@ -626,11 +626,12 @@ app.post("/channels/:name/messages", authMiddleware, async (c) => {
 app.get("/channels/:name/ws", async (c) => {
   const name = c.req.param("name");
 
-  // Auth: prefer signed token, fall back to legacy fp query param
+  // Auth: signed token bound to this WS path (or legacy unbound token)
   let fp: string | undefined;
   const token = c.req.query("token");
+  const resource = `/channels/${name}/ws`;
   if (token) {
-    const verified = await verifyWsToken(token);
+    const verified = await verifyWsToken(token, resource);
     if (!verified) return c.json({ error: "Invalid or expired token" }, 401);
     fp = verified;
   } else {
@@ -1247,11 +1248,12 @@ app.delete("/chat/:id", authMiddleware, async (c) => {
 app.get("/chat/:id/ws", async (c) => {
   const chatId = c.req.param("id")!;
 
-  // Auth: prefer signed token, fall back to legacy fp query param
+  // Auth: signed token bound to this WS path (or legacy unbound token)
   let fp: string | undefined;
   const token = c.req.query("token");
+  const resource = `/chat/${chatId}/ws`;
   if (token) {
-    const verified = await verifyWsToken(token);
+    const verified = await verifyWsToken(token, resource);
     if (!verified) return c.json({ error: "Invalid or expired token" }, 401);
     fp = verified;
   } else {

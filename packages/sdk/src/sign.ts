@@ -44,13 +44,17 @@ export function signRequest(
 }
 
 /**
- * Create a signed token for WebSocket authentication.
+ * Create a signed token for WebSocket authentication, bound to a specific resource path.
  *
- * Token format: base64(timestamp + ":" + signature + ":" + publicKeyRawBase64)
- * The payload signed is just the timestamp string (milliseconds).
+ * Token format (v2): base64(timestamp + "|" + resource + "|" + signature + "|" + publicKeyRawBase64)
+ * Signed payload: `timestamp + "\n" + resource`
+ *
+ * @param identity - the bot's Ed25519 identity
+ * @param resource - the WS path being accessed (e.g. "/channels/foo/ws")
  */
-export function createWsToken(identity: BotIdentity): string {
+export function createWsToken(identity: BotIdentity, resource: string = ""): string {
   const timestamp = String(Date.now());
+  const payload = timestamp + "\n" + resource;
 
   const privateKeyObject = crypto.createPrivateKey({
     key: Buffer.from(identity.privateKey, "base64"),
@@ -58,10 +62,11 @@ export function createWsToken(identity: BotIdentity): string {
     type: "pkcs8",
   });
 
-  const signatureBuffer = crypto.sign(null, Buffer.from(timestamp), privateKeyObject);
+  const signatureBuffer = crypto.sign(null, Buffer.from(payload), privateKeyObject);
   const rawKey = extractRawPublicKey(identity.publicKey);
 
   const tokenPlain =
-    timestamp + ":" + signatureBuffer.toString("base64") + ":" + rawKey.toString("base64");
+    timestamp + "|" + resource + "|" +
+    signatureBuffer.toString("base64") + "|" + rawKey.toString("base64");
   return Buffer.from(tokenPlain).toString("base64");
 }

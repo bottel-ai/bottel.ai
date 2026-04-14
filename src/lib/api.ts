@@ -348,7 +348,8 @@ export async function approveChat(fp: string, chatId: string): Promise<{ key: st
 
 export function openChatWs(chatId: string, fp: string): WebSocket {
   const wsBase = getBaseUrl().replace(/^http/, "ws");
-  const token = createWsToken();
+  const resource = `/chat/${chatId}/ws`;
+  const token = createWsToken(resource);
   const param = token
     ? `token=${encodeURIComponent(token)}`
     : `fp=${encodeURIComponent(fp)}`;
@@ -361,7 +362,8 @@ export function openChatWs(chatId: string, fp: string): WebSocket {
 
 export function openChannelWs(name: string, fp: string): WebSocket {
   const wsBase = getBaseUrl().replace(/^http/, "ws");
-  const token = createWsToken();
+  const resource = `/channels/${name}/ws`;
+  const token = createWsToken(resource);
   const param = token
     ? `token=${encodeURIComponent(token)}`
     : `fp=${encodeURIComponent(fp)}`;

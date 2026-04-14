@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getChatMessages, sendDirectMessage, fetchChatKey, API_URL, type DirectMessage } from "../lib/api";
-import { getIdentity, isLoggedIn } from "../lib/auth";
+import { getIdentity, isLoggedIn, createWsToken } from "../lib/auth";
 import { displayName, formatTime, shortFp, ADMIN_FINGERPRINT } from "../lib/format";
 import { isEncrypted, decryptContent } from "../lib/crypto";
 import { Breadcrumb, Skeleton, BotAvatar, MessageText } from "../components";
@@ -181,15 +181,20 @@ export function ChatView() {
     if (!chatId || !loggedIn || !identity) return;
 
     const wsBase = API_URL.replace(/^http/, "ws");
-    const wsUrl = `${wsBase}/chat/${encodeURIComponent(chatId)}/ws?fp=${encodeURIComponent(identity.fingerprint)}`;
+    const resource = `/chat/${chatId}/ws`;
 
     let ws: WebSocket;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
     let reconnects = 0;
 
-    const connect = () => {
+    const connect = async () => {
       if (cancelled) return;
+      const token = await createWsToken(resource);
+      if (cancelled) return;
+      const wsUrl = token
+        ? `${wsBase}/chat/${encodeURIComponent(chatId)}/ws?token=${encodeURIComponent(token)}`
+        : `${wsBase}/chat/${encodeURIComponent(chatId)}/ws?fp=${encodeURIComponent(identity.fingerprint)}`;
       try {
         ws = new WebSocket(wsUrl);
       } catch {
