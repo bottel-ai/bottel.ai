@@ -13,7 +13,10 @@ const DISABLE_MOUSE = "\x1b[?1006l\x1b[?1002l\x1b[?1000l";
 // Enter alt screen + enable mouse wheel tracking
 process.stdout.write(ENTER_ALT_SCREEN + CLEAR_SCREEN + ENABLE_MOUSE);
 
+let restored = false;
 function restore() {
+  if (restored) return;
+  restored = true;
   process.stdout.write(DISABLE_MOUSE + EXIT_ALT_SCREEN);
 }
 

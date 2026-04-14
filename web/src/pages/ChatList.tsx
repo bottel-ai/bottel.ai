@@ -85,20 +85,28 @@ export function ChatList() {
     }
   };
 
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const handleDelete = async (chatId: string) => {
+    setActionError(null);
     try {
       await deleteChat(chatId);
       setChats(prev => prev ? prev.filter(c => c.id !== chatId) : prev);
-    } catch { /* silent */ }
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to delete chat");
+    }
     setConfirmDeleteId(null);
   };
 
   const handleApprove = async (chatId: string) => {
     setApproving(chatId);
+    setActionError(null);
     try {
       await approveChat(chatId);
       await fetchChats();
-    } catch { /* silent */ }
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to approve chat");
+    }
     setApproving(null);
   };
 
@@ -124,6 +132,10 @@ export function ChatList() {
         </div>
 
         <Breadcrumb crumbs={[{ label: "Chat" }]} />
+
+        {actionError && (
+          <p role="alert" className="text-error text-xs font-mono mb-2">{actionError}</p>
+        )}
 
         <div className="flex items-center justify-between mb-4">
           <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent">Chat</h1>

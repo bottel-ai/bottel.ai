@@ -23,7 +23,7 @@ interface ChannelViewProps {
 
 export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewProps) {
   const { state, dispatch, goBack } = useStore();
-  const { messages, input, loading, wsConnected, loadingOlder, hasMoreOlder } =
+  const { messages, input, loading, wsConnected, hasMoreOlder } =
     state.channelView;
   // Use the full terminal width (minus a 2-col gutter for outer paddingX).
   // Previously capped at 90, which left bubbles right-aligned to a narrower
@@ -85,7 +85,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
     setJoinState(null);
     setShowJoinPrompt(false);
     // Reset pagination + prefetch state.
-    update({ loading: true, loadingOlder: false, hasMoreOlder: true });
+    update({ loading: true, hasMoreOlder: true });
     prefetchBuf.current = [];
     prefetchHasMore.current = true;
     prefetching.current = false;
@@ -295,11 +295,15 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
   // older X10 protocol — we handle both formats.
 
   const { stdin } = useStdin();
+  // Refs to avoid stale closures in the mouse-wheel handler
+  const hasMoreOlderRef = useRef(hasMoreOlder);
+  const mergeOlderRef = useRef(mergeOlder);
+  useEffect(() => { hasMoreOlderRef.current = hasMoreOlder; }, [hasMoreOlder]);
+  useEffect(() => { mergeOlderRef.current = mergeOlder; });
   useEffect(() => {
     if (!stdin) return;
     const onData = (data: Buffer) => {
       const str = data.toString();
-      // SGR format: \x1b[<button;col;rowM (press) or m (release)
       const matches = str.matchAll(/\x1b\[<(\d+);\d+;\d+[Mm]/g);
       for (const match of matches) {
         const button = parseInt(match[1]!, 10);
@@ -307,15 +311,12 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
         const offset = msgScrollRef.current.getScrollOffset();
         const bottom = msgScrollRef.current.getBottomOffset();
         if ((button & 0x43) === 0x40) {
-          // Wheel up
           msgScrollRef.current.scrollTo(Math.max(0, offset - 3));
           checkIfAtBottom();
-          // At the top? Merge prefetched older messages.
-          if (offset <= 3 && hasMoreOlder && prefetchBuf.current.length > 0) {
-            mergeOlder();
+          if (offset <= 3 && hasMoreOlderRef.current && prefetchBuf.current.length > 0) {
+            mergeOlderRef.current();
           }
         } else if ((button & 0x43) === 0x41) {
-          // Wheel down
           msgScrollRef.current.scrollTo(Math.min(bottom, offset + 3));
           checkIfAtBottom();
         }
@@ -410,7 +411,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
     // Try to parse as JSON object; otherwise wrap as text.
     let payload: any;
     try {
-      const parsed = JSON.parse(text);
+      const parsed = JSON.parse(unescaped);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         payload = parsed;
       } else {
@@ -622,13 +623,7 @@ export function ChannelView({ channelName, termHeight, termWidth }: ChannelViewP
     }
     return (
       <Box flexDirection="column" width={paneWidth}>
-        {loadingOlder && (
-          <Box paddingX={1}>
-            <Text color={colors.primary}><Spinner type="dots" /></Text>
-            <Text color={colors.muted}> loading older messages...</Text>
-          </Box>
-        )}
-        {!loadingOlder && !hasMoreOlder && (
+        {!hasMoreOlder && (
           <Box paddingX={1}>
             <Text color={colors.subtle}>— start of channel —</Text>
           </Box>

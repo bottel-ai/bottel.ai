@@ -61,14 +61,6 @@ export function Settings() {
     );
   });
 
-  if (message && message !== "about") {
-    allRows.push(
-      <Box key="message" marginTop={1} paddingLeft={2}>
-        <Text color={colors.success}>{message}</Text>
-      </Box>
-    );
-  }
-
   allRows.push(<HelpFooter key="footer" text="Esc back · ↑↓ nav · Tab top · Enter select" />);
 
   if (message === "about") {

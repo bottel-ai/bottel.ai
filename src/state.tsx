@@ -81,7 +81,6 @@ export interface ChannelViewState {
   input: string;
   loading: boolean;
   wsConnected: boolean;
-  loadingOlder: boolean;
   hasMoreOlder: boolean;
 }
 
@@ -160,7 +159,6 @@ const INITIAL_CHANNEL_VIEW: ChannelViewState = {
   input: "",
   loading: false,
   wsConnected: false,
-  loadingOlder: false,
   // Optimistic — we don't yet know if there's more, but we'll find out on the
   // first scroll-up attempt. Cleared to false once we get an empty page back.
   hasMoreOlder: true,

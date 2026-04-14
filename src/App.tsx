@@ -87,12 +87,14 @@ function Router() {
   // and needs mouse tracking enabled for wheel scrolling.
   const hasTextInput = ["search", "home", "auth", "channel-create", "profile-setup", "channel-list", "chat-list", "settings"].includes(state.screen.name);
 
-  const termWidth = stdout?.columns ?? 80;
+  const [termWidth, setTermWidth] = useState(stdout?.columns ?? 80);
   const [termHeight, setTermHeight] = useState(stdout?.rows ?? 24);
   useEffect(() => {
     if (!stdout) return;
+    setTermWidth(stdout.columns);
     setTermHeight(stdout.rows);
     const onResize = () => {
+      setTermWidth(stdout.columns);
       setTermHeight(stdout.rows);
       scrollRef.current?.remeasure();
     };

@@ -64,28 +64,31 @@ export function ChatView() {
   // Track if chat is pending approval
   const [pending, setPending] = useState(false);
 
-  // Fetch chat key + messages on mount
-  const loadChat = useCallback(() => {
-    if (!chatId || !loggedIn) return;
+  // Fetch chat key + messages on mount. Returns a cancel fn callers should invoke on unmount/change.
+  const loadChat = useCallback((): (() => void) => {
+    if (!chatId || !loggedIn) return () => {};
+    let cancelled = false;
 
     fetchChatKey(chatId)
       .then((k) => {
+        if (cancelled) return;
         if (k) {
           setChatKey(k);
           setPending(false);
           setError(null);
-          // Fetch messages now that we have the key
           getChatMessages(chatId)
             .then((msgs) => {
+              if (cancelled) return;
               const sorted = [...msgs].sort(
                 (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
               );
               setMessages(sorted);
             })
-            .catch((err) => setError(err?.message || "Failed to load messages"));
+            .catch((err) => { if (!cancelled) setError(err?.message || "Failed to load messages"); });
         }
       })
       .catch((err) => {
+        if (cancelled) return;
         const msg = err?.message || "";
         if (msg.includes("403") || msg.toLowerCase().includes("pending") || msg.toLowerCase().includes("approved")) {
           setPending(true);
@@ -93,10 +96,21 @@ export function ChatView() {
           setError(msg || "Failed to load chat");
         }
       });
+
+    return () => { cancelled = true; };
   }, [chatId, loggedIn]);
 
   useEffect(() => {
-    loadChat();
+    // Reset state when chatId changes
+    setMessages(null);
+    setChatKey(null);
+    setPending(false);
+    setError(null);
+    setSendError(null);
+    setNewMsgCount(0);
+    setDecryptedCache({});
+    const cancel = loadChat();
+    return cancel;
   }, [loadChat]);
 
   // Poll for approval when chat is pending (every 5 seconds)
@@ -390,12 +404,14 @@ export function ChatView() {
 
           {/* New messages indicator */}
           {newMsgCount > 0 && (
-            <div
+            <button
+              type="button"
               onClick={() => { scrollToBottom(); setNewMsgCount(0); }}
-              className="text-center py-1.5 text-xs font-mono text-accent cursor-pointer hover:text-text-primary transition-colors"
+              aria-label={`${newMsgCount} new message${newMsgCount === 1 ? "" : "s"} below — click to jump`}
+              className="w-full text-center py-1.5 text-xs font-mono text-accent cursor-pointer hover:text-text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               {"\u2193"} {newMsgCount} new message{newMsgCount === 1 ? "" : "s"} below — click to jump
-            </div>
+            </button>
           )}
 
           {/* Message input */}
