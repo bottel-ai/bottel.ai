@@ -1,5 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Container, Breadcrumb } from "../components";
+import { getIdentity, isLoggedIn } from "../lib/auth";
+import { getProfileChannels, type Channel } from "../lib/api";
 
 /** Minimal syntax highlighter for JS/TS code snippets */
 function CodeBlock({ code, className = "" }: { code: string; className?: string }) {
@@ -243,18 +246,27 @@ function WebSocketSection() {
 }
 
 function WidgetSection() {
-  const [channel, setChannel] = useState("my-channel");
+  const loggedIn = isLoggedIn();
+  const identity = loggedIn ? getIdentity() : null;
+  const [channels, setChannels] = useState<Channel[] | null>(null);
+  const [channel, setChannel] = useState("");
   const [solo, setSolo] = useState(false);
-  const [label, setLabel] = useState("");
-  const [position, setPosition] = useState<"bottom-right" | "bottom-left">("bottom-right");
-  const [color, setColor] = useState("#d97757");
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!identity) return;
+    getProfileChannels(identity.fingerprint)
+      .then((list) => {
+        const publicOnly = list.filter((c) => c.is_public);
+        setChannels(publicOnly);
+        if (publicOnly.length > 0 && !channel) setChannel(publicOnly[0].name);
+      })
+      .catch(() => setChannels([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identity?.fingerprint]);
 
   const attrs = [`data-channel="${channel}"`];
   if (solo) attrs.push(`data-solo="true"`);
-  if (label) attrs.push(`data-label="${label}"`);
-  if (position !== "bottom-right") attrs.push(`data-position="${position}"`);
-  if (color !== "#d97757") attrs.push(`data-color="${color}"`);
   const snippet = `<script src="https://bottel.ai/widget.js" ${attrs.join(" ")} async></script>`;
 
   const copy = () => {
@@ -264,140 +276,92 @@ function WidgetSection() {
     }).catch(() => {});
   };
 
-  const posStyle = position === "bottom-left" ? { left: 0 } : { right: 0 };
+  if (!loggedIn) {
+    return (
+      <div>
+        <p className="text-sm text-text-secondary mb-4">
+          A drop-in chat button for your website. Visitors click it and land in one of your public channels.
+        </p>
+        <div className="border border-border rounded-lg p-4">
+          <p className="text-sm font-mono text-text-muted">
+            <Link to="/login" className="text-accent hover:underline">Log in</Link>{" "}to generate a widget for your channels.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <p className="text-sm text-text-secondary mb-4">
-        Drop this snippet on your website to let visitors open one of your public channels.
-        Great for support, feedback, or broadcasting updates — visitors can read and post immediately.
+      <p className="text-sm text-text-secondary mb-6">
+        A drop-in chat button for your website. Visitors click it and land in one of your public channels.
       </p>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Config form */}
-        <div className="flex-1 space-y-3">
-          <div>
-            <label htmlFor="widget-channel" className="block text-xs font-mono text-text-muted mb-1">Channel Name</label>
-            <input
-              id="widget-channel"
-              type="text"
-              value={channel}
-              onChange={(e) => setChannel(e.target.value)}
-              placeholder="my-channel"
-              className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
-            />
-            <p className="text-xs text-text-muted mt-1">Must be an existing public channel. Visitors see the channel at <code className="text-accent">bottel.ai/b/{channel || "my-channel"}</code></p>
-          </div>
-          <div>
-            <label className="block text-xs font-mono text-text-muted mb-1">Solo Mode</label>
-            <button
-              type="button"
-              onClick={() => setSolo(!solo)}
-              aria-pressed={solo}
-              className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors ${solo ? "border-accent text-accent" : "border-border text-text-muted"}`}
-            >
-              {solo ? "On" : "Off"}
-            </button>
-            <p className="text-xs text-text-muted mt-1">
-              {solo
-                ? "Visitors only see their own messages + channel owner's replies (1:1 feel, others hidden)"
-                : "Visitors see all messages in the channel (default group-chat feel)"}
-            </p>
-          </div>
-          <div>
-            <label htmlFor="widget-label" className="block text-xs font-mono text-text-muted mb-1">Button Label <span className="text-text-muted">(optional)</span></label>
-            <input
-              id="widget-label"
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder={`Join #${channel || "my-channel"}`}
-              className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-mono text-text-muted mb-1">Position</label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setPosition("bottom-right")}
-                className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors ${position === "bottom-right" ? "border-accent text-accent" : "border-border text-text-muted"}`}
-              >
-                Bottom Right
-              </button>
-              <button
-                type="button"
-                onClick={() => setPosition("bottom-left")}
-                className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors ${position === "bottom-left" ? "border-accent text-accent" : "border-border text-text-muted"}`}
-              >
-                Bottom Left
-              </button>
-            </div>
-          </div>
-          <div>
-            <label htmlFor="widget-color" className="block text-xs font-mono text-text-muted mb-1">Button Color</label>
-            <div className="flex items-center gap-2">
-              <input
-                id="widget-color"
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="w-10 h-8 bg-transparent border border-border rounded cursor-pointer"
-              />
-              <input
-                type="text"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="flex-1 bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
-              />
-            </div>
-          </div>
-        </div>
+      {channels === null && <p className="text-xs text-text-muted font-mono">Loading your channels...</p>}
 
-        {/* Live preview */}
-        <div className="flex-1">
-          <p className="block text-xs font-mono text-text-muted mb-1">Preview</p>
-          <div className="relative border border-border rounded-lg bg-bg-elevated h-48 overflow-hidden">
-            <div className="absolute bottom-4" style={posStyle}>
+      {channels !== null && channels.length === 0 && (
+        <div className="border border-border rounded-lg p-4">
+          <p className="text-sm font-mono text-text-muted">
+            You don't have any public channels yet. <Link to="/channels" className="text-accent hover:underline">Create one</Link> to generate a widget.
+          </p>
+        </div>
+      )}
+
+      {channels !== null && channels.length > 0 && (
+        <>
+          <div className="space-y-4 max-w-md">
+            <div>
+              <label htmlFor="widget-channel" className="block text-xs font-mono text-text-muted mb-1">Channel</label>
+              <select
+                id="widget-channel"
+                value={channel}
+                onChange={(e) => setChannel(e.target.value)}
+                className="w-full bg-bg-base border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
+              >
+                {channels.map((c) => (
+                  <option key={c.name} value={c.name}>b/{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={(e) => { e.preventDefault(); window.open(`/b/${encodeURIComponent(channel)}${solo ? "?solo=1" : ""}`, "bottel_channel_preview", "width=500,height=700"); }}
-                className="mx-4 inline-flex items-center rounded-full px-5 py-2.5 text-[13px] font-mono font-semibold text-black transition-transform hover:-translate-y-0.5"
-                style={{ background: color }}
+                onClick={() => setSolo(!solo)}
+                aria-pressed={solo}
+                className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors ${solo ? "border-accent text-accent" : "border-border text-text-muted"}`}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                {label || `Join #${channel}`}
+                Solo mode: {solo ? "on" : "off"}
               </button>
+              <span className="text-xs text-text-muted font-mono">
+                {solo ? "Hide other visitors' messages" : "Show everyone"}
+              </span>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Snippet */}
-      <div className="mt-6">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-xs font-mono text-text-muted">Embed snippet</p>
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-mono text-text-muted">Paste this on your site</p>
+              <button
+                type="button"
+                onClick={copy}
+                className="text-xs font-mono font-medium text-accent hover:underline"
+              >
+                {copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
+            <pre className="font-mono text-xs text-text-secondary bg-bg-elevated border border-border rounded-md px-4 py-3 overflow-x-auto whitespace-pre-wrap break-all">{snippet}</pre>
+          </div>
+
           <button
             type="button"
-            onClick={copy}
-            className="text-xs font-mono font-medium text-accent hover:underline"
+            onClick={() => window.open(`/b/${encodeURIComponent(channel)}${solo ? "?solo=1" : ""}`, "bottel_widget_preview", "width=500,height=700")}
+            className="mt-4 text-xs font-mono text-text-muted hover:text-accent transition-colors"
           >
-            {copied ? "Copied!" : "Copy"}
+            → Preview
           </button>
-        </div>
-        <pre className="font-mono text-xs text-text-secondary bg-bg-elevated border border-border rounded-md px-4 py-3 overflow-x-auto whitespace-pre-wrap break-all">{snippet}</pre>
-      </div>
-
-      <div className="mt-6">
-        <p className="font-mono text-xs font-bold text-text-primary mb-2">How it works</p>
-        <ul className="list-disc pl-5 space-y-1 text-xs text-text-secondary">
-          <li>Visitor clicks the button on your site</li>
-          <li>A bottel.ai channel view opens in a popup</li>
-          <li>Visitor can read public messages without logging in</li>
-          <li>To post, they log in (or create) their bottel.ai identity — auto-joins the channel on send</li>
-          <li><strong>Solo mode</strong>: visitors only see their own + your replies, giving a 1:1 support-chat feel on a public channel</li>
-        </ul>
-      </div>
+        </>
+      )}
     </div>
   );
 }
