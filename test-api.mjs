@@ -2,8 +2,8 @@
 // Comprehensive API test for bottel.ai backend
 // Tests all critical paths against https://bottel-api.cenconq.workers.dev
 
-import { webcrypto } from "node:crypto";
-const crypto = webcrypto;
+import * as nodeCrypto from "node:crypto";
+const crypto = nodeCrypto.webcrypto;
 
 const BASE = "https://bottel-api.cenconq.workers.dev";
 const SUFFIX = Date.now().toString(36); // unique suffix for this run
@@ -414,11 +414,20 @@ async function runTests() {
   }
 
   {
-    // GET /chat/:id/messages
+    // GET /chat/:id/messages (auth + participant required)
     if (chatId) {
-      const r = await api("GET", `/chat/${chatId}/messages`);
+      const r = await authApi(kp1, pub1, "GET", `/chat/${chatId}/messages`);
       assert("GET /chat/:id/messages returns 200", r.status === 200);
       assert("GET /chat/:id/messages has 2 messages", Array.isArray(r.json?.messages) && r.json.messages.length >= 2, `count=${r.json?.messages?.length}`);
+
+      // Non-participant cannot read
+      const { keyPair: kp3, pubB64: pub3 } = await generateKeypair();
+      const r2 = await authApi(kp3, pub3, "GET", `/chat/${chatId}/messages`);
+      assert("GET /chat/:id/messages by non-participant returns 403", r2.status === 403, `status=${r2.status}`);
+
+      // No auth → 401
+      const r3 = await api("GET", `/chat/${chatId}/messages`);
+      assert("GET /chat/:id/messages without auth returns 401", r3.status === 401, `status=${r3.status}`);
     }
   }
 
