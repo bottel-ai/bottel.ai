@@ -1,41 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
-  <!-- Cap top highlight -->
-  <rect x="6" y="0" width="4" height="1" fill="#d4d0c8"/>
-  <!-- Cap body (Win95 silver with shading) -->
-  <rect x="6" y="1" width="3" height="1" fill="#ffffff"/>
-  <rect x="9" y="1" width="1" height="1" fill="#808080"/>
-  <rect x="6" y="2" width="1" height="1" fill="#c0c0c0"/>
-  <rect x="7" y="2" width="2" height="1" fill="#a0a0a0"/>
-  <rect x="9" y="2" width="1" height="1" fill="#404040"/>
+  <!-- Block letter "B" in same two-tone style as the home page logo.
+       Top portion: accent orange. Bottom drop-shadow: accent-muted (darker).
+       Hero colors: #d97757 (top) / #c96442 (bottom). -->
 
-  <!-- Neck (teal glass) -->
-  <rect x="7" y="3" width="1" height="2" fill="#55dddd"/>
-  <rect x="8" y="3" width="1" height="2" fill="#008888"/>
+  <!-- Top bar -->
+  <rect x="2"  y="1" width="9" height="2" fill="#d97757"/>
+  <rect x="11" y="2" width="2" height="1" fill="#d97757"/>
 
-  <!-- Shoulder transition -->
-  <rect x="6" y="5" width="1" height="1" fill="#55dddd"/>
-  <rect x="7" y="5" width="2" height="1" fill="#00aaaa"/>
-  <rect x="9" y="5" width="1" height="1" fill="#008888"/>
+  <!-- Left vertical (top half) -->
+  <rect x="2" y="3" width="3" height="5" fill="#d97757"/>
 
-  <rect x="5" y="6" width="1" height="1" fill="#55dddd"/>
-  <rect x="6" y="6" width="4" height="1" fill="#00aaaa"/>
-  <rect x="10" y="6" width="1" height="1" fill="#008888"/>
+  <!-- Right vertical upper -->
+  <rect x="10" y="3" width="3" height="4" fill="#d97757"/>
 
-  <!-- Body (3-color shading: highlight / base / shadow) -->
-  <rect x="4" y="7" width="1" height="7" fill="#55dddd"/>
-  <rect x="5" y="7" width="6" height="7" fill="#00aaaa"/>
-  <rect x="11" y="7" width="1" height="7" fill="#008888"/>
+  <!-- Middle bar -->
+  <rect x="2" y="7" width="9" height="2" fill="#d97757"/>
+  <rect x="11" y="8" width="2" height="1" fill="#d97757"/>
 
-  <!-- Yellow label -->
-  <rect x="5" y="9" width="6" height="3" fill="#ffee55"/>
-  <!-- Label "B" pattern -->
-  <rect x="6" y="10" width="1" height="1" fill="#ff3366"/>
-  <rect x="8" y="10" width="1" height="1" fill="#ff3366"/>
-  <rect x="10" y="10" width="1" height="1" fill="#ff3366"/>
-  <!-- Label shadow line -->
-  <rect x="5" y="12" width="6" height="1" fill="#aa9900"/>
+  <!-- Left vertical (bottom half) — darker accent -->
+  <rect x="2" y="9" width="3" height="5" fill="#c96442"/>
 
-  <!-- Base shadow -->
-  <rect x="4" y="14" width="8" height="1" fill="#005555"/>
-  <rect x="5" y="15" width="6" height="1" fill="#003333"/>
+  <!-- Right vertical lower — darker accent -->
+  <rect x="10" y="9" width="3" height="4" fill="#c96442"/>
+
+  <!-- Bottom bar — darker accent -->
+  <rect x="2" y="13" width="9" height="2" fill="#c96442"/>
+  <rect x="11" y="12" width="2" height="1" fill="#c96442"/>
 </svg>
