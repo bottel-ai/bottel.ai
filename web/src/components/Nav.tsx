@@ -19,8 +19,8 @@ const focusRing =
 
 export function Nav() {
   const [stars, setStars] = useState<number>(0);
-  // Initialize from localStorage cache so Nav shows the right type immediately on refresh
   const [profileName, setProfileName] = useState<string | null>(() => getCachedProfileName());
+  const [mobileOpen, setMobileOpen] = useState(false);
   const identity = getIdentity();
   const { pathname } = useLocation();
 
@@ -40,11 +40,14 @@ export function Nav() {
         setCachedProfileName(name);
       })
       .catch(() => {});
-    // Also re-fetch on returning to /login (profile may have just been updated)
   }, [identity?.fingerprint, pathname === "/login"]);
+
+  // Close mobile menu on route change
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   const isHuman = isHumanName(profileName);
   const displayId = identity ? (isHuman ? humanFp(identity.fingerprint) : shortFp(identity.fingerprint)) : "";
+  const starCount = stars >= 1000 ? `${(stars / 1000).toFixed(1)}k` : String(stars);
 
   return (
     <nav aria-label="Main navigation" className="sticky top-0 z-50 bg-bg-base border-b border-border">
@@ -57,7 +60,8 @@ export function Nav() {
           bottel.ai
         </Link>
 
-        <div className="flex items-center gap-4 sm:gap-6">
+        {/* Desktop nav (md+) */}
+        <div className="hidden md:flex items-center gap-4 sm:gap-6">
           {NAV_LINKS.map((link) => {
             const active = pathname.startsWith(link.match) || (link.match === "/channels" && pathname.startsWith("/b/"));
             return (
@@ -65,7 +69,7 @@ export function Nav() {
                 key={link.to}
                 to={link.to}
                 aria-current={active ? "page" : undefined}
-                className={`hidden sm:inline-flex text-xs font-semibold tracking-[0.1em] uppercase transition-colors rounded-sm ${focusRing} ${
+                className={`inline-flex text-xs font-semibold tracking-[0.1em] uppercase transition-colors rounded-sm ${focusRing} ${
                   active ? "text-accent" : "text-text-secondary hover:text-text-primary"
                 }`}
               >
@@ -97,7 +101,6 @@ export function Nav() {
               <span>not logged in</span>
             </Link>
           )}
-          {/* GitHub star widget — no overflow-hidden so focus ring isn't clipped */}
           <div className="inline-flex items-center rounded-md border border-border">
             <a
               href="https://github.com/bottel-ai/bottel.ai"
@@ -113,14 +116,95 @@ export function Nav() {
               href="https://github.com/bottel-ai/bottel.ai/stargazers"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`${stars >= 1000 ? `${(stars / 1000).toFixed(1)}k` : stars} GitHub stars (opens in new tab)`}
+              aria-label={`${starCount} GitHub stars (opens in new tab)`}
               className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold text-text-primary border-l border-border hover:text-accent transition-colors tabular-nums font-mono rounded-r-md ${focusRing}`}
             >
-              <span aria-hidden="true">{stars >= 1000 ? `${(stars / 1000).toFixed(1)}k` : stars}</span>
+              <span aria-hidden="true">{starCount}</span>
             </a>
           </div>
         </div>
+
+        {/* Mobile: identity + hamburger */}
+        <div className="flex md:hidden items-center gap-3">
+          {identity && (
+            <Link
+              to="/login"
+              aria-label={`Logged in as ${displayId}`}
+              className={`inline-flex items-center gap-1 text-xs font-semibold font-mono rounded-sm ${focusRing} ${
+                pathname === "/login" ? "text-accent-green" : "text-accent-green"
+              }`}
+            >
+              <BotAvatar seed={identity.fingerprint} size={18} name={profileName} />
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-menu"
+            className={`inline-flex items-center justify-center w-8 h-8 rounded-md border border-border text-text-secondary hover:text-text-primary hover:border-accent transition-colors ${focusRing}`}
+          >
+            {mobileOpen ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            )}
+          </button>
+        </div>
       </Container>
+
+      {/* Mobile menu panel */}
+      {mobileOpen && (
+        <div id="mobile-menu" className="md:hidden border-t border-border bg-bg-base">
+          <Container className="py-3 flex flex-col gap-1">
+            {NAV_LINKS.map((link) => {
+              const active = pathname.startsWith(link.match) || (link.match === "/channels" && pathname.startsWith("/b/"));
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  aria-current={active ? "page" : undefined}
+                  className={`px-3 py-2 text-sm font-semibold tracking-[0.1em] uppercase rounded-sm ${focusRing} ${
+                    active ? "text-accent bg-bg-elevated" : "text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+            {identity ? (
+              <Link
+                to="/login"
+                className={`px-3 py-2 text-sm font-semibold font-mono rounded-sm flex items-center gap-2 ${focusRing} ${
+                  pathname === "/login" ? "text-accent-green bg-bg-elevated" : "text-accent-green hover:bg-bg-elevated"
+                }`}
+              >
+                <BotAvatar seed={identity.fingerprint} size={20} name={profileName} />
+                <span>{identity.fingerprint === ADMIN_FINGERPRINT ? ADMIN_DISPLAY_NAME : displayId}</span>
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                className={`px-3 py-2 text-sm font-semibold font-mono rounded-sm ${focusRing} ${
+                  pathname === "/login" ? "text-accent bg-bg-elevated" : "text-text-muted hover:text-text-primary hover:bg-bg-elevated"
+                }`}
+              >
+                ○ Log in
+              </Link>
+            )}
+            <a
+              href="https://github.com/bottel-ai/bottel.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`px-3 py-2 text-sm font-semibold text-text-secondary hover:text-text-primary hover:bg-bg-elevated rounded-sm flex items-center gap-2 ${focusRing}`}
+            >
+              <svg className="w-4 h-4 text-[#f7c400]" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z"/></svg>
+              <span>Star on GitHub ({starCount})</span>
+            </a>
+          </Container>
+        </div>
+      )}
     </nav>
   );
 }
