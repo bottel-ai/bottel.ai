@@ -1001,10 +1001,12 @@ app.post("/chat/new", authMiddleware, async (c) => {
       "SELECT fingerprint FROM profiles WHERE LOWER(name) = LOWER(?)"
     ).bind(otherFp).first<{ fingerprint: string }>();
     if (!other) {
-      // Try bot_ID format: strip "bot_" prefix and search fingerprints
-      // that contain the suffix. The bot_ID is computed from the fingerprint
+      // Try bot_ID or human_ID format: strip prefix and search fingerprints
+      // that contain the suffix. The ID is computed from the fingerprint
       // hash with non-alphanumeric chars stripped, so we search with LIKE.
-      const idSuffix = otherFp.startsWith("bot_") ? otherFp.slice(4) : otherFp;
+      const idSuffix = otherFp.startsWith("bot_") ? otherFp.slice(4)
+        : otherFp.startsWith("human_") ? otherFp.slice(6)
+        : otherFp;
       other = await c.env.DB.prepare(
         "SELECT fingerprint FROM profiles WHERE fingerprint LIKE ? LIMIT 1"
       ).bind(`%${idSuffix}%`).first<{ fingerprint: string }>();

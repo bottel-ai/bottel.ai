@@ -54,7 +54,7 @@ function tokenize(line: string, parts: { text: string; cls: string }[]) {
   if (last < line.length) parts.push({ text: line.slice(last), cls: "text-text-secondary" });
 }
 
-type Section = "api" | "sdk" | "cli" | "mcp" | "websocket";
+type Section = "api" | "sdk" | "cli" | "mcp" | "websocket" | "widget";
 
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "api", label: "REST API" },
@@ -62,6 +62,7 @@ const SECTIONS: { key: Section; label: string }[] = [
   { key: "cli", label: "CLI App" },
   { key: "mcp", label: "MCP" },
   { key: "websocket", label: "WebSocket" },
+  { key: "widget", label: "Embed Widget" },
 ];
 
 const API_BASE = "https://bottel-api.cenconq.workers.dev";
@@ -241,12 +242,154 @@ function WebSocketSection() {
   );
 }
 
+function WidgetSection() {
+  const [botId, setBotId] = useState("bot_aB3kF9xP");
+  const [label, setLabel] = useState("");
+  const [position, setPosition] = useState<"bottom-right" | "bottom-left">("bottom-right");
+  const [color, setColor] = useState("#d97757");
+  const [copied, setCopied] = useState(false);
+
+  const attrs = [`data-bot="${botId}"`];
+  if (label) attrs.push(`data-label="${label}"`);
+  if (position !== "bottom-right") attrs.push(`data-position="${position}"`);
+  if (color !== "#d97757") attrs.push(`data-color="${color}"`);
+  const snippet = `<script src="https://bottel.ai/widget.js" ${attrs.join(" ")} async></script>`;
+
+  const copy = () => {
+    navigator.clipboard.writeText(snippet).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  };
+
+  const posStyle = position === "bottom-left" ? { left: 0 } : { right: 0 };
+
+  return (
+    <div>
+      <p className="text-sm text-text-secondary mb-4">
+        Drop this snippet on your website to let visitors chat with your bot directly from your page.
+        When clicked, it opens a bottel.ai chat window pre-filled with your bot.
+      </p>
+
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Config form */}
+        <div className="flex-1 space-y-3">
+          <div>
+            <label htmlFor="widget-bot" className="block text-xs font-mono text-text-muted mb-1">Bot ID</label>
+            <input
+              id="widget-bot"
+              type="text"
+              value={botId}
+              onChange={(e) => setBotId(e.target.value)}
+              placeholder="bot_aB3kF9xP"
+              className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+            />
+          </div>
+          <div>
+            <label htmlFor="widget-label" className="block text-xs font-mono text-text-muted mb-1">Button Label <span className="text-text-muted">(optional)</span></label>
+            <input
+              id="widget-label"
+              type="text"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder={`Chat with ${botId}`}
+              className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-mono text-text-muted mb-1">Position</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPosition("bottom-right")}
+                className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors ${position === "bottom-right" ? "border-accent text-accent" : "border-border text-text-muted"}`}
+              >
+                Bottom Right
+              </button>
+              <button
+                type="button"
+                onClick={() => setPosition("bottom-left")}
+                className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors ${position === "bottom-left" ? "border-accent text-accent" : "border-border text-text-muted"}`}
+              >
+                Bottom Left
+              </button>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="widget-color" className="block text-xs font-mono text-text-muted mb-1">Button Color</label>
+            <div className="flex items-center gap-2">
+              <input
+                id="widget-color"
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="w-10 h-8 bg-transparent border border-border rounded cursor-pointer"
+              />
+              <input
+                type="text"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="flex-1 bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary focus:outline-none focus:border-accent"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Live preview */}
+        <div className="flex-1">
+          <p className="block text-xs font-mono text-text-muted mb-1">Preview</p>
+          <div className="relative border border-border rounded-lg bg-bg-elevated h-48 overflow-hidden">
+            <div className="absolute bottom-4" style={posStyle}>
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); window.open(`/chat?with=${encodeURIComponent(botId)}`, "bottel_chat_preview", "width=500,height=700"); }}
+                className="mx-4 inline-flex items-center rounded-full px-5 py-2.5 text-[13px] font-mono font-semibold text-black transition-transform hover:-translate-y-0.5"
+                style={{ background: color }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                {label || `Chat with ${botId}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Snippet */}
+      <div className="mt-6">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-mono text-text-muted">Embed snippet</p>
+          <button
+            type="button"
+            onClick={copy}
+            className="text-xs font-mono font-medium text-accent hover:underline"
+          >
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+        <pre className="font-mono text-xs text-text-secondary bg-bg-elevated border border-border rounded-md px-4 py-3 overflow-x-auto whitespace-pre-wrap break-all">{snippet}</pre>
+      </div>
+
+      <div className="mt-6">
+        <p className="font-mono text-xs font-bold text-text-primary mb-2">How it works</p>
+        <ul className="list-disc pl-5 space-y-1 text-xs text-text-secondary">
+          <li>Visitor clicks the button on your site</li>
+          <li>A bottel.ai chat window opens in a popup</li>
+          <li>Visitor logs in with their bottel.ai identity (or creates one)</li>
+          <li>A new chat is automatically started with your bot</li>
+          <li>Messages are encrypted end-to-end with AES-256-GCM</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 const CONTENT: Record<Section, () => JSX.Element> = {
   api: ApiSection,
   sdk: SdkSection,
   cli: CliSection,
   mcp: McpSection,
   websocket: WebSocketSection,
+  widget: WidgetSection,
 };
 
 export function Developers() {

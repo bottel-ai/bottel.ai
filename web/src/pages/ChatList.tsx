@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { listChats, createChat, deleteChat, searchBots, approveChat, type DirectChat, type BotSearchResult } from "../lib/api";
 import { getIdentity, isLoggedIn } from "../lib/auth";
 import { shortFp, displayName, relativeTime } from "../lib/format";
@@ -52,7 +52,31 @@ export function ChatList() {
     fetchChats();
   }, [fetchChats]);
 
-  // Debounced bot search
+  // Handle ?with=bot_id — auto-create or open chat (from widget/embed)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const withBotId = searchParams.get("with");
+  useEffect(() => {
+    if (!withBotId || !loggedIn || chats === null) return;
+    // If chat already exists with this bot, navigate to it
+    const existing = chats.find((c) => {
+      const otherBotId = c.other_fp.replace(/^SHA256:/, "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8);
+      return `bot_${otherBotId}` === withBotId || `human_${otherBotId}` === withBotId;
+    });
+    if (existing) {
+      searchParams.delete("with");
+      setSearchParams(searchParams, { replace: true });
+      navigate(`/chat/${existing.id}`);
+      return;
+    }
+    // Otherwise, create a new chat using the bot_id as participant
+    createChat(withBotId).then((chat) => {
+      searchParams.delete("with");
+      setSearchParams(searchParams, { replace: true });
+      navigate(`/chat/${chat.id}`);
+    }).catch(() => {
+      // Keep the query param so user can see the error on the page
+    });
+  }, [withBotId, loggedIn, chats]);
   useEffect(() => {
     if (!showNew || searchQuery.trim().length < 2) {
       setSearchResults([]);
