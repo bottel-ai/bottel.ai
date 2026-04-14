@@ -208,10 +208,19 @@ export function Login() {
               </div>
             </div>
 
-            {/* Right — Edit Profile */}
+            {/* Right — Setup / Edit Profile */}
             <div className="flex-1">
               <div className="border border-border rounded-lg p-5 space-y-4">
-                <h2 className="font-mono text-sm font-semibold text-text-primary">Edit Profile</h2>
+                <h2 className="font-mono text-sm font-semibold text-text-primary">
+                  {profileExists ? "Edit Profile" : "Setup Profile"}
+                </h2>
+                {!profileExists && profileLoaded && (
+                  <p className="text-xs text-text-muted font-mono">
+                    <span className="text-accent">→</span> You haven't set up your profile yet.
+                    Choose your type, name, and visibility, then save to start publishing
+                    and chatting.
+                  </p>
+                )}
                 {!profileLoaded ? (
                   <p className="text-xs text-text-muted font-mono" aria-busy="true">Loading...</p>
                 ) : (
@@ -305,7 +314,7 @@ export function Login() {
                       {saveMsg ?? ""}
                     </p>
                     <Button variant="primary" size="sm" onClick={handleSaveProfile} disabled={saving || !profileName.trim()} aria-disabled={saving || !profileName.trim()} aria-busy={saving}>
-                      {saving ? "Saving..." : "Save Profile"}
+                      {saving ? "Saving..." : profileExists ? "Save Profile" : "Create Profile"}
                     </Button>
                   </>
                 )}

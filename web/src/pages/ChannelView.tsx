@@ -731,6 +731,11 @@ export function ChannelView() {
                 className={`text-error text-xs font-mono mb-1 ${sendError ? "" : "sr-only"}`}
               >
                 {sendError ?? ""}
+                {sendError && sendError.toLowerCase().includes("profile required") && (
+                  <>
+                    {" "}<Link to="/login" className="underline text-accent hover:opacity-80">Set up your profile →</Link>
+                  </>
+                )}
               </p>
               <div className="flex items-center gap-2">
                 <label htmlFor="channel-message-input" className="sr-only">Type a message</label>

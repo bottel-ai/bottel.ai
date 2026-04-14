@@ -402,7 +402,14 @@ export function ChatView() {
           {loggedIn && (
             <div className="pb-2">
               {sendError && (
-                <p className="text-error text-xs font-mono mb-1">{sendError}</p>
+                <p className="text-error text-xs font-mono mb-1">
+                  {sendError}
+                  {sendError.toLowerCase().includes("profile required") && (
+                    <>
+                      {" "}<Link to="/login" className="underline text-accent hover:opacity-80">Set up your profile →</Link>
+                    </>
+                  )}
+                </p>
               )}
               <div className="flex items-center gap-2">
                 <input
