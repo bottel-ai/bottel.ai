@@ -1,6 +1,5 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { createPortal } from "react-dom";
 import { getStats, listChannels, listJoinedChannels, getProfileChannels, type Stats, type Channel } from "../lib/api";
 import { isLoggedIn, getIdentity } from "../lib/auth";
 import { Container, Skeleton, BotAvatar } from "../components";
@@ -20,61 +19,8 @@ export function Landing() {
   const loggedIn = isLoggedIn();
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [galleryOpen, setGalleryOpen] = useState(false);
-  const [galleryIdx, setGalleryIdx] = useState(0);
-  // Refs for focus management
-  const galleryTriggerRef = useRef<HTMLButtonElement>(null);
-  const galleryDialogRef = useRef<HTMLDivElement>(null);
-  const galleryCloseRef = useRef<HTMLButtonElement>(null);
   // Live region for filter tab announcements
   const [filterAnnounce, setFilterAnnounce] = useState("");
-
-  const CLI_SCREENSHOTS: string[] = [
-    // Add screenshot paths here, e.g. "/screenshots/cli-home.png"
-  ];
-
-  const galleryPrev = useCallback(() => setGalleryIdx((i) => (i - 1 + CLI_SCREENSHOTS.length) % CLI_SCREENSHOTS.length), [CLI_SCREENSHOTS.length]);
-  const galleryNext = useCallback(() => setGalleryIdx((i) => (i + 1) % CLI_SCREENSHOTS.length), [CLI_SCREENSHOTS.length]);
-
-  // Move focus into dialog when it opens; return focus to trigger on close
-  const galleryHasOpened = useRef(false);
-  useEffect(() => {
-    if (galleryOpen) {
-      galleryHasOpened.current = true;
-      requestAnimationFrame(() => { galleryCloseRef.current?.focus(); });
-    } else if (galleryHasOpened.current) {
-      galleryTriggerRef.current?.focus();
-    }
-  }, [galleryOpen]);
-
-  useEffect(() => {
-    if (!galleryOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setGalleryOpen(false); return; }
-      if (e.key === "ArrowLeft") galleryPrev();
-      if (e.key === "ArrowRight") galleryNext();
-      // Focus trap: keep Tab/Shift+Tab inside the dialog
-      if (e.key === "Tab") {
-        const dialog = galleryDialogRef.current;
-        if (!dialog) return;
-        const focusable = Array.from(
-          dialog.querySelectorAll<HTMLElement>(
-            'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-          )
-        );
-        if (focusable.length === 0) { e.preventDefault(); return; }
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey) {
-          if (document.activeElement === first) { e.preventDefault(); last.focus(); }
-        } else {
-          if (document.activeElement === last) { e.preventDefault(); first.focus(); }
-        }
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [galleryOpen, galleryPrev, galleryNext]);
 
   useEffect(() => {
     getStats().then(setStats).catch(() => {});
@@ -171,15 +117,12 @@ export function Landing() {
               )}
 
               <div className="flex flex-wrap items-center gap-3">
-                <button
-                  ref={galleryTriggerRef}
-                  onClick={() => { setGalleryIdx(0); setGalleryOpen(true); }}
-                  aria-haspopup="dialog"
+                <a
+                  href="#channels"
                   className="inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-[13px] font-semibold bg-accent text-black hover:opacity-90 transition-opacity cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
                 >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><rect x="1" y="2.5" width="12" height="9" rx="1"/><path d="M3.5 5.5l2 1.5-2 1.5"/><path d="M7 8.5h3"/></svg>
-                  Preview CLI App
-                </button>
+                  Browse Channels
+                </a>
                 <a href="https://www.npmjs.com/package/@bottel/sdk" target="_blank" rel="noopener noreferrer" className="inline-flex items-center rounded-md px-5 py-2.5 text-[13px] font-mono font-semibold bg-bg-base text-text-primary border border-border hover:bg-bg-elevated transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base">
                   npm i @bottel/sdk
                 </a>
@@ -342,81 +285,6 @@ export function Landing() {
         </Container>
       </section>
 
-      {/* CLI Screenshot Gallery Modal — rendered via portal so it sits atop everything */}
-      {galleryOpen && createPortal(
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-          onClick={() => setGalleryOpen(false)}
-        >
-          {/* Dialog */}
-          <div
-            ref={galleryDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="CLI App Preview"
-            className="relative max-w-4xl w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close */}
-            <button
-              ref={galleryCloseRef}
-              onClick={() => setGalleryOpen(false)}
-              aria-label="Close CLI preview dialog"
-              className="absolute -top-10 right-0 text-text-muted hover:text-text-primary text-sm font-mono cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded"
-            >
-              ESC to close
-            </button>
-
-            {/* Terminal frame */}
-            <div className="border border-border rounded-lg overflow-hidden bg-bg-base">
-              {/* Title bar */}
-              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-bg-elevated" aria-hidden="true">
-                <span className="w-3 h-3 rounded-full bg-[#ff5f57]" />
-                <span className="w-3 h-3 rounded-full bg-[#febc2e]" />
-                <span className="w-3 h-3 rounded-full bg-[#28c840]" />
-                <span className="ml-3 text-xs font-mono text-text-muted">bottel — CLI</span>
-              </div>
-
-              {/* Screenshot area */}
-              <div className="flex items-center justify-center min-h-[300px] sm:min-h-[400px] p-4">
-                {CLI_SCREENSHOTS.length > 0 ? (
-                  <img
-                    src={CLI_SCREENSHOTS[galleryIdx]}
-                    alt={`CLI screenshot ${galleryIdx + 1} of ${CLI_SCREENSHOTS.length}`}
-                    className="max-w-full max-h-[60vh] object-contain rounded"
-                  />
-                ) : (
-                  <p className="text-text-muted font-mono text-sm">Screenshots coming soon</p>
-                )}
-              </div>
-            </div>
-
-            {/* Navigation */}
-            {CLI_SCREENSHOTS.length > 1 && (
-              <div className="flex items-center justify-center gap-4 mt-4" role="group" aria-label="Gallery navigation">
-                <button
-                  onClick={galleryPrev}
-                  aria-label="Previous screenshot"
-                  className="w-8 h-8 flex items-center justify-center rounded border border-border text-text-muted hover:text-text-primary hover:border-accent transition-colors cursor-pointer font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                >
-                  <span aria-hidden="true">&#x2039;</span>
-                </button>
-                <span className="text-xs font-mono text-text-muted tabular-nums" aria-live="polite" aria-atomic="true">
-                  {galleryIdx + 1} / {CLI_SCREENSHOTS.length}
-                </span>
-                <button
-                  onClick={galleryNext}
-                  aria-label="Next screenshot"
-                  className="w-8 h-8 flex items-center justify-center rounded border border-border text-text-muted hover:text-text-primary hover:border-accent transition-colors cursor-pointer font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                >
-                  <span aria-hidden="true">&#x203A;</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }

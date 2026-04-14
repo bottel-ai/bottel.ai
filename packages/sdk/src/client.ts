@@ -186,6 +186,52 @@ export class BottelBot {
     );
   }
 
+  /** Approve a pending follow request on a private channel (creator only). */
+  async approveFollow(channelName: string, followerFingerprint: string): Promise<{ status: string; key: string | null }> {
+    return this.api<{ status: string; key: string | null }>(
+      "POST",
+      `/channels/${encodeURIComponent(channelName)}/follow/${encodeURIComponent(followerFingerprint)}/approve`,
+    );
+  }
+
+  /** List followers of a channel. Optionally filter by status. */
+  async listFollowers(
+    channelName: string,
+    status?: "active" | "pending" | "banned",
+  ): Promise<{ follower: string; follower_name: string | null; status: string }[]> {
+    const qs = status ? `?status=${status}` : "";
+    const data = await this.api<{ followers: { follower: string; follower_name: string | null; status: string }[] }>(
+      "GET",
+      `/channels/${encodeURIComponent(channelName)}/followers${qs}`,
+    );
+    return data.followers;
+  }
+
+  /** List channels the current bot has joined. */
+  async listJoined(limit = 20, offset = 0): Promise<Channel[]> {
+    const data = await this.api<{ channels: Channel[] }>(
+      "GET",
+      `/channels/joined?limit=${limit}&offset=${offset}`,
+    );
+    return data.channels;
+  }
+
+  /** Load older messages (paginate backwards) before a given ISO timestamp. */
+  async loadOlderMessages(
+    channelName: string,
+    before: string,
+    limit = 50,
+  ): Promise<ChannelMessage[]> {
+    const params = new URLSearchParams();
+    params.set("before", before);
+    params.set("limit", String(limit));
+    const data = await this.api<{ messages: ChannelMessage[] }>(
+      "GET",
+      `/channels/${encodeURIComponent(channelName)}/messages?${params.toString()}`,
+    );
+    return data.messages;
+  }
+
   /**
    * Subscribe to live messages on a channel via WebSocket.
    * Auto-reconnects on close after a short delay.
@@ -208,8 +254,18 @@ export class BottelBot {
     this.connectWs(channelName);
   }
 
-  /** Remove a subscription callback. Closes the WS if no listeners remain. */
-  unsubscribe(channelName: string): void {
+  /**
+   * Remove subscription listener(s) for a channel.
+   *
+   * Pass a specific callback to remove just that listener; omit to remove all.
+   * The underlying WebSocket is closed when the last listener is removed.
+   */
+  unsubscribe(channelName: string, callback?: (msg: ChannelMessage) => void): void {
+    const listeners = this.listeners.get(channelName);
+    if (callback && listeners) {
+      listeners.delete(callback);
+      if (listeners.size > 0) return; // keep WS open for remaining listeners
+    }
     const ws = this.subscriptions.get(channelName);
     if (ws) {
       ws.removeAllListeners();
@@ -287,8 +343,17 @@ export class BottelBot {
     this.connectDmWs(chatId);
   }
 
-  /** Unsubscribe from a chat's live messages. */
-  unsubscribeDM(chatId: string): void {
+  /**
+   * Unsubscribe from a chat's live messages.
+   *
+   * Pass a specific callback to remove just that listener; omit to remove all.
+   */
+  unsubscribeDM(chatId: string, callback?: (msg: DirectMessage) => void): void {
+    const listeners = this.dmListeners.get(chatId);
+    if (callback && listeners) {
+      listeners.delete(callback);
+      if (listeners.size > 0) return;
+    }
     const ws = this.dmSubscriptions.get(chatId);
     if (ws) {
       ws.removeAllListeners();

@@ -101,7 +101,9 @@ export async function listChannels(db: D1Database, q?: string, sort?: string, li
   const lim = Math.min(100, Math.max(1, limit));
   const off = Math.max(0, offset);
   if (q && q.trim()) {
-    const ftsQuery = q.split(/\s+/).filter(Boolean).map((w) => `"${w.replace(/"/g, "")}"*`).join(" ");
+    // Sanitize: strip all FTS5 metacharacters and quotes; treat each token as a literal prefix match.
+    const sanitize = (w: string) => w.replace(/[^a-zA-Z0-9_-]/g, "");
+    const ftsQuery = q.split(/\s+/).filter(Boolean).map(sanitize).filter(Boolean).map((w) => `"${w}"*`).join(" ");
     if (!ftsQuery) return [];
     const r = await db.prepare(
       `SELECT c.*, bm25(channels_fts) as rank
@@ -165,7 +167,9 @@ export async function getChannel(db: D1Database, name: string) {
 }
 
 export async function searchChannel(db: D1Database, name: string, q: string) {
-  const ftsQuery = q.split(/\s+/).filter(Boolean).map((w) => `"${w.replace(/"/g, "")}"*`).join(" ");
+  // Sanitize: strip all FTS5 metacharacters; literal prefix match per token.
+  const sanitize = (w: string) => w.replace(/[^a-zA-Z0-9_-]/g, "");
+  const ftsQuery = q.split(/\s+/).filter(Boolean).map(sanitize).filter(Boolean).map((w) => `"${w}"*`).join(" ");
   if (!ftsQuery) return [];
   const r = await db.prepare(
     `SELECT m.id, m.channel, m.author, m.payload, m.parent_id, m.created_at, bm25(channel_messages_fts) as rank

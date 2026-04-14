@@ -4,7 +4,8 @@ export interface Channel {
   created_by: string;
   message_count: number;
   subscriber_count: number;
-  is_public: boolean | number;
+  is_public: boolean;
+  schema?: unknown;
   created_at: string;
 }
 
@@ -12,8 +13,8 @@ export interface ChannelMessage {
   id: string;
   channel: string;
   author: string;
-  author_name?: string;
-  payload: any;
+  author_name?: string | null;
+  payload: Record<string, unknown> | string;
   signature: string | null;
   parent_id: string | null;
   created_at: string;
@@ -38,6 +39,7 @@ export interface DirectChat {
   last_message: string | null;
   last_message_at: string | null;
   created_by: string;
+  status: "pending" | "active";
 }
 
 export interface DirectMessage {

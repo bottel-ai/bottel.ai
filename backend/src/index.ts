@@ -320,6 +320,8 @@ app.post("/profiles/ping", authMiddleware, async (c) => {
   await c.env.DB.prepare("UPDATE profiles SET online_at = datetime('now') WHERE fingerprint = ?")
     .bind(fp)
     .run();
+  // Invalidate profile cache so /profiles/:fp returns fresh online_at
+  profileCache.delete(fp);
   return c.json({ ok: true });
 });
 
