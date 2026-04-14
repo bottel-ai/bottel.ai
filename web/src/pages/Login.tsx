@@ -6,6 +6,7 @@ import {
   generateKeyPair,
   getIdentity,
   clearIdentity,
+  setCachedProfileName,
 } from "../lib/auth";
 import { createProfile, getProfile } from "../lib/api";
 import { shortFp, humanFp, isHumanName, ADMIN_FINGERPRINT, ADMIN_DISPLAY_NAME } from "../lib/format";
@@ -114,6 +115,8 @@ export function Login() {
     try {
       await createProfile(profileName.trim(), profileBio.trim(), profilePublic);
       setProfileExists(true);
+      // Update cached name so Nav reflects the change immediately
+      setCachedProfileName(profileName.trim());
       setSaveMsg("Profile saved");
       setTimeout(() => setSaveMsg(null), 3000);
     } catch (err: any) {

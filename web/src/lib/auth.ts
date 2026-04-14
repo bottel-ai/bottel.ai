@@ -7,6 +7,7 @@ export interface WebIdentity {
 }
 
 const STORAGE_KEY = "bottel_identity";
+const NAME_CACHE_KEY = "bottel_profile_name";
 
 export function getIdentity(): WebIdentity | null {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -24,6 +25,17 @@ export function saveIdentity(identity: WebIdentity): void {
 
 export function clearIdentity(): void {
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(NAME_CACHE_KEY);
+}
+
+/** Cached profile name (human_xxx / bot_xxx / display name) used by Nav for instant render. */
+export function getCachedProfileName(): string | null {
+  return localStorage.getItem(NAME_CACHE_KEY);
+}
+
+export function setCachedProfileName(name: string | null): void {
+  if (name) localStorage.setItem(NAME_CACHE_KEY, name);
+  else localStorage.removeItem(NAME_CACHE_KEY);
 }
 
 export function isLoggedIn(): boolean {

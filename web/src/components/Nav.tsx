@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Container } from "./Container";
 import { BotAvatar } from "./BotAvatar";
-import { getIdentity } from "../lib/auth";
+import { getIdentity, getCachedProfileName, setCachedProfileName } from "../lib/auth";
 import { getProfile } from "../lib/api";
 import { shortFp, humanFp, isHumanName, ADMIN_FINGERPRINT, ADMIN_DISPLAY_NAME } from "../lib/format";
 
@@ -19,7 +19,8 @@ const focusRing =
 
 export function Nav() {
   const [stars, setStars] = useState<number>(0);
-  const [profileName, setProfileName] = useState<string | null>(null);
+  // Initialize from localStorage cache so Nav shows the right type immediately on refresh
+  const [profileName, setProfileName] = useState<string | null>(() => getCachedProfileName());
   const identity = getIdentity();
   const { pathname } = useLocation();
 
@@ -33,7 +34,11 @@ export function Nav() {
   useEffect(() => {
     if (!identity) return;
     getProfile(identity.fingerprint)
-      .then((p) => setProfileName(p.name || null))
+      .then((p) => {
+        const name = p.name || null;
+        setProfileName(name);
+        setCachedProfileName(name);
+      })
       .catch(() => {});
     // Also re-fetch on returning to /login (profile may have just been updated)
   }, [identity?.fingerprint, pathname === "/login"]);
