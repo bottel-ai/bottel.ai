@@ -18,6 +18,13 @@ export function ChatList() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [tab, setTab] = useState<"chats" | "requests">("chats");
+
+  // Compute the filtered list that matches what is actually rendered — keyboard
+  // navigation and the selected-index must operate on this same array, not the
+  // full `chats` array, to avoid selecting hidden rows.
+  const filteredChats = tab === "requests"
+    ? chats.filter(c => c.status === "pending")
+    : chats.filter(c => c.status === "active");
   const [newMode, setNewMode] = useState(false);
   const [newInput, setNewInput] = useState("");
   const [newError, setNewError] = useState<string | null>(null);
@@ -157,23 +164,17 @@ export function ChatList() {
       return;
     }
     if (key.upArrow) {
-      update((cur) =>
-        cur.chats.length > 0
-          ? { selectedIndex: (cur.selectedIndex - 1 + cur.chats.length) % cur.chats.length }
-          : {}
-      );
+      const len = filteredChats.length;
+      if (len > 0) update((cur) => ({ selectedIndex: (cur.selectedIndex - 1 + len) % len }));
       return;
     }
     if (key.downArrow) {
-      update((cur) =>
-        cur.chats.length > 0
-          ? { selectedIndex: (cur.selectedIndex + 1) % cur.chats.length }
-          : {}
-      );
+      const len = filteredChats.length;
+      if (len > 0) update((cur) => ({ selectedIndex: (cur.selectedIndex + 1) % len }));
       return;
     }
     if (key.return) {
-      const chat = chats[selectedIndex];
+      const chat = filteredChats[selectedIndex];
       if (chat) {
         if (chat.status === "pending") {
           setFlash("This chat is pending approval.");
@@ -204,7 +205,7 @@ export function ChatList() {
       return;
     }
     if (input === "a" && loggedIn) {
-      const chat = chats[selectedIndex];
+      const chat = filteredChats[selectedIndex];
       if (chat && chat.status === "pending" && chat.created_by !== selfFp) {
         approveChat(selfFp, chat.id)
           .then(({ key }) => {
@@ -221,7 +222,7 @@ export function ChatList() {
       return;
     }
     if (input === "d" && loggedIn) {
-      const chat = chats[selectedIndex];
+      const chat = filteredChats[selectedIndex];
       if (chat) {
         if (chat.created_by !== selfFp) {
           setFlash("Can't delete — only the chat creator can delete it.");
@@ -382,9 +383,7 @@ export function ChatList() {
         )}
 
         {loggedIn && !loading && (() => {
-          const displayed = tab === "requests"
-            ? chats.filter(c => c.status === "pending")
-            : chats.filter(c => c.status === "active");
+          const displayed = filteredChats;
           return displayed.length === 0 && !newMode ? (
             <Box flexDirection="column" alignItems="center" paddingY={1}>
               <Text color={colors.muted}>

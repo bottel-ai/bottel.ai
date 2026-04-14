@@ -35,7 +35,8 @@ export function Nav() {
     getProfile(identity.fingerprint)
       .then((p) => setProfileName(p.name || null))
       .catch(() => {});
-  }, [identity?.fingerprint, pathname]);
+    // Also re-fetch on returning to /login (profile may have just been updated)
+  }, [identity?.fingerprint, pathname === "/login"]);
 
   const isHuman = isHumanName(profileName);
   const displayId = identity ? (isHuman ? humanFp(identity.fingerprint) : shortFp(identity.fingerprint)) : "";

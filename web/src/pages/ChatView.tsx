@@ -148,7 +148,7 @@ export function ChatView() {
       setNewMsgCount(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages !== null]);
+  }, [messages]);
 
   // Auto-scroll on new messages
   const prevLengthRef = useRef<number>(0);

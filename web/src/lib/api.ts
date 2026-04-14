@@ -69,7 +69,7 @@ export interface Profile {
   fingerprint: string;
   name: string | null;
   bio: string | null;
-  is_public: boolean;
+  public: boolean;
   created_at: string;
 }
 

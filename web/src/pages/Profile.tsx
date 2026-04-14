@@ -72,7 +72,7 @@ export function Profile() {
               )}
 
               <div className="flex items-center gap-4 text-xs text-text-muted font-mono">
-                {profile.is_public ? (
+                {profile.public ? (
                   <span>public profile</span>
                 ) : (
                   <span>private profile</span>

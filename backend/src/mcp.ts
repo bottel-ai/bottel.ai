@@ -113,8 +113,13 @@ export async function listChannels(db: D1Database, q?: string, sort?: string, li
     ).bind(ftsQuery, lim, off).all();
     rows = r.results ?? [];
   } else {
-    const order = sort === "recent" ? "created_at DESC" : "message_count DESC";
-    const r = await db.prepare(`SELECT * FROM channels ORDER BY ${order} LIMIT ? OFFSET ?`).bind(lim, off).all();
+    // Use a lookup object to avoid any chance of SQL injection via ORDER BY
+    const ORDER_BY = { recent: "created_at DESC", messages: "message_count DESC" } as const;
+    const order = ORDER_BY[sort === "recent" ? "recent" : "messages"];
+    const r = await db.prepare(
+      `SELECT name, description, created_by, schema, message_count, subscriber_count, is_public, created_at
+       FROM channels ORDER BY ${order} LIMIT ? OFFSET ?`
+    ).bind(lim, off).all();
     rows = r.results ?? [];
   }
   return rows.map((c: any) => ({
@@ -130,7 +135,12 @@ export async function listChannels(db: D1Database, q?: string, sort?: string, li
 }
 
 export async function getChannel(db: D1Database, name: string) {
-  const channel = await db.prepare("SELECT * FROM channels WHERE name = ?").bind(name).first<any>();
+  // Explicit column list — never SELECT * (avoids leaking encryption_key)
+  const channel = await db.prepare(
+    `SELECT name, description, created_by, schema, message_count, subscriber_count,
+            is_public, created_at
+     FROM channels WHERE name = ?`
+  ).bind(name).first<any>();
   if (!channel) return null;
   const messagesResult = await db.prepare(
     `SELECT m.id, m.channel, m.author, m.payload, m.signature, m.parent_id, m.created_at, p.name as author_name
@@ -286,16 +296,16 @@ async function callTool(
     case "channels/publish": {
       if (!fingerprint) throw new Error("X-Fingerprint header required for publish");
       if (!args?.name || !args?.payload) throw new Error("name and payload required");
-      // Check if user is banned.
-      const banCheck = await env.DB.prepare(
-        "SELECT status FROM channel_follows WHERE channel = ? AND follower = ? AND status = 'banned'"
-      ).bind(args.name, fingerprint).first();
-      if (banCheck) throw new Error("You are banned from this channel");
-      // Membership check: all channels require membership to post.
+      // Require an existing profile (prevents unknown fingerprints from posting).
+      const profile = await env.DB.prepare("SELECT fingerprint FROM profiles WHERE fingerprint = ?")
+        .bind(fingerprint).first();
+      if (!profile) throw new Error("Profile required. Set up your identity first.");
+      // Single membership + ban check
       const membership = await env.DB.prepare(
         "SELECT status FROM channel_follows WHERE channel = ? AND follower = ?"
       ).bind(args.name, fingerprint).first<{ status: string }>();
       if (!membership) throw new Error("You need to join this channel before posting.");
+      if (membership.status === "banned") throw new Error("You are banned from this channel");
       if (membership.status === "pending") throw new Error("Your join request is pending approval by the channel owner.");
       if (membership.status !== "active") throw new Error("You are not an active member of this channel.");
       // Rate limit MCP publish the same as the HTTP endpoint.
@@ -364,6 +374,12 @@ async function handleRpc(req: JsonRpcRequest, env: McpEnv, fingerprint: string |
 export const mcpApp = new Hono<AppEnv>();
 
 mcpApp.post("/", async (c) => {
+  // MCP clients (Claude/Cursor) can't easily sign requests, so MCP accepts
+  // X-Fingerprint for identification. MCP publish is restricted to existing
+  // profiles (via requireProfile-equivalent check below) and rate-limited,
+  // but is NOT cryptographically authenticated — treat MCP-authored messages
+  // accordingly in any trust decision. A future enhancement is to issue
+  // short-lived tokens for MCP clients.
   const fingerprint = c.req.header("X-Fingerprint");
   let body: JsonRpcRequest | JsonRpcRequest[];
   try {

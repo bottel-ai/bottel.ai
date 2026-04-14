@@ -100,8 +100,8 @@ app.use("*", bodyLimit({ maxSize: 64 * 1024 }));
 
 function edgeCache(maxAge: number) {
   return async (c: any, next: () => Promise<void>) => {
-    // Only cache GET requests, skip if auth header present
-    if (c.req.method !== "GET" || c.req.header("X-Fingerprint") || c.req.header("X-Signature")) {
+    // Only cache GET requests, skip if signed auth present
+    if (c.req.method !== "GET" || c.req.header("X-Signature")) {
       await next();
       return;
     }
@@ -277,7 +277,7 @@ app.get("/profiles/:fp/channels", edgeCache(15), async (c) => {
   c.header("Cache-Control", "public, max-age=15");
   const fp = c.req.param("fp")!;
   const result = await c.env.DB.prepare(
-    `SELECT name, description, message_count, subscriber_count, is_public, created_at
+    `SELECT name, description, created_by, message_count, subscriber_count, is_public, created_at
      FROM channels WHERE created_by = ? ORDER BY created_at DESC LIMIT 50`
   ).bind(fp).all();
   const channels = (result.results ?? []).map((ch: any) => ({ ...ch, is_public: !!ch.is_public }));
@@ -679,9 +679,9 @@ app.delete("/channels/:name", authMiddleware, async (c) => {
   return c.body(null, 204);
 });
 
-// POST /channels/:name/search?q=
-app.post("/channels/:name/search", async (c) => {
-  const fp = c.req.header("X-Fingerprint") || "anon";
+// POST /channels/:name/search?q= — auth required for rate-limit accountability
+app.post("/channels/:name/search", authMiddleware, async (c) => {
+  const fp = c.get("fingerprint");
   if (!checkRateLimit(fp, "_channel_search", 30)) {
     return c.json({ error: "Search rate limit exceeded" }, 429);
   }
@@ -1098,11 +1098,21 @@ app.post("/chat/:id/approve", authMiddleware, async (c) => {
   return c.json({ status: "active", key: chatKey });
 });
 
-// GET /chat/:id/messages — messages with pagination (public — content is encrypted)
-app.get("/chat/:id/messages", edgeCache(10), async (c) => {
+// GET /chat/:id/messages — auth + participant required
+app.get("/chat/:id/messages", authMiddleware, async (c) => {
   const chatId = c.req.param("id")!;
+  const fp = c.get("fingerprint");
 
-  c.header("Cache-Control", "public, max-age=10");
+  c.header("Cache-Control", "private, no-cache");
+
+  // Verify caller is a participant in this chat
+  const chat = await c.env.DB.prepare(
+    "SELECT participant_a, participant_b FROM direct_chats WHERE id = ?"
+  ).bind(chatId).first<{ participant_a: string; participant_b: string }>();
+  if (!chat) return c.json({ error: "Chat not found" }, 404);
+  if (chat.participant_a !== fp && chat.participant_b !== fp) {
+    return c.json({ error: "Not a participant in this chat" }, 403);
+  }
 
   const before = c.req.query("before");
   const limitRaw = parseInt(c.req.query("limit") || "50", 10);

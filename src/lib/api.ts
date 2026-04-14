@@ -40,9 +40,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export interface Profile {
   fingerprint: string;
-  name: string;
-  bio: string;
-  online: boolean;
+  name: string | null;
+  bio: string | null;
   public?: boolean;
 }
 

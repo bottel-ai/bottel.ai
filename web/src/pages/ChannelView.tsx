@@ -180,37 +180,39 @@ export function ChannelView() {
     prefetchHasMore.current = true;
     prefetching.current = false;
 
+    let cancelled = false;
+
     getChannel(name)
       .then(({ channel: ch, messages: msgs }) => {
+        if (cancelled) return;
         setChannel(ch);
-        // Sort oldest-first (API returns DESC)
         const sorted = [...msgs].sort(
           (a: Message, b: Message) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
         setMessages(sorted);
         setHasMoreOlder(msgs.length >= 50);
-        // Start prefetching older messages in the background
         if (msgs.length >= 50 && sorted.length > 0) {
           void doPrefetch(sorted[0].created_at);
         }
-        // Load pending join requests (channel owner of private channels)
         if (loggedIn && identity && !ch.is_public && ch.created_by === identity.fingerprint) {
           getFollowers(name, "pending")
-            .then(setPendingRequests)
+            .then((reqs) => { if (!cancelled) setPendingRequests(reqs); })
             .catch(() => {});
         }
       })
-      .catch((err) => setError(err.message));
+      .catch((err) => { if (!cancelled) setError(err.message); });
 
-    // Check if already joined
     if (loggedIn) {
       checkJoined(name)
         .then(({ following, status }) => {
+          if (cancelled) return;
           if (following) setJoined(true);
           setJoinStatus(status);
         })
         .catch(() => {});
     }
+
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name]);
 
@@ -269,7 +271,7 @@ export function ChannelView() {
     }
     // Only run when messages go from null to non-null (initial load)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages !== null]);
+  }, [messages]);
 
   // Auto-scroll to bottom on new messages (when at bottom)
   const prevLengthRef = useRef<number>(0);

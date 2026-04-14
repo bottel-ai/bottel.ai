@@ -3,10 +3,6 @@ import { Context, Next } from "hono";
 interface Env { DB: D1Database; }
 type AppEnv = { Bindings: Env; Variables: { fingerprint: string; signedAuth?: boolean } };
 
-// Fingerprint must look like "SHA256:..." with a base64 hash, or a hex hash.
-// Max 128 chars to prevent abuse via oversized headers.
-const FP_MAX_LENGTH = 128;
-
 /** Max clock skew for signed requests (5 minutes). */
 const SIGNATURE_MAX_AGE_MS = 5 * 60 * 1000;
 
@@ -116,20 +112,9 @@ export async function authMiddleware(c: Context<AppEnv>, next: Next) {
     return;
   }
 
-  // --- Legacy fingerprint auth ---
-  const fingerprint = c.req.header("X-Fingerprint");
-  if (!fingerprint) {
-    return c.json({ error: "Missing authentication. Provide X-Signature/X-Timestamp/X-Public-Key headers or X-Fingerprint header." }, 401);
-  }
-  if (fingerprint.length > FP_MAX_LENGTH) {
-    return c.json({ error: "X-Fingerprint too long" }, 400);
-  }
-  // Reject control characters
-  if (/[\x00-\x1f]/.test(fingerprint)) {
-    return c.json({ error: "Invalid X-Fingerprint" }, 400);
-  }
-  c.set("fingerprint", fingerprint);
-  await next();
+  // No valid signed auth — reject. Legacy X-Fingerprint header is no longer
+  // accepted (it provided zero cryptographic verification).
+  return c.json({ error: "Missing authentication. Provide X-Signature, X-Timestamp, X-Public-Key headers." }, 401);
 }
 
 /**

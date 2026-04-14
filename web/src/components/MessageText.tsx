@@ -1,19 +1,21 @@
 import { useState, Fragment } from "react";
 import { createPortal } from "react-dom";
 
-const URL_RE = /(https?:\/\/[^\s<>"')\]]+)/g;
+const URL_SPLIT_RE = /(https?:\/\/[^\s<>"')\]]+)/g;
+// Non-global regex for stateless test() calls
+const URL_TEST_RE = /^https?:\/\//;
 
 /** Renders a single line of message text, converting URLs to clickable links with an external-link warning. */
 export function MessageText({ text, className = "" }: { text: string; className?: string }) {
   const [confirmUrl, setConfirmUrl] = useState<string | null>(null);
 
-  const parts = text.split(URL_RE);
+  const parts = text.split(URL_SPLIT_RE);
 
   return (
     <>
       <span className={className}>
         {parts.map((part, i) =>
-          URL_RE.test(part) ? (
+          URL_TEST_RE.test(part) ? (
             <button
               key={i}
               type="button"

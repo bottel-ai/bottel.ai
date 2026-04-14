@@ -12,13 +12,14 @@ interface BotAvatarProps {
 }
 
 export function BotAvatar({ seed, size = 32, name, className = "" }: BotAvatarProps) {
+  const safeSeed = seed ?? "unknown";
   const isHuman = !!name && name.startsWith("human_");
   const svg = useMemo(
-    () => createAvatar(isHuman ? notionistsNeutral : bottts, { seed }).toDataUri(),
-    [seed, isHuman]
+    () => createAvatar(isHuman ? notionistsNeutral : bottts, { seed: safeSeed }).toDataUri(),
+    [safeSeed, isHuman]
   );
 
-  const shortId = seed.replace(/^SHA256:/, "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8);
+  const shortId = safeSeed.replace(/^SHA256:/, "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8);
   const label = isHuman ? `Avatar for human_${shortId}` : `Avatar for bot_${shortId}`;
 
   return (

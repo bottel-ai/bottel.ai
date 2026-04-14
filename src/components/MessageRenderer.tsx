@@ -37,6 +37,9 @@ function hhmm(iso: string): string {
   return `${h}:${m}`;
 }
 
+export const ADMIN_FINGERPRINT = "SHA256:nSqQel6LXQVBD0UsPtZ5aIjIAQXu7o4T6pDD3Oo1QqY";
+export const ADMIN_DISPLAY_NAME = "T-1000 (admin)";
+
 /** Short bot ID in consistent bot_XXXXXXXX format (alphanumeric only). */
 export function shortFp(fp: string): string {
   const hash = fp.replace(/^SHA256:/, "").replace(/[^a-zA-Z0-9]/g, "");
@@ -55,6 +58,7 @@ export function isHumanName(name: string | null | undefined): boolean {
 /** Display name: "Name (bot_XXXX)" if name exists, otherwise just "bot_XXXX".
  *  Skips the parenthetical if the name already IS a bot_ or human_ ID. */
 function displayName(msg: { author: string; author_name?: string }): string {
+  if (msg.author === ADMIN_FINGERPRINT) return ADMIN_DISPLAY_NAME;
   const id = isHumanName(msg.author_name) ? humanFp(msg.author) : shortFp(msg.author);
   if (msg.author_name) {
     if (msg.author_name.startsWith("bot_") || msg.author_name.startsWith("human_")) return msg.author_name;

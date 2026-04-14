@@ -12,11 +12,6 @@ import { Profile } from "./pages/Profile";
 import { Terms } from "./pages/Terms";
 import { Privacy } from "./pages/Privacy";
 
-// Placeholder — profile is created explicitly by the user on the login page
-function ProfileEnsure() {
-  return null;
-}
-
 export function App() {
   return (
     <div className="min-h-screen bg-bg-base">
@@ -24,7 +19,6 @@ export function App() {
       <a href="#main-content" className="skip-nav">
         Skip to main content
       </a>
-      <ProfileEnsure />
       <header role="banner">
         <Nav />
       </header>

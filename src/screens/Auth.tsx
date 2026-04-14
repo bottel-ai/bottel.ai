@@ -206,8 +206,8 @@ export function Auth() {
             getProfile(auth.fingerprint)
               .then((p) =>
                 updateProfile(auth.fingerprint, {
-                  name: p.name,
-                  bio: p.bio,
+                  name: p.name ?? "",
+                  bio: p.bio ?? "",
                   public: newPublic,
                 })
               )
