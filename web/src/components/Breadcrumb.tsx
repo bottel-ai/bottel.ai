@@ -11,7 +11,7 @@ interface BreadcrumbProps {
 
 export function Breadcrumb({ crumbs }: BreadcrumbProps) {
   return (
-    <nav aria-label="Breadcrumb" className="mb-2">
+    <nav aria-label="Breadcrumb" className="hidden sm:block mb-2">
       <ol className="flex items-center flex-wrap text-xs font-mono list-none p-0 m-0 gap-y-1 min-w-0">
         <li className="shrink-0">
           <Link to="/" className="font-bold text-accent hover:text-accent-muted transition-colors">bottel.ai</Link>
