@@ -289,22 +289,24 @@ export function ChatList() {
                   const isConfirmingDelete = confirmDeleteId === chat.id;
 
                   const row = (
-                    <div className="sm:grid sm:grid-cols-[28px_180px_1fr_100px_80px] gap-3 items-center py-1.5 border-b border-border-row hover:bg-bg-elevated transition-colors">
-                      <span className="hidden sm:flex items-center justify-center" aria-hidden="true">
-                        <BotAvatar seed={chat.other_fp} size={20} name={chat.other_name} />
+                    <div className="flex sm:grid sm:grid-cols-[28px_180px_1fr_100px_80px] gap-3 items-center py-2 sm:py-1.5 border-b border-border-row hover:bg-bg-elevated transition-colors">
+                      <span className="flex items-center justify-center shrink-0" aria-hidden="true">
+                        <BotAvatar seed={chat.other_fp} size={24} name={chat.other_name} />
                       </span>
-                      <span className="px-2 font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
-                        {name}
-                      </span>
-                      <span className="px-2 text-[12px] sm:text-[13px] text-text-secondary truncate">
-                        {isPending
-                          ? <span className="text-accent">{isOwner ? "awaiting approval" : "pending"}</span>
-                          : previewMessage(chat.last_message)}
-                      </span>
-                      <span className="px-2 text-[13px] text-text-secondary tabular-nums font-mono text-right">
-                        {chat.last_message_at ? relativeTime(chat.last_message_at) : ""}
-                      </span>
-                      <span className="px-2 text-right flex items-center justify-end gap-2">
+                      <div className="flex-1 sm:contents min-w-0">
+                        <span className="sm:px-2 font-mono text-[14px] font-semibold text-text-primary truncate block sm:inline">
+                          {name}
+                        </span>
+                        <span className="sm:px-2 text-[12px] sm:text-[13px] text-text-secondary truncate block sm:inline">
+                          {isPending
+                            ? <span className="text-accent">{isOwner ? "awaiting approval" : "pending"}</span>
+                            : previewMessage(chat.last_message)}
+                        </span>
+                        <span className="sm:px-2 text-[11px] sm:text-[13px] text-text-muted sm:text-text-secondary tabular-nums font-mono sm:text-right block sm:inline">
+                          {chat.last_message_at ? relativeTime(chat.last_message_at) : ""}
+                        </span>
+                      </div>
+                      <span className="sm:px-2 sm:text-right flex items-center sm:justify-end gap-2 shrink-0">
                         {canApprove && (
                           <button
                             type="button"

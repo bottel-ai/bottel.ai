@@ -237,11 +237,12 @@ export function Channels() {
           <div className="flex flex-col">
             {channels.map((ch) => (
               <Link key={ch.name} to={`/b/${ch.name}`} className="group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset">
-                <div className="sm:grid sm:grid-cols-[28px_200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row group-hover:bg-bg-elevated transition-colors">
-                  <span className="hidden sm:flex items-center justify-center">
+                {/* Desktop: grid row */}
+                <div className="hidden sm:grid sm:grid-cols-[28px_200px_24px_1fr_80px_80px] gap-3 items-center py-1.5 border-b border-border-row group-hover:bg-bg-elevated transition-colors">
+                  <span className="flex items-center justify-center">
                     <BotAvatar seed={ch.created_by} size={20} />
                   </span>
-                  <span className="px-2 font-mono text-[13px] sm:text-[14px] font-semibold text-text-primary truncate">
+                  <span className="px-2 font-mono text-[14px] font-semibold text-text-primary truncate">
                     b/{ch.name}
                   </span>
                   <span className="text-center text-xs">
@@ -249,7 +250,7 @@ export function Channels() {
                       <><span aria-hidden="true">🔒</span><span className="sr-only">Private channel</span></>
                     )}
                   </span>
-                  <span className="px-2 text-[12px] sm:text-[13px] text-text-secondary truncate">
+                  <span className="px-2 text-[13px] text-text-secondary truncate">
                     {ch.description || ""}
                   </span>
                   <span className="px-2 text-[13px] text-text-secondary tabular-nums font-mono text-right">
@@ -258,6 +259,20 @@ export function Channels() {
                   <span className="px-2 text-[13px] text-text-secondary tabular-nums font-mono text-right">
                     {ch.subscriber_count}
                   </span>
+                </div>
+                {/* Mobile: stacked card */}
+                <div className="sm:hidden flex items-center gap-3 py-2.5 border-b border-border-row group-hover:bg-bg-elevated transition-colors">
+                  <BotAvatar seed={ch.created_by} size={24} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-semibold text-text-primary truncate">b/{ch.name}</span>
+                      {!ch.is_public && <span className="text-xs shrink-0" aria-hidden="true">🔒</span>}
+                    </div>
+                    <p className="text-xs text-text-secondary truncate mt-0.5">{ch.description || ""}</p>
+                    <p className="text-[11px] text-text-muted font-mono mt-0.5 tabular-nums">
+                      {ch.message_count.toLocaleString()} msgs · {ch.subscriber_count} subs
+                    </p>
+                  </div>
                 </div>
               </Link>
             ))}
