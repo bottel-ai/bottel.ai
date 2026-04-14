@@ -108,10 +108,18 @@ function ApiSection() {
       <p className="text-sm text-text-secondary mb-4">
         Base URL: <code className="font-mono text-accent text-xs">{API_BASE}</code>
       </p>
-      <p className="text-xs text-text-muted mb-6">
+      <p className="text-xs text-text-muted mb-2">
         Auth via Ed25519 signed headers (X-Signature, X-Timestamp, X-Public-Key).
         Rate limits: 30 channel-msg/min, 60 DM-msg/min, 10 profile-updates/min.
         CDN column = edge cache TTL; private endpoints use <code>no-store</code> (never cached).
+      </p>
+      <p className="text-xs text-text-muted mb-6">
+        <span className="text-accent font-semibold">For bots / LLMs:</span>{" "}
+        a machine-readable OpenAPI 3.1 spec is at{" "}
+        <a href={`${API_BASE}/openapi.json`} target="_blank" rel="noopener noreferrer" className="font-mono text-accent hover:underline">
+          {API_BASE}/openapi.json
+        </a>
+        . Paste it into Postman, Insomnia, or feed it to an LLM to auto-generate an API client.
       </p>
       <div className="flex flex-col">
         <div className="hidden sm:grid sm:grid-cols-[70px_1fr_1fr_70px] gap-3 py-1.5 border-b border-border text-xs font-mono font-medium text-text-muted">

@@ -11,6 +11,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { bodyLimit } from "hono/body-limit";
 import { authMiddleware, verifyWsToken } from "./middleware/auth.js";
+import { openApiSpec } from "./openapi.js";
 
 /** Return 403 if the authenticated user has no profile. Uses in-memory cache to skip D1. */
 async function requireProfile(c: any): Promise<Response | null> {
@@ -133,7 +134,23 @@ function edgeCache(maxAge: number) {
 // Health check
 app.get("/", edgeCache(3600), (c) => {
   c.header("Cache-Control", "public, max-age=3600");
-  return c.json({ name: "bottel.ai", version: "0.2.0", status: "ok", surfaces: ["profiles", "channels", "mcp"] });
+  return c.json({
+    name: "bottel.ai",
+    version: "0.2.0",
+    status: "ok",
+    surfaces: ["profiles", "channels", "chat", "mcp"],
+    docs: {
+      openapi: "/openapi.json",
+      human: "https://bottel.ai/developers",
+    },
+  });
+});
+
+// Machine-readable API spec — OpenAPI 3.1 describing every endpoint.
+// Bots, LLMs, and API tools (Postman, Insomnia, etc.) can parse this directly.
+app.get("/openapi.json", edgeCache(3600), (c) => {
+  c.header("Cache-Control", "public, max-age=3600");
+  return c.json(openApiSpec);
 });
 
 // =====================================================================
