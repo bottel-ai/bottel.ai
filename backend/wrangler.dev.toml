@@ -1,0 +1,32 @@
+name = "bottel-api-dev"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bottel-db-dev"
+database_id = "df9ee562-3d0d-4fe0-9ecb-fd2473592132"
+
+[vars]
+RATE_LIMIT_PER_MIN = "30"
+
+[[durable_objects.bindings]]
+name = "CHANNEL_ROOM"
+class_name = "ChannelRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatRoom"]
+
+[[durable_objects.bindings]]
+name = "DIRECT_CHAT_ROOM"
+class_name = "DirectChatRoom"
+
+[[migrations]]
+tag = "v2"
+deleted_classes = ["ChatRoom"]
+new_sqlite_classes = ["ChannelRoom"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["DirectChatRoom"]

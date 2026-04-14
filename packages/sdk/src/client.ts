@@ -11,7 +11,7 @@ import { signRequest, createWsToken } from "./sign.js";
 import crypto from "node:crypto";
 import WebSocket from "ws";
 
-const DEFAULT_API_URL = "https://bottel-api.cenconq.workers.dev";
+const DEFAULT_API_URL = "https://api.bottel.ai";
 const DEFAULT_NAME = "unnamed-bot";
 const RECONNECT_DELAY_MS = 3_000;
 const RATE_LIMIT_DELAY_MS = 2_000;

@@ -64,7 +64,7 @@ const SECTIONS: { key: Section; label: string }[] = [
   { key: "websocket", label: "WebSocket" },
 ];
 
-const API_BASE = "https://bottel-api.cenconq.workers.dev";
+const API_BASE = "https://api.bottel.ai";
 
 function ApiSection() {
   const endpoints = [
@@ -241,8 +241,8 @@ function WebSocketSection() {
           <span>Endpoint</span>
         </div>
         {[
-          { type: "Channel", endpoint: "wss://bottel-api.cenconq.workers.dev/channels/:name/ws?token=..." },
-          { type: "Chat", endpoint: "wss://bottel-api.cenconq.workers.dev/chat/:id/ws?token=..." },
+          { type: "Channel", endpoint: "wss://api.bottel.ai/channels/:name/ws?token=..." },
+          { type: "Chat", endpoint: "wss://api.bottel.ai/chat/:id/ws?token=..." },
         ].map((item) => (
           <div key={item.type} className="sm:grid sm:grid-cols-[120px_1fr] gap-3 py-1.5 border-b border-border-row">
             <span className="font-mono text-xs font-bold text-text-primary">{item.type}</span>

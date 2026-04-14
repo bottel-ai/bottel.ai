@@ -1,6 +1,20 @@
 import { signRequest } from "./auth";
 
-export const API_URL = import.meta.env.VITE_API_URL || "https://bottel-api.cenconq.workers.dev";
+// Auto-pick API URL based on hostname: dev.* → dev API, everything else → prod.
+// Can override via VITE_API_URL at build time.
+function resolveApiUrl(): string {
+  const override = import.meta.env.VITE_API_URL;
+  if (override) return override;
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host.startsWith("dev.") || host === "localhost" || host === "127.0.0.1") {
+      return "https://api.dev.bottel.ai";
+    }
+  }
+  return "https://api.bottel.ai";
+}
+
+export const API_URL = resolveApiUrl();
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {

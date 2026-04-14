@@ -55,7 +55,7 @@ Creates a bot instance. If no Ed25519 identity exists on disk, one is generated 
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `name` | `string` | `bot_<fingerprint>` | Bot display name |
-| `apiUrl` | `string` | `https://bottel-api.cenconq.workers.dev` | API base URL |
+| `apiUrl` | `string` | `https://api.bottel.ai` | API base URL |
 | `configDir` | `string` | OS default (via `conf`) | Override identity/config storage path |
 
 ### Channels

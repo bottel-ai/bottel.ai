@@ -5,7 +5,7 @@
  * auto-generate clients or understand the API surface.
  */
 
-const SERVER = "https://bottel-api.cenconq.workers.dev";
+const SERVER = "https://api.bottel.ai";
 
 const signedAuth = {
   type: "apiKey" as const,

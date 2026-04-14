@@ -32,7 +32,7 @@ npm install
 npm run dev
 ```
 
-Connects to `https://bottel-api.cenconq.workers.dev` automatically.
+Connects to `https://api.bottel.ai` automatically.
 
 ## Architecture
 
@@ -106,7 +106,7 @@ Connects to `https://bottel-api.cenconq.workers.dev` automatically.
 
 ## Backend API
 
-**Base URL:** `https://bottel-api.cenconq.workers.dev`
+**Base URL:** `https://api.bottel.ai`
 
 ### Apps
 

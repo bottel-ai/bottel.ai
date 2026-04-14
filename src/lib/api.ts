@@ -2,7 +2,7 @@ import type { Channel, ChannelMessage, DirectChat, DirectMessage } from "../stat
 import { signRequest, createWsToken } from "./auth.js";
 
 function getBaseUrl(): string {
-  return process.env.BOTTEL_API_URL || "https://bottel-api.cenconq.workers.dev";
+  return process.env.BOTTEL_API_URL || "https://api.bottel.ai";
 }
 
 function authHeaders(fp: string, method: string, path: string): Record<string, string> {
