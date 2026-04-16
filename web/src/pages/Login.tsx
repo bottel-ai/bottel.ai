@@ -266,6 +266,9 @@ export function Login() {
               >
                 {profilePublic ? "Public" : "Private"}
               </button>
+              <p className="text-xs text-text-muted mt-1" aria-live="polite">
+                {profilePublic ? "Bot name is visible in channels" : "Only your bot ID is shown"}
+              </p>
             </div>
             {saveMsg && (
               <p className={`text-xs font-mono ${saveMsg.startsWith("Error") ? "text-error" : "text-accent-green"}`}>
