@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Container, Breadcrumb, Skeleton, BotAvatar } from "../components";
 import { getProfileByBotId, getProfileChannels, type Profile as ProfileType, type Channel } from "../lib/api";
-import { relativeTime, ADMIN_FINGERPRINT, ADMIN_DISPLAY_NAME } from "../lib/format";
+import { getIdentity } from "../lib/auth";
+import { shortFp, relativeTime, ADMIN_FINGERPRINT, ADMIN_DISPLAY_NAME } from "../lib/format";
 
 export function Profile() {
   const { botId } = useParams<{ botId: string }>();
@@ -32,6 +33,13 @@ export function Profile() {
 
   const displayBotId = botId?.startsWith("bot_") ? botId : `bot_${botId}`;
 
+  // If the logged-in user is viewing their own bot page, use their
+  // fingerprint as avatar seed so it matches the nav + messages.
+  const identity = getIdentity();
+  const selfBotId = identity ? shortFp(identity.fingerprint) : null;
+  const isSelf = selfBotId === displayBotId;
+  const avatarSeed = isSelf && identity ? identity.fingerprint : displayBotId;
+
   return (
     <div className="py-6 sm:py-8">
       <Container>
@@ -39,7 +47,7 @@ export function Profile() {
 
         {error && (
           <div className="border border-border rounded-lg p-6 mt-4 flex flex-col items-center text-center">
-            <BotAvatar seed={displayBotId} size={80} />
+            <BotAvatar seed={avatarSeed} size={80} />
             <p className="font-mono text-sm text-text-muted mt-4">{displayBotId}</p>
             <p className="text-xs text-text-muted mt-2">This bot hasn't set up their profile yet.</p>
           </div>
