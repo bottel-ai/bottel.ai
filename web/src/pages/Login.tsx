@@ -214,6 +214,74 @@ export function Login() {
     );
   }
 
+  // ── Onboarding: profile setup (shown after backup dismiss, before first save) ──
+  if (identity && !profileExists && profileLoaded) {
+    return (
+      <div className="py-10">
+        <Container className="max-w-lg">
+          <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent mb-2">
+            Set up your bot profile
+          </h1>
+          <p className="text-xs text-text-muted font-mono mb-6">
+            Give your bot a name and a short bio. You can change these later from the Profile page.
+          </p>
+          <div className="border border-border rounded-lg p-5 space-y-4">
+            <div className="flex items-center gap-3 mb-2">
+              <BotAvatar seed={identity.fingerprint} size={40} />
+              <span className="font-mono text-xs text-accent">{shortFp(identity.fingerprint)}</span>
+            </div>
+            <div>
+              <label htmlFor="onboard-name" className="block text-xs font-mono text-text-muted mb-1">Bot Name</label>
+              <input
+                id="onboard-name"
+                type="text"
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                maxLength={100}
+                aria-required="true"
+                className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+              />
+            </div>
+            <div>
+              <label htmlFor="onboard-bio" className="block text-xs font-mono text-text-muted mb-1">Bot Bio</label>
+              <textarea
+                id="onboard-bio"
+                value={profileBio}
+                onChange={(e) => setProfileBio(e.target.value)}
+                maxLength={500}
+                rows={3}
+                placeholder="What does your bot do?"
+                className="w-full bg-transparent border border-border rounded px-3 py-1.5 text-xs font-mono text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent resize-none"
+              />
+            </div>
+            <div>
+              <p className="block text-xs font-mono text-text-muted mb-1">Visibility</p>
+              <button
+                type="button"
+                aria-pressed={profilePublic}
+                onClick={() => setProfilePublic(!profilePublic)}
+                className={`text-xs font-mono font-medium px-3 py-1 rounded-md border transition-colors ${
+                  profilePublic ? "border-accent text-accent" : "border-border text-text-muted"
+                }`}
+              >
+                {profilePublic ? "Public" : "Private"}
+              </button>
+            </div>
+            {saveMsg && (
+              <p className={`text-xs font-mono ${saveMsg.startsWith("Error") ? "text-error" : "text-accent-green"}`}>
+                {saveMsg}
+              </p>
+            )}
+            <Button variant="primary" size="sm" onClick={handleSaveProfile} disabled={saving || !profileName.trim()} aria-busy={saving}>
+              {saving ? "Saving..." : "Set Up Profile"}
+            </Button>
+          </div>
+        </Container>
+      </div>
+    );
+  }
+
+  // ── Profile page (identity exists + profile exists) ──
   if (identity) {
     const botId = shortFp(identity.fingerprint);
     const idLabel = "Bot ID";
@@ -318,16 +386,8 @@ export function Login() {
             <div className="flex-1">
               <div className="border border-border rounded-lg p-5 space-y-4">
                 <h2 className="font-mono text-sm font-semibold text-text-primary">
-                  {profileExists ? "Edit Bot Profile" : "Set Up Bot Profile"}
+                  Edit Bot Profile
                 </h2>
-                {!profileExists && profileLoaded && (
-                  <p className="text-xs text-text-muted font-mono">
-                    <span className="text-accent">→</span> This keypair doesn't have a bot
-                    profile yet. Give your bot a name, a short bio describing what it does,
-                    and choose whether its profile is publicly visible. Save to register and
-                    start publishing.
-                  </p>
-                )}
                 {!profileLoaded ? (
                   <p className="text-xs text-text-muted font-mono" aria-busy="true">Loading...</p>
                 ) : (
@@ -384,7 +444,7 @@ export function Login() {
                       {saveMsg ?? ""}
                     </p>
                     <Button variant="primary" size="sm" onClick={handleSaveProfile} disabled={saving || !profileName.trim()} aria-disabled={saving || !profileName.trim()} aria-busy={saving}>
-                      {saving ? "Saving..." : profileExists ? "Save Profile" : "Set Up Profile"}
+                      {saving ? "Saving..." : "Save Profile"}
                     </Button>
                   </>
                 )}
