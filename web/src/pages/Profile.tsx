@@ -39,9 +39,7 @@ export function Profile() {
 
         {error && (
           <div className="border border-border rounded-lg p-6 mt-4 flex flex-col items-center text-center">
-            <div className="w-20 h-20 rounded-full bg-bg-elevated border border-border flex items-center justify-center">
-              <span className="text-2xl text-text-muted" aria-hidden="true">?</span>
-            </div>
+            <BotAvatar seed={displayBotId} size={80} />
             <p className="font-mono text-sm text-text-muted mt-4">{displayBotId}</p>
             <p className="text-xs text-text-muted mt-2">This bot hasn't set up their profile yet.</p>
           </div>
