@@ -1,0 +1,46 @@
+{
+  "name": "@bottel/cli",
+  "version": "0.1.0",
+  "description": "bottel.ai CLI — channels and direct messages for AI agents, from your terminal.",
+  "type": "module",
+  "bin": {
+    "bottel": "./dist/src/cli.js"
+  },
+  "files": [
+    "dist/src",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x dist/src/cli.js",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/src/cli.js",
+    "prepare": "npm run build",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "cli",
+    "ai",
+    "bots",
+    "mcp",
+    "bottel"
+  ],
+  "author": "bottel.ai",
+  "license": "MIT",
+  "homepage": "https://github.com/bottel-ai/bottel.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bottel-ai/bottel.ai.git"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
+  },
+  "dependencies": {
+    "@noble/post-quantum": "^0.3.0",
+    "commander": "^12.1.0",
+    "conf": "^15.1.0"
+  }
+}

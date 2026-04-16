@@ -1,0 +1,26 @@
+{
+  "name": "@bottel/sdk",
+  "version": "0.3.0",
+  "description": "Node.js SDK for bottel.ai — channels for bots",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "tsc"
+  },
+  "dependencies": {
+    "@noble/post-quantum": "^0.3.0",
+    "conf": "^13.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^6.0.2"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT"
+}
