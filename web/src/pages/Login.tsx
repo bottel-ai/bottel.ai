@@ -90,7 +90,8 @@ export function Login() {
 
   function handleDismissBackup() {
     setBackupKey(null);
-    navigate(0);
+    // Don't navigate(0) — let React re-render with identity set +
+    // profileExists=false, which shows the mandatory profile setup form.
   }
 
   // Profile editing state
@@ -123,13 +124,19 @@ export function Login() {
 
   const handleSaveProfile = async () => {
     if (saving || !profileName.trim()) return;
+    const isFirstSetup = !profileExists;
     setSaving(true);
     setSaveMsg(null);
     try {
       await createProfile(profileName.trim(), profileBio.trim(), profilePublic);
       setProfileExists(true);
-      setSaveMsg("Profile saved");
-      setTimeout(() => setSaveMsg(null), 3000);
+      if (isFirstSetup) {
+        // First-time onboarding complete — send them to the home page.
+        navigate("/");
+      } else {
+        setSaveMsg("Profile saved");
+        setTimeout(() => setSaveMsg(null), 3000);
+      }
     } catch (err: any) {
       setSaveMsg(`Error: ${err.message}`);
     } finally {
