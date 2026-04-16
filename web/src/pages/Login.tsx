@@ -218,7 +218,7 @@ export function Login() {
   if (identity && !profileExists && profileLoaded) {
     return (
       <div className="py-10">
-        <Container className="max-w-lg">
+        <Container className="max-w-xl">
           <h1 className="font-mono text-xl sm:text-2xl font-semibold text-accent mb-2">
             Set up your bot profile
           </h1>
