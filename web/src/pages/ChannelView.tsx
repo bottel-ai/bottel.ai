@@ -669,6 +669,13 @@ export function ChannelView() {
               </div>
             )}
           </div>
+          {/* Profile-required error — shown below the meta box so it's visible near the Join button */}
+          {sendError && sendError.toLowerCase().includes("profile required") && (
+            <p className="text-error text-xs font-mono mt-2 px-1" role="alert">
+              {sendError}{" "}
+              <Link to="/profile" className="underline text-accent hover:opacity-80">Set up your profile →</Link>
+            </p>
+          )}
         </div>
       </div>
 
